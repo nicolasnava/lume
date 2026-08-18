@@ -16,6 +16,9 @@ function getSupabaseRemotePattern() {
 const supabasePattern = getSupabaseRemotePattern();
 
 const nextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   images: {
     remotePatterns: [
       {

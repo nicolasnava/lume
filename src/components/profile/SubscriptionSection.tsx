@@ -14,9 +14,7 @@ import {
   Clock,
   Gift,
   ShieldCheck,
-  Zap,
   Sparkles,
-  ArrowRight,
   Copy,
   Check,
   QrCode,
@@ -25,7 +23,6 @@ import {
   Tag,
   Loader2,
   X,
-  Calendar,
   DollarSign,
 } from 'lucide-react'
 
