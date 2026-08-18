@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+:root {
+  --font-serif: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-manrope), system-ui, sans-serif;
+  --lume-primary: #3D2E4D;
+  --lume-primary-hover: #2E223B;
+  --lume-accent: #8C5383;
+  --lume-rose: #C86D51;
+  --lume-bg: #FAF8F5;
+  --lume-surface: #FFFFFF;
+  --lume-surface-warm: #F4EAE4;
+  --lume-text: #3D2E4D;
+  --lume-text-muted: #6B5E7A;
+}
+
+.font-serif {
+  font-family: var(--font-fraunces), Georgia, serif;
+}
+
+.font-sans {
+  font-family: var(--font-manrope), system-ui, sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--lume-bg);
+  color: var(--lume-text);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ==========================================================================
+   Lumê Dark Theme Palette (Modo Escuro Roxo Lumê)
+   ========================================================================== */
+
+html.dark {
+  --lume-bg: #13111C;
+  --lume-text: #EAE5F3;
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #13111C !important;
+  color: #EAE5F3 !important;
+}
+
+/* Fundo de Cartões, Header e Sidebar */
+html.dark .bg-white,
+html.dark .bg-white\/70,
+html.dark .bg-white\/80,
+html.dark .bg-white\/90 {
+  background-color: #1A1626 !important;
+}
+
+html.dark .bg-\[\#FAF7F5\] {
+  background-color: #13111C !important;
+}
+
+/* Fundo Secundário (Inputs e Sub-cards) */
+html.dark .bg-gray-50,
+html.dark .bg-gray-50\/50,
+html.dark .bg-gray-50\/60,
+html.dark .bg-gray-50\/70,
+html.dark .bg-gray-50\/80 {
+  background-color: #221C33 !important;
+}
+
+html.dark .bg-gray-100,
+html.dark .bg-gray-100\/60 {
+  background-color: #28213B !important;
+}
+
+/* Textos e Cores de Rótulos */
+html.dark .text-\[\#4A3F5C\] {
+  color: #EAE5F3 !important;
+}
+
+html.dark .text-\[\#4A3F5C\]\/80,
+html.dark .text-\[\#4A3F5C\]\/70,
+html.dark .text-\[\#4A3F5C\]\/60,
+html.dark .text-\[\#4A3F5C\]\/50,
+html.dark .text-gray-900,
+html.dark .text-gray-800,
+html.dark .text-gray-700,
+html.dark .text-gray-600,
+html.dark .text-gray-500 {
+  color: #A39BB5 !important;
+}
+
+html.dark .text-gray-400 {
+  color: #7A7091 !important;
+}
+
+/* Bordas em Dark Mode */
+html.dark .border-gray-100,
+html.dark .border-gray-200,
+html.dark .border-gray-200\/60,
+html.dark .border-gray-200\/80,
+html.dark .border-gray-300,
+html.dark .border-black\/5,
+html.dark .border-black\/10 {
+  border-color: #2D263D !important;
+}
+
+/* Inputs, Selects e Textareas */
+html.dark input[type="text"],
+html.dark input[type="tel"],
+html.dark input[type="email"],
+html.dark input[type="number"],
+html.dark input[type="datetime-local"],
+html.dark input[type="date"],
+html.dark select,
+html.dark textarea {
+  background-color: #221C33 !important;
+  color: #EAE5F3 !important;
+  border-color: #2D263D !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #7A7091 !important;
+}
+
+/* Modal e Popups */
+html.dark .shadow-2xl,
+html.dark .shadow-xl,
+html.dark .shadow-lg,
+html.dark .shadow-md,
+html.dark .shadow-sm {
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5) !important;
+}
