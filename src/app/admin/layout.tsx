@@ -3,6 +3,9 @@ import { getAuthenticatedAdmin } from '@/lib/admin/checkAdmin'
 import { isAdmin2faVerified } from '@/lib/admin/twoFactor'
 import AdminSidebarLayoutClient from '@/components/admin/AdminSidebarLayoutClient'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function AdminLayout({
   children,
 }: {

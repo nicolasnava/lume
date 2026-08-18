@@ -10,6 +10,9 @@ import { getContrastingTextColor, getLightTint } from '@/lib/utils/contrast'
 import { ExternalLink, User as UserIcon, AlertTriangle, ShieldAlert, LogOut, Smartphone } from 'lucide-react'
 import Image from 'next/image'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 interface ProtectedLayoutProps {
   children: React.ReactNode
 }
