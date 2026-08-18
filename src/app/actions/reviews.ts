@@ -5,7 +5,7 @@ import { avaliacaoSchema } from '@/lib/validations'
 import { checkRateLimitDb, getClientIp } from '@/lib/rateLimit'
 import { revalidatePath } from 'next/cache'
 
-export const AVALIACAO_EXPIRACAO_DIAS = 60
+const AVALIACAO_EXPIRACAO_DIAS = 60
 
 export interface SubmitAvaliacaoInput {
   agendamentoId: string
