@@ -183,130 +183,93 @@ export default function SubscriptionSection({ initialData }: SubscriptionSection
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
-      {/* 1. Card Principal de Status da Conta */}
-      <div className="rounded-3xl border border-gray-200/80 bg-white p-6 sm:p-8 shadow-xs relative overflow-hidden">
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 h-44 w-44 rounded-full bg-purple-500/5 blur-2xl pointer-events-none" />
+      {/* Card do Plano Lumê - Estilo Elegante com Borda Roxa */}
+      <div className="max-w-2xl">
+        <div className="rounded-3xl p-6 sm:p-7 border-2 border-purple-600 bg-white shadow-md relative flex flex-col justify-between space-y-6">
+          <span className="absolute -top-3 left-6 px-3 py-0.5 rounded-full bg-purple-600 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-xs">
+            {data.statusConta === 'ativa'
+              ? 'Seu Plano Ativo'
+              : data.statusConta === 'trial'
+              ? 'Período de Avaliação (Trial)'
+              : data.statusConta === 'cortesia'
+              ? 'Acesso Cortesia VIP'
+              : 'Plano Lumê'}
+          </span>
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${badge.bg}`}>
-                <BadgeIcon className="h-3.5 w-3.5" />
-                <span>{badge.label}</span>
-              </span>
-
-              {data.statusConta === 'trial' && data.diasRestantesTrial > 0 && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-100">
-                  <Sparkles className="h-3 w-3 text-purple-500" />
-                  <span>{data.diasRestantesTrial} dias restantes de teste grátis</span>
-                </span>
-              )}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg sm:text-xl font-bold text-[#4A3F5C]">
+                  {data.statusConta === 'cortesia'
+                    ? 'Acesso Cortesia VIP'
+                    : 'Plano Mensal Lumê'}
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {data.statusConta === 'ativa'
+                    ? 'Sua assinatura está ativa e com todos os recursos premium liberados.'
+                    : data.statusConta === 'trial'
+                    ? 'Aproveite todos os recursos do Lumê durante seu período de avaliação.'
+                    : data.statusConta === 'cortesia'
+                    ? 'Acesso concedido pela equipe Lumê.'
+                    : 'Acesso completo com cobrança recorrente mensal'}
+                </p>
+              </div>
+              <div className="h-11 w-11 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold shrink-0">
+                <CreditCard className="h-5 w-5" />
+              </div>
             </div>
 
-            <div>
-              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#4A3F5C]">
-                {data.statusConta === 'cortesia'
-                  ? 'Acesso Cortesia VIP'
-                  : 'Plano Mensal Lumê'}
-              </h2>
-              <p className="text-xs sm:text-sm text-gray-500 mt-1">
-                {data.statusConta === 'ativa'
-                  ? 'Sua assinatura está ativa e com todos os recursos premium liberados.'
-                  : data.statusConta === 'trial'
-                  ? 'Aproveite todos os recursos do Lumê sem limites durante o seu período de avaliação.'
-                  : data.statusConta === 'cortesia'
-                  ? 'Você possui acesso vitalício ou cortesia concedida pela equipe Lumê.'
-                  : 'Regularize sua fatura para manter sua vitrine pública e agendamentos sempre ativos.'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row md:flex-col lg:flex-row items-start sm:items-center md:items-end lg:items-center gap-4 bg-[#FAF7F5] p-4 rounded-2xl border border-gray-200/60 shrink-0">
-            <div className="space-y-0.5">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 block">
-                Mensalidade
-              </span>
+            <div className="flex flex-wrap items-baseline gap-2">
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-[#4A3F5C]">
-                  R$ {data.valorMensalidade.toFixed(2)}
+                <span className="text-3xl font-black text-[#4A3F5C]">
+                  R$ {data.valorMensalidade.toFixed(2).replace('.', ',')}
                 </span>
                 <span className="text-xs text-gray-500 font-medium">/mês</span>
               </div>
             </div>
 
-            {data.proximoVencimento && (
-              <div className="border-t sm:border-t-0 md:border-t lg:border-t-0 sm:border-l md:border-l-0 lg:border-l border-gray-200/80 pt-2 sm:pt-0 md:pt-2 lg:pt-0 sm:pl-4 md:pl-0 lg:pl-4 space-y-0.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 block">
-                  Próxima Renovação
-                </span>
-                <p className="text-xs font-bold text-gray-700">
+            {/* Status de Renovação ou Dias Restantes do Trial */}
+            {data.statusConta === 'trial' && data.diasRestantesTrial > 0 ? (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-50 text-purple-800 border border-purple-200/80">
+                <Sparkles className="h-3.5 w-3.5 text-purple-600 shrink-0" />
+                <span>{data.diasRestantesTrial} dias restantes de avaliação grátis</span>
+              </div>
+            ) : data.proximoVencimento ? (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
+                <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                <span>
+                  Próxima renovação:{' '}
                   {new Date(data.proximoVencimento).toLocaleDateString('pt-BR', {
                     day: '2-digit',
                     month: 'long',
                     year: 'numeric',
                   })}
-                </p>
+                </span>
               </div>
-            )}
-          </div>
-        </div>
-      </div>
+            ) : null}
 
-      {/* 2. Plano Disponível */}
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-base font-bold text-[#4A3F5C]">Plano Disponível</h3>
-          <p className="text-xs text-gray-500">
-            Acesso completo e ilimitado a todos os recursos da plataforma Lumê.
-          </p>
-        </div>
-
-        <div className="max-w-xl">
-          {/* Card: Plano Mensal Lumê */}
-          <div className="rounded-3xl p-6 sm:p-7 border-2 border-purple-600 bg-white shadow-md relative flex flex-col justify-between space-y-6">
-            <span className="absolute -top-3 left-6 px-3 py-0.5 rounded-full bg-purple-600 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-xs">
-              {data.statusConta === 'ativa' ? 'Seu Plano Ativo' : 'Plano Oficial'}
-            </span>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-lg font-bold text-[#4A3F5C]">Plano Mensal Lumê</h4>
-                  <p className="text-xs text-gray-500">Acesso completo com cobrança recorrente mensal</p>
-                </div>
-                <div className="h-10 w-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-                  <CreditCard className="h-5 w-5" />
-                </div>
-              </div>
-
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-black text-[#4A3F5C]">R$ 69,90</span>
-                <span className="text-xs text-gray-500 font-medium">/mês</span>
-              </div>
-
-              <ul className="space-y-2.5 pt-2 border-t border-gray-100 text-xs text-gray-600">
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Agendamentos e clientes ilimitados</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Página pública exclusiva e personalizada com suas cores</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Lembretes e confirmações no WhatsApp com 1 clique</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Controle financeiro e métricas em tempo real</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Suporte prioritário via WhatsApp</span>
-                </li>
-              </ul>
-            </div>
+            <ul className="space-y-2.5 pt-3 border-t border-gray-100 text-xs text-gray-600">
+              <li className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                <span>Agendamentos e clientes ilimitados</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                <span>Página pública exclusiva e personalizada com suas cores</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                <span>Lembretes e confirmações no WhatsApp com 1 clique</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                <span>Controle financeiro e métricas em tempo real</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                <span>Suporte prioritário via WhatsApp</span>
+              </li>
+            </ul>
           </div>
         </div>
       </div>
@@ -465,25 +428,18 @@ export default function SubscriptionSection({ initialData }: SubscriptionSection
         )}
       </div>
 
-      {/* 5. Central de Ajuda & Dúvidas de Cobrança */}
-      <div className="rounded-2xl border border-gray-200/80 bg-purple-50/50 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h4 className="text-xs font-bold text-purple-900">Precisa de 2ª via ou ajuda com a assinatura?</h4>
-          <p className="text-[11px] text-purple-700">
-            Nossa equipe de suporte está à disposição no WhatsApp (11 96575-8459) para esclarecer dúvidas sobre cobranças e planos.
-          </p>
-        </div>
-
+      {/* 5. Suporte via WhatsApp Direto */}
+      <div className="flex justify-center pt-2">
         <a
           href={`https://wa.me/5511965758459?text=${encodeURIComponent(
-            'Olá! Preciso de suporte com a minha assinatura do Lumê.'
+            'Olá! Gostaria de tirar uma dúvida sobre a assinatura do Lumê.'
           )}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 rounded-xl bg-white hover:bg-gray-50 border border-purple-200 text-purple-800 px-4 py-2 text-xs font-bold transition shadow-2xs shrink-0 cursor-pointer"
+          className="inline-flex items-center gap-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 text-xs sm:text-sm font-bold transition shadow-xs hover:shadow-md cursor-pointer"
         >
-          <MessageCircle className="h-4 w-4 text-purple-600" />
-          <span>Falar no WhatsApp (11 96575-8459)</span>
+          <MessageCircle className="h-4.5 w-4.5" />
+          <span>Falar com o Suporte no WhatsApp</span>
         </a>
       </div>
 

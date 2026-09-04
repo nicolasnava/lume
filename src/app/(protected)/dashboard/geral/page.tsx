@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import GeralViewClient from '@/components/dashboard/GeralViewClient'
+import StudioPendingInvitesBanner from '@/components/dashboard/StudioPendingInvitesBanner'
+import { obterConvitesPendentesUsuario } from '@/app/actions/estudio'
 
 export const revalidate = 0
 export const dynamic = 'force-dynamic'
@@ -19,12 +21,17 @@ export default async function DashboardGeralPage() {
 
   const adminSupabase = createAdminClient()
 
-  // Buscar profissional
+  // Buscar profissional e convites pendentes de studio em paralelo
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: profissional } = await (adminSupabase.from('profissionais') as any)
-    .select('nome, onboarding_concluido')
-    .eq('id', user.id)
-    .single()
+  const [profissionalRes, convitesPendentes] = await Promise.all([
+    (adminSupabase.from('profissionais') as any)
+      .select('nome, onboarding_concluido')
+      .eq('id', user.id)
+      .single(),
+    obterConvitesPendentesUsuario().catch(() => []),
+  ])
+
+  const profissional = profissionalRes?.data
 
   const profissionalNome = profissional?.nome || user.user_metadata?.nome || 'Profissional'
   const onboardingConcluido = profissional?.onboarding_concluido === true
@@ -102,13 +109,16 @@ export default async function DashboardGeralPage() {
     todayBookingsList.find((b) => new Date(b.dataHoraInicio) >= now) || todayBookingsList[0] || null
 
   return (
-    <GeralViewClient
-      profissionalNome={profissionalNome}
-      todayBookingsCount={todayBookingsList.length}
-      nextBooking={nextPendingBooking}
-      todayBookings={todayBookingsList}
-      totalAtendimentosSemana={weekBookings.length}
-      initialShowTour={!onboardingConcluido}
-    />
+    <>
+      <StudioPendingInvitesBanner initialInvites={convitesPendentes} />
+      <GeralViewClient
+        profissionalNome={profissionalNome}
+        todayBookingsCount={todayBookingsList.length}
+        nextBooking={nextPendingBooking}
+        todayBookings={todayBookingsList}
+        totalAtendimentosSemana={weekBookings.length}
+        initialShowTour={!onboardingConcluido}
+      />
+    </>
   )
 }

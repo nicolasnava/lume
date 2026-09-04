@@ -12,6 +12,7 @@ interface ServiceCarouselProps {
   servicos: ServicoRow[]
   corPrimaria: string
   profissionalSlug: string
+  basePath?: string
   onOpenClientBookings?: () => void
 }
 
@@ -19,11 +20,13 @@ export default function ServiceCarousel({
   servicos,
   corPrimaria,
   profissionalSlug,
+  basePath,
   onOpenClientBookings,
 }: ServiceCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [activeIndex, setActiveIndex] = useState(0)
 
+  const bookingBaseUrl = basePath || `/p/${profissionalSlug}`
   const textColorOnPrimary = getContrastingTextColor(corPrimaria)
 
   // Atualizar índice ativo ao rolar o carrossel
@@ -102,7 +105,7 @@ export default function ServiceCarousel({
           return (
             <a
               key={servico.id}
-              href={`/p/${profissionalSlug}/agendar?servico=${servico.id}`}
+              href={`${bookingBaseUrl}/agendar?servico=${servico.id}`}
               target="_blank"
               rel="noopener noreferrer"
               className="snap-center shrink-0 w-[85%] sm:w-[260px] min-h-[290px] flex flex-col rounded-2xl overflow-hidden shadow-sm group cursor-pointer transition transform hover:-translate-y-1 hover:shadow-lg border border-gray-200/80 bg-white text-left block"
@@ -194,7 +197,7 @@ export default function ServiceCarousel({
       {/* Botões do Rodapé do Carrossel: "Agendar Agora" (Principal) e "Ver meus agendamentos" (Secundário) */}
       <div className="pt-2 space-y-2">
         <a
-          href={`/p/${profissionalSlug}/agendar`}
+          href={`${bookingBaseUrl}/agendar`}
           target="_blank"
           rel="noopener noreferrer"
           className="w-full py-3.5 rounded-2xl font-black text-sm text-white shadow-lg transition hover:opacity-90 active:scale-98 cursor-pointer flex items-center justify-center gap-2 block text-center"

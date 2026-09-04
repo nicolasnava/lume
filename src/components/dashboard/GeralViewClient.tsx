@@ -71,6 +71,91 @@ function getWhatsAppUrl(
   return `https://wa.me/${full}?text=${encodeURIComponent(text)}`
 }
 
+function TimelineBookingCard({
+  booking,
+  isHighlight = false,
+  profissionalNome,
+}: {
+  booking: GeralBookingItem
+  isHighlight?: boolean
+  profissionalNome: string
+}) {
+  const whatsappUrl = booking.clienteTelefone
+    ? getWhatsAppUrl(
+        booking.clienteTelefone,
+        booking.clienteNome,
+        booking.servicoNome,
+        booking.horaInicioStr,
+        profissionalNome
+      )
+    : null
+
+  return (
+    <div
+      className={`rounded-2xl p-2.5 sm:p-3 border transition-all duration-200 flex items-center gap-2.5 sm:gap-3 ${
+        isHighlight
+          ? 'bg-[#FAF7F5] border-[#B8A9D9]/40 shadow-2xs'
+          : 'bg-white border-gray-100 hover:border-gray-200'
+      }`}
+    >
+      {/* 1. Bloco de Horário na Esquerda */}
+      <div className="flex flex-col items-center justify-center shrink-0 w-13 sm:w-16 py-1.5 px-1 rounded-xl bg-white border border-gray-200/80 shadow-2xs">
+        <span className="text-xs sm:text-sm font-extrabold text-[#4A3F5C] leading-none">
+          {booking.horaInicioStr}
+        </span>
+        {booking.servicoDuracaoMinutos ? (
+          <span className="text-[9px] sm:text-[10px] text-gray-400 font-medium mt-1 leading-none whitespace-nowrap">
+            {booking.servicoDuracaoMinutos} min
+          </span>
+        ) : null}
+      </div>
+
+      {/* 2. Informações Centrais */}
+      <div className="min-w-0 flex-1 space-y-0.5 sm:space-y-1">
+        {/* Nome da Cliente */}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-xs sm:text-sm font-bold text-[#4A3F5C] truncate capitalize tracking-tight">
+            {capitalizeName(booking.clienteNome)}
+          </span>
+          {isHighlight && (
+            <span className="inline-flex items-center px-1.5 py-0.2 rounded-md text-[9px] font-extrabold bg-emerald-100 text-emerald-800 shrink-0">
+              Próximo
+            </span>
+          )}
+        </div>
+
+        {/* Serviço e Preço */}
+        <div className="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap sm:flex-nowrap">
+          <span className="truncate text-gray-600 font-medium text-[11px] sm:text-xs">
+            {booking.servicoNome}
+          </span>
+          {booking.servicoPreco !== null && booking.servicoPreco !== undefined && (
+            <>
+              <span className="text-gray-300 shrink-0">•</span>
+              <span className="font-extrabold text-emerald-700 text-[11px] sm:text-xs shrink-0 whitespace-nowrap">
+                R$ {booking.servicoPreco.toFixed(2).replace('.', ',')}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* 3. Botão WhatsApp na Direita */}
+      {whatsappUrl && (
+        <a
+          href={whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex h-8 w-8 sm:h-8.5 sm:w-8.5 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition shrink-0 cursor-pointer"
+          title={`Conversar com ${capitalizeName(booking.clienteNome)} no WhatsApp`}
+        >
+          <WhatsAppIcon className="h-4 w-4" />
+        </a>
+      )}
+    </div>
+  )
+}
+
 export default function GeralViewClient({
   profissionalNome,
   todayBookingsCount,
@@ -172,161 +257,51 @@ export default function GeralViewClient({
             </div>
 
             {nextBooking ? (
-              <div className="space-y-1.5">
-                {/* Bloco de Informações do Próximo Atendimento */}
-                <div className="rounded-2xl bg-[#FAF7F5] p-3 border border-gray-200/80 space-y-1.5">
-                  {/* Linha 1: (icon) Nome • (icon) Horário + Botão WhatsApp */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <User className="h-4 w-4 text-[#B8A9D9] shrink-0" />
-                        <span className="text-[15px] sm:text-base font-bold text-[#4A3F5C] truncate capitalize tracking-tight">
-                          {capitalizeName(nextBooking.clienteNome)}
-                        </span>
-                      </div>
+              <div className="space-y-2 pt-0.5">
+                {/* Mini-card de Destaque do Próximo Atendimento */}
+                <TimelineBookingCard
+                  booking={nextBooking}
+                  isHighlight={true}
+                  profissionalNome={profissionalNome}
+                />
 
-                      <span className="text-gray-300">•</span>
-
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                        <span className="font-bold text-emerald-700 text-xs sm:text-sm">
-                          {nextBooking.horaInicioStr}
-                        </span>
-                      </div>
-                    </div>
-
-                    {nextBooking.clienteTelefone && (
-                      <a
-                        href={
-                          getWhatsAppUrl(
-                            nextBooking.clienteTelefone,
-                            nextBooking.clienteNome,
-                            nextBooking.servicoNome,
-                            nextBooking.horaInicioStr,
-                            profissionalNome
-                          ) || '#'
-                        }
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-2xs hover:bg-emerald-600 transition shrink-0"
-                        title="Conversar no WhatsApp"
-                      >
-                        <WhatsAppIcon className="h-4 w-4" />
-                      </a>
-                    )}
-                  </div>
-
-                  {/* Linha 2: icon serviço (duração) • icon valor */}
-                  <div className="flex items-center gap-2 text-xs text-[#4A3F5C] pt-0.5 flex-wrap">
-                    <div className="flex items-center gap-1 min-w-0 font-medium text-gray-600">
-                      <Scissors className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                      <span className="truncate">
-                        {nextBooking.servicoNome}
-                        {nextBooking.servicoDuracaoMinutos && (
-                          <span className="text-gray-400 font-normal">
-                            {' '}({nextBooking.servicoDuracaoMinutos} min)
-                          </span>
-                        )}
-                      </span>
-                    </div>
-
-                    {nextBooking.servicoPreco !== null && nextBooking.servicoPreco !== undefined && (
-                      <>
-                        <span className="text-gray-300">•</span>
-                        <div className="flex items-center gap-1 font-bold text-[#4A3F5C]">
-                          <DollarSign className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                          <span>
-                            R$ {nextBooking.servicoPreco.toFixed(2).replace('.', ',')}
-                          </span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Setinha virada para baixo embaixo do card de informações */}
+                {/* Botão de expansão dos outros agendamentos do dia */}
                 {otherTodayBookings.length > 0 && (
-                  <div className="flex flex-col items-center">
+                  <div className="pt-1">
                     <button
                       type="button"
                       onClick={() => setShowAllToday(!showAllToday)}
-                      className="inline-flex items-center justify-center p-0.5 rounded-full text-gray-400 hover:text-[#4A3F5C] hover:bg-gray-100 transition cursor-pointer"
-                      title={showAllToday ? 'Recolher outros agendamentos' : `Exibir outros ${otherTodayBookings.length} agendamentos de hoje`}
+                      className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl bg-gray-50 hover:bg-gray-100/80 text-xs font-semibold text-gray-600 transition cursor-pointer border border-gray-200/60"
                     >
+                      <span className="flex items-center gap-1.5">
+                        <Calendar className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                        <span>
+                          {showAllToday
+                            ? 'Recolher agendamentos'
+                            : `Ver mais ${otherTodayBookings.length} ${
+                                otherTodayBookings.length === 1
+                                  ? 'atendimento hoje'
+                                  : 'atendimentos hoje'
+                              }`}
+                        </span>
+                      </span>
                       <ChevronDown
-                        className={`h-4 w-4 transition-transform duration-200 ${
+                        className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
                           showAllToday ? 'rotate-180 text-[#8675A9]' : ''
                         }`}
                       />
                     </button>
 
-                    {/* Lista dos outros agendamentos do dia ao abrir a setinha */}
+                    {/* Lista dos outros agendamentos do dia */}
                     {showAllToday && (
-                      <div className="w-full space-y-1.5 pt-1.5 animate-in fade-in duration-200 max-h-44 overflow-y-auto">
+                      <div className="w-full space-y-2 pt-2 animate-in fade-in duration-200 max-h-56 overflow-y-auto pr-0.5">
                         {otherTodayBookings.map((b) => (
-                          <div
+                          <TimelineBookingCard
                             key={b.id}
-                            className="rounded-xl bg-[#FAF7F5] p-2.5 border border-gray-200/80 flex items-center justify-between gap-2 text-xs"
-                          >
-                            <div className="space-y-1 min-w-0">
-                              {/* Linha 1: (icon) Nome • (icon) Horário */}
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <div className="flex items-center gap-1 min-w-0">
-                                  <User className="h-3.5 w-3.5 text-[#B8A9D9] shrink-0" />
-                                  <span className="font-bold text-[#4A3F5C] truncate capitalize">
-                                    {capitalizeName(b.clienteNome)}
-                                  </span>
-                                </div>
-                                <span className="text-gray-300">•</span>
-                                <div className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3 text-emerald-600 shrink-0" />
-                                  <span className="font-bold text-emerald-700">{b.horaInicioStr}</span>
-                                </div>
-                              </div>
-
-                              {/* Linha 2: icon serviço • icon valor */}
-                              <div className="text-[11px] text-gray-500 truncate flex items-center gap-1.5 flex-wrap">
-                                <div className="flex items-center gap-1 min-w-0">
-                                  <Scissors className="h-3 w-3 text-gray-400 shrink-0" />
-                                  <span>
-                                    {b.servicoNome}
-                                    {b.servicoDuracaoMinutos && ` (${b.servicoDuracaoMinutos} min)`}
-                                  </span>
-                                </div>
-                                {b.servicoPreco !== null && b.servicoPreco !== undefined && (
-                                  <>
-                                    <span className="text-gray-300">•</span>
-                                    <div className="flex items-center gap-0.5 font-bold text-[#4A3F5C]">
-                                      <DollarSign className="h-3 w-3 text-emerald-600 shrink-0" />
-                                      <span>
-                                        R$ {b.servicoPreco.toFixed(2).replace('.', ',')}
-                                      </span>
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-
-                            {b.clienteTelefone && (
-                              <a
-                                href={
-                                  getWhatsAppUrl(
-                                    b.clienteTelefone,
-                                    b.clienteNome,
-                                    b.servicoNome,
-                                    b.horaInicioStr,
-                                    profissionalNome
-                                  ) || '#'
-                                }
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex h-7.5 w-7.5 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-2xs hover:bg-emerald-600 transition shrink-0"
-                                title="Conversar no WhatsApp"
-                              >
-                                <WhatsAppIcon className="h-3.5 w-3.5" />
-                              </a>
-                            )}
-                          </div>
+                            booking={b}
+                            isHighlight={false}
+                            profissionalNome={profissionalNome}
+                          />
                         ))}
                       </div>
                     )}

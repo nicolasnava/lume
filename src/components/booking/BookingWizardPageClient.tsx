@@ -36,6 +36,10 @@ interface BookingWizardPageClientProps {
   profissional: ProfissionalRow
   allServicos: ServicoRow[]
   initialServicoId?: string
+  studioContext?: {
+    nome: string
+    slug: string
+  }
 }
 
 const PAYMENT_OPTIONS = [
@@ -48,8 +52,13 @@ export default function BookingWizardPageClient({
   profissional,
   allServicos,
   initialServicoId,
+  studioContext,
 }: BookingWizardPageClientProps) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
+
+  const vitrineUrl = studioContext
+    ? `/studio/${studioContext.slug}/${profissional.slug}`
+    : `/p/${profissional.slug}`
 
   const initialServico = allServicos.find((s) => s.id === initialServicoId) || null
 
@@ -194,7 +203,7 @@ export default function BookingWizardPageClient({
       <header className="bg-white border-b border-gray-200/80 sticky top-0 z-30">
         <div className="mx-auto max-w-2xl px-4 py-3 flex items-center justify-between">
           <Link
-            href={`/p/${profissional.slug}`}
+            href={vitrineUrl}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-[#4A3F5C] transition cursor-pointer"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -311,7 +320,7 @@ export default function BookingWizardPageClient({
             </div>
 
             <Link
-              href={`/p/${profissional.slug}`}
+              href={vitrineUrl}
               className="w-full py-3 rounded-xl font-semibold text-xs text-white shadow-md transition hover:opacity-90 block text-center cursor-pointer"
               style={{ backgroundColor: corPrimaria, color: textColorOnPrimary }}
             >

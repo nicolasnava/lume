@@ -18,6 +18,7 @@ import {
   Star,
   User,
   MoreHorizontal,
+  Building2,
 } from 'lucide-react'
 import { completeOnboardingAction } from '@/app/actions/onboarding'
 
@@ -104,10 +105,17 @@ const DESKTOP_TOUR_STEPS: TourStep[] = [
     icon: Clock,
   },
   {
-    targetId: 'tour-nav-perfil',
-    title: 'Personalização do Perfil',
+    targetId: 'tour-nav-estudio',
+    title: 'Studio & Equipe',
     description:
-      'Adicione sua foto de perfil, capa, escolha as cores da sua marca, formas de pagamento aceitas (Pix, Cartão, Dinheiro) e links sociais.',
+      'Crie seu Studio com vitrine coletiva, convide outras profissionais parceiras, compartilhe seu link /studio e adicione fotos do seu espaço.',
+    icon: Building2,
+  },
+  {
+    targetId: 'tour-nav-perfil',
+    title: 'Perfil, Vitrine & Assinatura',
+    description:
+      'Organizado em 3 abas: configure seus dados de contato, personalize sua vitrine pública com suas cores e gerencie seu plano com suporte direto no WhatsApp.',
     icon: User,
   },
   {
@@ -204,11 +212,19 @@ const MOBILE_TOUR_STEPS: TourStep[] = [
     icon: Clock,
   },
   {
+    targetId: 'tour-mobile-estudio',
+    requiresMobileMore: true,
+    title: 'Studio & Equipe',
+    description:
+      'Administre seu Studio, convide sua equipe e gerencie a vitrine coletiva com fotos do seu espaço.',
+    icon: Building2,
+  },
+  {
     targetId: 'tour-mobile-perfil',
     requiresMobileMore: true,
-    title: 'Personalização do Perfil',
+    title: 'Perfil, Vitrine & Assinatura',
     description:
-      'Adicione sua foto de perfil, capa, escolha as cores da sua marca e formas de pagamento aceitas.',
+      'Acesse suas 3 abas: dados pessoais no Perfil, personalização de cores na Vitrine e acompanhamento da sua Assinatura.',
     icon: User,
   },
   {

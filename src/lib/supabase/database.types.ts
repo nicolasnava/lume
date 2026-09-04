@@ -36,6 +36,8 @@ export type Database = {
           trial_ends_at?: string | null
           proximo_vencimento?: string | null
           deletado_em?: string | null
+          estudio_id?: string | null
+          ativo_no_estudio?: boolean
           created_at: string
         }
         Insert: {
@@ -64,6 +66,8 @@ export type Database = {
           trial_ends_at?: string | null
           proximo_vencimento?: string | null
           deletado_em?: string | null
+          estudio_id?: string | null
+          ativo_no_estudio?: boolean
           created_at?: string
         }
         Update: {
@@ -91,6 +95,8 @@ export type Database = {
           valor_mensalidade?: number
           trial_ends_at?: string | null
           proximo_vencimento?: string | null
+          estudio_id?: string | null
+          ativo_no_estudio?: boolean
           created_at?: string
         }
         Relationships: []
@@ -685,6 +691,78 @@ export type Database = {
         }
         Relationships: []
       }
+      estudios: {
+        Row: {
+          id: string
+          nome: string
+          slug: string
+          bio: string | null
+          foto_capa_url: string | null
+          cor_primaria: string
+          cor_secundaria: string
+          criado_por: string
+          round_robin_ultimo_membro_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          nome: string
+          slug: string
+          bio?: string | null
+          foto_capa_url?: string | null
+          cor_primaria?: string
+          cor_secundaria?: string
+          criado_por: string
+          round_robin_ultimo_membro_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          nome?: string
+          slug?: string
+          bio?: string | null
+          foto_capa_url?: string | null
+          cor_primaria?: string
+          cor_secundaria?: string
+          criado_por?: string
+          round_robin_ultimo_membro_id?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      estudio_convites: {
+        Row: {
+          id: string
+          estudio_id: string
+          tipo: 'link' | 'email'
+          codigo: string | null
+          email_convidado: string | null
+          status: 'pendente' | 'aceito' | 'expirado' | 'cancelado'
+          expira_em: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          estudio_id: string
+          tipo: 'link' | 'email'
+          codigo?: string | null
+          email_convidado?: string | null
+          status?: 'pendente' | 'aceito' | 'expirado' | 'cancelado'
+          expira_em?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          estudio_id?: string
+          tipo?: 'link' | 'email'
+          codigo?: string | null
+          email_convidado?: string | null
+          status?: 'pendente' | 'aceito' | 'expirado' | 'cancelado'
+          expira_em?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       profissionais_publico: {
@@ -705,13 +783,27 @@ export type Database = {
           modalidade_atendimento: string[] | string | null
           janela_agendamento_dias: number
           formas_pagamento_aceitas: string[] | null
+          estudio_id: string | null
+          ativo_no_estudio: boolean
           created_at: string
         }
         Relationships: []
       }
     }
     Functions: {
-      [_ in never]: never
+      buscar_profissional_por_email: {
+        Args: {
+          search_email: string
+        }
+        Returns: {
+          id: string
+          nome: string
+          foto_url: string | null
+          slug: string
+          email: string
+          estudio_id: string | null
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

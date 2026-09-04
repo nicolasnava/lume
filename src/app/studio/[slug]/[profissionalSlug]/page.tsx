@@ -1,12 +1,14 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
+import { Metadata } from 'next'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Database } from '@/lib/supabase/database.types'
 import PublicShowcaseView from '@/components/booking/PublicShowcaseView'
 import { PublicReviewItem } from '@/components/reviews/PublicReviewsSection'
 
-interface PageProps {
+interface MemberPageProps {
   params: Promise<{
     slug: string
+    profissionalSlug: string
   }>
 }
 
@@ -17,15 +19,61 @@ type DisponibilidadeRow = Database['public']['Tables']['disponibilidade']['Row']
 export const revalidate = 0
 export const dynamic = 'force-dynamic'
 
-export default async function PublicProfilePage({ params }: PageProps) {
-  const { slug } = await params
+export async function generateMetadata({ params }: MemberPageProps): Promise<Metadata> {
+  const { slug, profissionalSlug } = await params
   const adminSupabase = createAdminClient()
 
-  // 1. Buscar profissional pelo slug ativo usando profissionais_publico
+  const [{ data: estudio }, { data: profissional }] = await Promise.all([
+    adminSupabase.from('estudios').select('nome').ilike('slug', slug).maybeSingle(),
+    adminSupabase
+      .from('profissionais_publico')
+      .select('nome, bio, foto_url')
+      .ilike('slug', profissionalSlug)
+      .maybeSingle(),
+  ])
+
+  if (!estudio || !profissional) {
+    return {
+      title: 'Profissional não encontrada | Lumê',
+    }
+  }
+
+  const title = `${profissional.nome} | ${estudio.nome} no Lumê`
+  const description =
+    profissional.bio ||
+    `Agende com ${profissional.nome} no ${estudio.nome} de forma simples e rápida.`
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: profissional.foto_url ? [{ url: profissional.foto_url }] : [],
+    },
+  }
+}
+
+export default async function StudioMemberProfilePage({ params }: MemberPageProps) {
+  const { slug, profissionalSlug } = await params
+  const adminSupabase = createAdminClient()
+
+  // 1. Buscar o Studio
+  const { data: estudio } = await adminSupabase
+    .from('estudios')
+    .select('id, nome, slug')
+    .ilike('slug', slug)
+    .maybeSingle()
+
+  if (!estudio) {
+    notFound()
+  }
+
+  // 2. Buscar a profissional pelo slug ativo usando profissionais_publico
   const { data: profissional } = await adminSupabase
     .from('profissionais_publico')
     .select('*')
-    .ilike('slug', slug)
+    .ilike('slug', profissionalSlug)
     .maybeSingle()
 
   if (!profissional) {
@@ -34,20 +82,13 @@ export default async function PublicProfilePage({ params }: PageProps) {
 
   const prof = profissional as ProfissionalRow
 
-  // 2. Se a profissional pertence a um studio, redirecionar para a localização aninhada sob o studio
-  if (prof.estudio_id) {
-    const { data: estudio } = await adminSupabase
-      .from('estudios')
-      .select('slug')
-      .eq('id', prof.estudio_id)
-      .maybeSingle()
-
-    if (estudio?.slug) {
-      redirect(`/studio/${estudio.slug}/${prof.slug}`)
-    }
+  // 3. Validação de segurança e integridade de rota:
+  // Deve pertencer ao studio da URL E estar com ativo_no_estudio = true
+  if (prof.estudio_id !== estudio.id || prof.ativo_no_estudio !== true) {
+    notFound()
   }
 
-  // 3. Buscar serviços cadastrados e ativos da profissional
+  // 4. Buscar serviços cadastrados e ativos da profissional
   const { data: servicosData } = await adminSupabase
     .from('servicos')
     .select('*')
@@ -57,7 +98,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
 
   const servicos = (servicosData || []) as ServicoRow[]
 
-  // 4. Buscar disponibilidades cadastradas para compor o horário resumido
+  // 5. Buscar disponibilidades cadastradas
   const { data: disponibilidadesData } = await adminSupabase
     .from('disponibilidade')
     .select('*')
@@ -65,7 +106,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
 
   const disponibilidades = (disponibilidadesData || []) as DisponibilidadeRow[]
 
-  // 5. Buscar avaliações recebidas completas (com dados do agendamento e cliente)
+  // 6. Buscar avaliações recebidas
   const { data: avaliacoesFullData } = await adminSupabase
     .from('avaliacoes')
     .select('id, nota, comentario, created_at, agendamentos(clientes(nome), servicos(nome))')
@@ -91,6 +132,10 @@ export default async function PublicProfilePage({ params }: PageProps) {
       servicos={servicos}
       disponibilidades={disponibilidades}
       avaliacoes={avaliacoes}
+      studioContext={{
+        nome: estudio.nome,
+        slug: estudio.slug,
+      }}
     />
   )
 }

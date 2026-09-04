@@ -17,6 +17,8 @@ import {
   Building2,
   Eye,
   Smartphone,
+  Store,
+  MessageCircle,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -31,100 +33,79 @@ interface TourStep {
 const PROFILE_TOUR_STEPS: TourStep[] = [
   {
     isCenterModal: true,
-    title: 'Personalização do seu Perfil',
+    title: 'Personalização Completa no Lumê',
     description:
-      'Configure sua vitrine pública no Lumê: fotos, informações do Studio, formas de pagamento e identidade visual.',
+      'Organizamos tudo em 3 abas práticas: Perfil (seus dados e contatos), Vitrine (sua identidade visual e página pública) e Assinatura (seu plano e suporte).',
     icon: Sparkles,
-  },
-  {
-    targetId: 'profile-tour-cover',
-    title: 'Foto de Capa do Studio',
-    description:
-      'Banner superior do seu espaço ou trabalhos. Recomendado: 1200x400px (proporção 3:1).',
-    icon: Camera,
   },
   {
     targetId: 'profile-tour-avatar',
-    title: 'Foto de Perfil Profissional',
+    title: 'Aba Perfil: Foto & Identificação',
     description:
-      'Sua imagem de destaque exibida para as clientes (recomendado quadrada 400x400px).',
+      'Adicione sua foto de perfil profissional, seu nome e uma frase de destaque (tagline) com sua especialidade.',
     icon: User,
   },
   {
-    targetId: 'profile-tour-basic-info',
-    title: 'Nome e Frase de Destaque',
-    description:
-      'Nome do seu espaço e frase de efeito (tagline) com sua principal especialidade.',
-    icon: Sparkles,
-  },
-  {
-    targetId: 'profile-tour-slug',
-    title: 'Link Exclusivo (URL Pública)',
-    description:
-      'Endereço direto da sua página pública. Copie e adicione na bio do seu Instagram!',
-    icon: ExternalLink,
-  },
-  {
     targetId: 'profile-tour-contacts',
-    title: 'Contatos & Localização',
+    title: 'Aba Perfil: Contatos & WhatsApp',
     description:
-      'WhatsApp para agendamentos rápidos, Instagram (@) para seu portfólio e sua cidade.',
+      'O WhatsApp conta com máscara automática enquanto você digita para agilizar o contato. Informe também seu Instagram e localização.',
     icon: Phone,
   },
   {
     targetId: 'profile-tour-modalidades',
-    title: 'Modalidades de Atendimento',
+    title: 'Aba Perfil: Onde Você Atende',
     description:
-      'Selecione onde atende: Studio próprio, a Domicílio ou em Salão parceiro.',
+      'Indique suas modalidades de atendimento: Studio próprio, a Domicílio ou em Salão parceiro.',
     icon: Building2,
   },
   {
-    targetId: 'profile-tour-categories',
-    title: 'Categorias de Atuação',
+    targetId: 'profile-tour-google',
+    title: 'Aba Perfil: Google Agenda & Aplicativo',
     description:
-      'Especialidades da beleza em que atua (Lash, Cabelo, Unhas, Estética...) para organizar procedimentos.',
-    icon: Sparkles,
+      'Sincronize com o Google Agenda e instale o Lumê direto na tela inicial do seu celular para acesso rápido.',
+    icon: Calendar,
   },
   {
-    targetId: 'profile-tour-payments',
-    title: 'Formas de Pagamento',
+    targetId: 'profile-tour-slug',
+    title: 'Aba Vitrine: Link Exclusivo',
     description:
-      'Métodos aceitos no seu atendimento (Pix, Cartão, Dinheiro) para orientar suas clientes.',
-    icon: CreditCard,
+      'Endereço direto da sua página pública. Copie e adicione na bio do seu Instagram para receber agendamentos.',
+    icon: ExternalLink,
   },
   {
-    targetId: 'profile-tour-colors',
-    title: 'Cores da sua Marca',
+    targetId: 'profile-tour-cover',
+    title: 'Aba Vitrine: Foto de Capa & Cores',
     description:
-      'Personalize a cor principal de destaque e a cor de fundo da sua vitrine pública.',
+      'Escolha a capa do seu espaço e defina as cores primária e secundária da sua marca posicionadas lado a lado.',
     icon: Palette,
   },
   {
     targetId: 'profile-tour-preview',
-    title: 'Prévia da Vitrine Pública',
+    title: 'Aba Vitrine: Prévia em Tempo Real',
     description:
-      'Veja em tempo real como os botões e cards de serviços serão apresentados para as clientes.',
+      'Veja instantaneamente como os botões e detalhes da sua vitrine serão exibidos para as clientes.',
     icon: Eye,
   },
   {
-    targetId: 'profile-tour-google',
-    title: 'Google Agenda',
+    targetId: 'profile-tour-payments',
+    title: 'Aba Vitrine: Formas de Pagamento & Categorias',
     description:
-      'Sincronize com sua conta do Google para enviar seus agendamentos automaticamente.',
-    icon: Calendar,
-  },
-  {
-    targetId: 'profile-tour-app',
-    title: 'Instalar Aplicativo no Celular',
-    description:
-      'Adicione o Lumê na tela inicial do seu celular (iPhone ou Android) para acessar sua agenda com 1 toque.',
-    icon: Smartphone,
+      'Defina as especialidades em que você atua e as formas de pagamento que você aceita (Pix, Cartão, Dinheiro).',
+    icon: CreditCard,
   },
   {
     isCenterModal: true,
-    title: 'Perfil Configurado!',
+    title: 'Aba Assinatura: Gestão & Suporte',
     description:
-      'Tudo pronto! As alterações são salvas automaticamente enquanto você edita.',
+      'Acompanhe os detalhes da sua assinatura e fale diretamente com o suporte no WhatsApp com 1 clique sempre que precisar.',
+    icon: MessageCircle,
+  },
+  {
+    isCenterModal: true,
+    title: 'Tudo Pronto!',
+    description:
+      'Suas alterações são salvas automaticamente enquanto você navega e personaliza cada aba.',
     icon: CheckCircle2,
   },
 ]

@@ -18,6 +18,7 @@ import {
   LogOut,
   Bell,
   MessageSquare,
+  Building2,
 } from 'lucide-react'
 import NewBookingModal from './NewBookingModal'
 import FeedbackModal from './FeedbackModal'
@@ -63,6 +64,11 @@ const NAV_ITEMS = [
     name: 'Disponibilidade',
     href: '/dashboard/disponibilidade',
     icon: Clock,
+  },
+  {
+    name: 'Studio',
+    href: '/dashboard/studio',
+    icon: Building2,
   },
   {
     name: 'Perfil',
@@ -226,6 +232,8 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
                       ? 'tour-mobile-clientes'
                       : item.href === '/dashboard/avaliacoes'
                       ? 'tour-mobile-avaliacoes'
+                      : item.href === '/dashboard/studio' || item.href === '/dashboard/estudio'
+                      ? 'tour-mobile-estudio'
                       : item.href === '/perfil'
                       ? 'tour-mobile-perfil'
                       : undefined
@@ -238,6 +246,8 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
                       prefetch={true}
                       onClick={() => setIsMoreOpen(false)}
                       className={`flex items-center gap-3 rounded-2xl p-3 text-xs font-semibold border transition cursor-pointer ${
+                        item.href === '/perfil' ? 'col-span-2' : ''
+                      } ${
                         isActive
                           ? 'bg-[#B8A9D9]/25 border-[#B8A9D9] text-[#4A3F5C]'
                           : 'bg-[#FAF7F5] border-gray-200/80 text-gray-700 hover:bg-white hover:border-[#B8A9D9]'
@@ -347,6 +357,8 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
             ? 'tour-nav-servicos'
             : item.href === '/dashboard/disponibilidade'
             ? 'tour-nav-disponibilidade'
+            : item.href === '/dashboard/studio' || item.href === '/dashboard/estudio'
+            ? 'tour-nav-estudio'
             : item.href === '/perfil'
             ? 'tour-nav-perfil'
             : undefined

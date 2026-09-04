@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { Database } from '@/lib/supabase/database.types'
 import ServiceCarousel from './ServiceCarousel'
 import ClientBookingsModal from './ClientBookingsModal'
@@ -19,6 +20,7 @@ import {
   Info,
   Star,
   Scissors,
+  ChevronLeft,
 } from 'lucide-react'
 
 type ProfissionalRow = Database['public']['Views']['profissionais_publico']['Row']
@@ -30,6 +32,10 @@ interface PublicShowcaseViewProps {
   servicos: ServicoRow[]
   disponibilidades: DisponibilidadeRow[]
   avaliacoes: PublicReviewItem[]
+  studioContext?: {
+    nome: string
+    slug: string
+  }
 }
 
 export default function PublicShowcaseView({
@@ -37,6 +43,7 @@ export default function PublicShowcaseView({
   servicos,
   disponibilidades,
   avaliacoes,
+  studioContext,
 }: PublicShowcaseViewProps) {
   const [isClientBookingsOpen, setIsClientBookingsOpen] = useState(false)
   const [isWorkingHoursOpen, setIsWorkingHoursOpen] = useState(false)
@@ -68,6 +75,27 @@ export default function PublicShowcaseView({
 
   return (
     <div className="min-h-screen bg-[#FAF7F5] text-[#4A3F5C] transition-colors duration-300 pb-16">
+      {/* Barra de Retorno ao Studio quando acessado dentro de um studio */}
+      {studioContext && (
+        <nav
+          aria-label="Navegação do Studio"
+          className="w-full bg-white/95 backdrop-blur-md border-b border-gray-200/80 sticky top-0 z-30 shadow-2xs"
+        >
+          <div className="max-w-xl mx-auto px-4 py-2.5 flex items-center justify-between">
+            <Link
+              href={`/studio/${studioContext.slug}`}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-700 hover:text-[#4A3F5C] transition cursor-pointer"
+            >
+              <ChevronLeft className="h-4 w-4 text-[#8675A9]" />
+              <span>Voltar para {studioContext.nome}</span>
+            </Link>
+            <span className="text-[11px] font-semibold text-gray-400">
+              Equipe do Studio
+            </span>
+          </div>
+        </nav>
+      )}
+
       {/* Toast de Boas-Vindas */}
       <PublicStudioToast studioNome={profissional.nome} />
 
@@ -206,6 +234,7 @@ export default function PublicShowcaseView({
             servicos={servicos}
             corPrimaria={corPrimaria}
             profissionalSlug={profissional.slug}
+            basePath={studioContext ? `/studio/${studioContext.slug}/${profissional.slug}` : undefined}
             onOpenClientBookings={() => setIsClientBookingsOpen(true)}
           />
         </section>

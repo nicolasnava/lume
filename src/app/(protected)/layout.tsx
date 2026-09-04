@@ -70,7 +70,7 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
     <div className="min-h-screen bg-[#FAF7F5] flex flex-col justify-between selection:bg-[#B8A9D9]/30">
       <div className="flex-1 flex flex-col md:flex-row">
         {/* Sidebar Desktop */}
-        <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-white border-r border-gray-200 p-4 justify-between z-30">
+        <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-white border-r border-gray-200 p-4 justify-between z-30 overflow-y-auto">
           <div className="space-y-6">
             <div className="flex items-center gap-2 px-2">
               <Image
@@ -169,23 +169,25 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
         </header>
 
         {/* Conteúdo Principal das Páginas */}
-        <main className="flex-1 pb-20 md:pb-8 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-          {/* Banner de Aviso Ativo da Plataforma */}
-          <PlatformAnnouncementBanner aviso={ativoAviso} />
+        <div className="flex-1 md:pl-64 flex flex-col min-w-0">
+          <main className="flex-1 pb-20 md:pb-8 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+            {/* Banner de Aviso Ativo da Plataforma */}
+            <PlatformAnnouncementBanner aviso={ativoAviso} />
 
-          {profissional?.status_conta === 'suspensa' && (
-            <div className="mb-6 mt-4 rounded-2xl bg-rose-50 border border-rose-200 p-4 flex items-start gap-3 text-rose-900 shadow-2xs">
-              <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
-              <div className="text-xs font-medium space-y-0.5">
-                <strong className="font-extrabold block text-rose-950">Conta Temporariamente Suspensa</strong>
-                <p>
-                  Sua página pública de agendamento está indisponível para novos agendamentos no momento. Você ainda tem acesso total ao seu painel para consultar seus dados. Entre em contato com a equipe de suporte para solicitar a reativação.
-                </p>
+            {profissional?.status_conta === 'suspensa' && (
+              <div className="mb-6 mt-4 rounded-2xl bg-rose-50 border border-rose-200 p-4 flex items-start gap-3 text-rose-900 shadow-2xs">
+                <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+                <div className="text-xs font-medium space-y-0.5">
+                  <strong className="font-extrabold block text-rose-950">Conta Temporariamente Suspensa</strong>
+                  <p>
+                    Sua página pública de agendamento está indisponível para novos agendamentos no momento. Você ainda tem acesso total ao seu painel para consultar seus dados. Entre em contato com a equipe de suporte para solicitar a reativação.
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
-          {children}
-        </main>
+            )}
+            {children}
+          </main>
+        </div>
 
         {/* Bottom Bar Mobile */}
         <nav className="flex md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 px-2 py-1 justify-around shadow-lg">
