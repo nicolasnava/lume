@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import ServicesManager, { ServiceRow } from '@/components/dashboard/ServicesManager'
+import { getCombosProfissionalAction } from '@/app/actions/combos'
 
 export const revalidate = 0
 export const dynamic = 'force-dynamic'
@@ -20,8 +21,8 @@ export default async function ServicosPage() {
   const adminSupabase = createAdminClient()
   const nowIso = new Date().toISOString()
 
-  // Buscar serviços e agendamentos em paralelo para máxima velocidade
-  const [{ data: servicos }, { data: pendingBookings }] = await Promise.all([
+  // Buscar serviços, combos e agendamentos em paralelo para máxima velocidade
+  const [{ data: servicos }, { data: pendingBookings }, combos] = await Promise.all([
     adminSupabase
       .from('servicos')
       .select('*')
@@ -33,6 +34,7 @@ export default async function ServicosPage() {
       .eq('profissional_id', user.id)
       .eq('status', 'confirmado')
       .gte('data_hora_inicio', nowIso),
+    getCombosProfissionalAction(user.id),
   ])
 
   const pendingCounts: Record<string, number> = {}
@@ -57,11 +59,15 @@ export default async function ServicosPage() {
           Gestão de Serviços
         </h1>
         <p className="text-xs sm:text-sm text-[#4A3F5C]/70 mt-1">
-          Cadastre os serviços oferecidos, valores, durações e intervalos para lembretes de manutenção
+          Cadastre os serviços oferecidos, valores, durações, combos promocionais e lembretes de manutenção
         </p>
       </div>
 
-      <ServicesManager initialServices={formattedServices} profissionalId={user.id} />
+      <ServicesManager
+        initialServices={formattedServices}
+        initialCombos={combos}
+        profissionalId={user.id}
+      />
     </div>
   )
 }

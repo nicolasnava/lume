@@ -53,7 +53,7 @@ export default async function DashboardGeralPage() {
   // Buscar agendamentos do dia e semana com detalhes de cliente e serviço
   const { data: agendamentosData } = await adminSupabase
     .from('agendamentos')
-    .select('id, data_hora_inicio, data_hora_fim, valor_cobrado, status, clientes(nome, telefone), servicos(nome, duracao_minutos, preco)')
+    .select('id, profissional_id, cliente_id, servico_id, data_hora_inicio, data_hora_fim, valor_cobrado, pago, forma_pagamento, forma_pagamento_preferida, observacao_pagamento, status, google_event_id, clientes(nome, telefone), servicos(nome, duracao_minutos, preco, ativo)')
     .eq('profissional_id', user.id)
     .neq('status', 'cancelado')
     .order('data_hora_inicio', { ascending: true })
@@ -101,6 +101,7 @@ export default async function DashboardGeralPage() {
       servicoNome: servicoObj?.nome || 'Serviço',
       servicoDuracaoMinutos: servicoObj?.duracao_minutos ?? null,
       servicoPreco: precoFinal,
+      rawBooking: b as any,
     }
   })
 

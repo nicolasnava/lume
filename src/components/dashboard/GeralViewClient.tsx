@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   Calendar,
   Clock,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react'
 import NewBookingModal from '@/components/dashboard/NewBookingModal'
 import ProductTourModal from '@/components/dashboard/ProductTourModal'
+import BookingDetailModal, { BookingDetail } from '@/components/dashboard/BookingDetailModal'
 
 export interface GeralBookingItem {
   id: string
@@ -27,6 +29,7 @@ export interface GeralBookingItem {
   servicoNome: string
   servicoDuracaoMinutos?: number | null
   servicoPreco?: number | null
+  rawBooking?: any
 }
 
 interface GeralViewClientProps {
@@ -75,10 +78,12 @@ function TimelineBookingCard({
   booking,
   isHighlight = false,
   profissionalNome,
+  onOpenDetail,
 }: {
   booking: GeralBookingItem
   isHighlight?: boolean
   profissionalNome: string
+  onOpenDetail?: () => void
 }) {
   const whatsappUrl = booking.clienteTelefone
     ? getWhatsAppUrl(
@@ -92,11 +97,13 @@ function TimelineBookingCard({
 
   return (
     <div
-      className={`rounded-2xl p-2.5 sm:p-3 border transition-all duration-200 flex items-center gap-2.5 sm:gap-3 ${
+      onClick={onOpenDetail}
+      className={`rounded-2xl p-2.5 sm:p-3 border transition-all duration-200 flex items-center gap-2.5 sm:gap-3 cursor-pointer ${
         isHighlight
-          ? 'bg-[#FAF7F5] border-[#B8A9D9]/40 shadow-2xs'
-          : 'bg-white border-gray-100 hover:border-gray-200'
+          ? 'bg-[#FAF7F5] border-[#B8A9D9]/40 shadow-2xs hover:border-[#B8A9D9] hover:bg-[#f5efe9]'
+          : 'bg-white border-gray-100 hover:border-gray-200 hover:bg-gray-50/70'
       }`}
+      title="Clique para ver os detalhes do agendamento"
     >
       {/* 1. Bloco de Horário na Esquerda */}
       <div className="flex flex-col items-center justify-center shrink-0 w-13 sm:w-16 py-1.5 px-1 rounded-xl bg-white border border-gray-200/80 shadow-2xs">
@@ -112,31 +119,26 @@ function TimelineBookingCard({
 
       {/* 2. Informações Centrais */}
       <div className="min-w-0 flex-1 space-y-0.5 sm:space-y-1">
-        {/* Nome da Cliente */}
-        <div className="flex items-center gap-1.5 min-w-0">
+        {/* Nome da Cliente + Separador + Valor (Substitui o badge de "Próximo") */}
+        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
           <span className="text-xs sm:text-sm font-bold text-[#4A3F5C] truncate capitalize tracking-tight">
             {capitalizeName(booking.clienteNome)}
-          </span>
-          {isHighlight && (
-            <span className="inline-flex items-center px-1.5 py-0.2 rounded-md text-[9px] font-extrabold bg-emerald-100 text-emerald-800 shrink-0">
-              Próximo
-            </span>
-          )}
-        </div>
-
-        {/* Serviço e Preço */}
-        <div className="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap sm:flex-nowrap">
-          <span className="truncate text-gray-600 font-medium text-[11px] sm:text-xs">
-            {booking.servicoNome}
           </span>
           {booking.servicoPreco !== null && booking.servicoPreco !== undefined && (
             <>
               <span className="text-gray-300 shrink-0">•</span>
-              <span className="font-extrabold text-emerald-700 text-[11px] sm:text-xs shrink-0 whitespace-nowrap">
+              <span className="font-extrabold text-emerald-700 text-xs sm:text-sm shrink-0 whitespace-nowrap">
                 R$ {booking.servicoPreco.toFixed(2).replace('.', ',')}
               </span>
             </>
           )}
+        </div>
+
+        {/* Serviço */}
+        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+          <span className="truncate text-gray-600 font-medium text-[11px] sm:text-xs">
+            {booking.servicoNome}
+          </span>
         </div>
       </div>
 
@@ -146,6 +148,7 @@ function TimelineBookingCard({
           href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
           className="flex h-8 w-8 sm:h-8.5 sm:w-8.5 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition shrink-0 cursor-pointer"
           title={`Conversar com ${capitalizeName(booking.clienteNome)} no WhatsApp`}
         >
@@ -164,9 +167,39 @@ export default function GeralViewClient({
   totalAtendimentosSemana,
   initialShowTour = false,
 }: GeralViewClientProps) {
+  const router = useRouter()
   const [isNewBookingOpen, setIsNewBookingOpen] = useState(false)
   const [isTourOpen, setIsTourOpen] = useState(initialShowTour)
   const [showAllToday, setShowAllToday] = useState(false)
+  const [selectedBookingForDetail, setSelectedBookingForDetail] = useState<BookingDetail | null>(null)
+
+  const handleOpenBookingDetail = (item: GeralBookingItem | null) => {
+    if (!item) return
+    if (item.rawBooking) {
+      setSelectedBookingForDetail(item.rawBooking as BookingDetail)
+    } else {
+      setSelectedBookingForDetail({
+        id: item.id,
+        profissional_id: '',
+        cliente_id: '',
+        servico_id: null,
+        data_hora_inicio: item.dataHoraInicio,
+        data_hora_fim: item.dataHoraInicio,
+        status: 'confirmado',
+        google_event_id: null,
+        valor_cobrado: item.servicoPreco,
+        clientes: {
+          nome: item.clienteNome,
+          telefone: item.clienteTelefone || '',
+        },
+        servicos: {
+          nome: item.servicoNome,
+          duracao_minutos: item.servicoDuracaoMinutos || 30,
+          preco: item.servicoPreco || 0,
+        },
+      })
+    }
+  }
 
   useEffect(() => {
     const handleRestartTour = () => setIsTourOpen(true)
@@ -263,6 +296,7 @@ export default function GeralViewClient({
                   booking={nextBooking}
                   isHighlight={true}
                   profissionalNome={profissionalNome}
+                  onOpenDetail={() => handleOpenBookingDetail(nextBooking)}
                 />
 
                 {/* Botão de expansão dos outros agendamentos do dia */}
@@ -301,6 +335,7 @@ export default function GeralViewClient({
                             booking={b}
                             isHighlight={false}
                             profissionalNome={profissionalNome}
+                            onOpenDetail={() => handleOpenBookingDetail(b)}
                           />
                         ))}
                       </div>
@@ -380,6 +415,18 @@ export default function GeralViewClient({
         isOpen={isTourOpen}
         onClose={() => setIsTourOpen(false)}
       />
+
+      {/* Modal de Detalhes do Agendamento */}
+      {selectedBookingForDetail && (
+        <BookingDetailModal
+          booking={selectedBookingForDetail}
+          onClose={() => setSelectedBookingForDetail(null)}
+          onRefresh={() => {
+            router.refresh()
+            setSelectedBookingForDetail(null)
+          }}
+        />
+      )}
     </div>
   )
 }

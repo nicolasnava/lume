@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import BookingDetailModal from '@/components/dashboard/BookingDetailModal'
 import {
   DollarSign,
   TrendingUp,
@@ -13,6 +15,9 @@ import {
   User,
   Users,
   Calendar,
+  Search,
+  X,
+  MessageCircle,
 } from 'lucide-react'
 import {
   BarChart,
@@ -91,6 +96,7 @@ export default function FinancialDashboard({
   allServices = [],
   allClients = [],
 }: FinancialDashboardProps) {
+  const router = useRouter()
   const [period, setPeriod] = useState<PeriodFilter>('este_mes')
   const [sortOption, setSortOption] = useState<SortOption>('date_desc')
 
@@ -102,6 +108,8 @@ export default function FinancialDashboard({
   const [selectedServicoId, setSelectedServicoId] = useState<string>('todos')
   const [selectedClienteId, setSelectedClienteId] = useState<string>('todos')
   const [selectedFormaPagamento, setSelectedFormaPagamento] = useState<string>('todas')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedBookingForDetail, setSelectedBookingForDetail] = useState<FinancialBookingRow | null>(null)
 
   // Obter lista única de serviços e clientes reais vindos dos agendamentos + cadastrados (Item 4)
   const servicesList = useMemo(() => {
@@ -286,9 +294,25 @@ export default function FinancialDashboard({
       .slice(0, 5)
   }, [completedBookings])
 
-  // 7. Ordenação da Tabela Detalhada
+  // 7. Ordenação e Busca da Tabela Detalhada (Nome, Serviço ou Data)
   const sortedCompletedBookings = useMemo(() => {
-    return [...completedBookings].sort((a, b) => {
+    let list = [...completedBookings]
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim()
+      list = list.filter((b) => {
+        const clienteMatch = b.clientes?.nome?.toLowerCase().includes(q)
+        const servicoMatch = b.servicos?.nome?.toLowerCase().includes(q)
+        const dateFormatted = new Date(b.data_hora_inicio).toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        })
+        return clienteMatch || servicoMatch || dateFormatted.includes(q)
+      })
+    }
+
+    return list.sort((a, b) => {
       const dateA = new Date(a.data_hora_inicio).getTime()
       const dateB = new Date(b.data_hora_inicio).getTime()
 
@@ -301,7 +325,7 @@ export default function FinancialDashboard({
       if (sortOption === 'value_asc') return valA - valB
       return 0
     })
-  }, [completedBookings, sortOption])
+  }, [completedBookings, sortOption, searchQuery])
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -320,7 +344,7 @@ export default function FinancialDashboard({
         <div className="flex items-center justify-between border-b border-gray-100 pb-3">
           <div className="flex items-center gap-2 text-xs font-bold text-[#4A3F5C] uppercase tracking-wider">
             <Filter className="h-4 w-4 text-[#B8A9D9]" />
-            <span>Filtros do Painel Financeiro</span>
+            <span>Filtros</span>
           </div>
 
           {(selectedServicoId !== 'todos' ||
@@ -610,36 +634,59 @@ export default function FinancialDashboard({
         </div>
       </div>
 
-      {/* Item 5: Tabela Detalhada Renomeada para "Detalhamento dos Atendimentos" */}
+      {/* Detalhamento dos Atendimentos com Busca, Padronização e Modal de Detalhes */}
       <div className="rounded-3xl bg-white p-6 shadow-xs border border-gray-100 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-gray-100 pb-3">
           <div>
             <h3 className="text-base font-bold text-[#4A3F5C] flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-emerald-600" />
               <span>Detalhamento dos Atendimentos</span>
             </h3>
             <p className="text-xs text-gray-500 font-medium mt-0.5">
-              {sortedCompletedBookings.length} registros encontrados
+              {sortedCompletedBookings.length} {sortedCompletedBookings.length === 1 ? 'registro encontrado' : 'registros encontrados'}
             </p>
           </div>
 
-          {/* Ordenação da Tabela */}
-          <div className="flex items-center gap-2 text-xs">
-            <ArrowUpDown className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-            <span className="text-gray-500 font-medium shrink-0">Ordenar por:</span>
-            <div className="w-48">
-              <CustomSelect
-                options={[
-                  { value: 'date_desc', label: 'Data (Mais recente)' },
-                  { value: 'date_asc', label: 'Data (Mais antiga)' },
-                  { value: 'value_desc', label: 'Valor (Maior)' },
-                  { value: 'value_asc', label: 'Valor (Menor)' },
-                ]}
-                value={sortOption}
-                onChange={(val) => setSortOption(val as SortOption)}
-                size="sm"
-                buttonClassName="font-semibold"
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+            {/* Campo de Busca com Lupa por Nome, Serviço ou Data */}
+            <div className="relative w-full sm:w-64">
+              <Search className="h-3.5 w-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Pesquisar por nome ou data..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-7 py-2 rounded-xl border border-gray-200 bg-gray-50/50 text-xs text-[#4A3F5C] placeholder:text-gray-400 focus:outline-none focus:border-[#B8A9D9] focus:bg-white transition"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 cursor-pointer"
+                  title="Limpar busca"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Ordenação da Tabela */}
+            <div className="flex items-center gap-2 text-xs">
+              <ArrowUpDown className="h-3.5 w-3.5 text-gray-400 shrink-0 hidden sm:inline" />
+              <div className="w-full sm:w-44">
+                <CustomSelect
+                  options={[
+                    { value: 'date_desc', label: 'Data (Mais recente)' },
+                    { value: 'date_asc', label: 'Data (Mais antiga)' },
+                    { value: 'value_desc', label: 'Valor (Maior)' },
+                    { value: 'value_asc', label: 'Valor (Menor)' },
+                  ]}
+                  value={sortOption}
+                  onChange={(val) => setSortOption(val as SortOption)}
+                  size="sm"
+                  buttonClassName="font-semibold"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -656,7 +703,7 @@ export default function FinancialDashboard({
                   <th className="py-3 px-3">Data/Hora</th>
                   <th className="py-3 px-3">Cliente</th>
                   <th className="py-3 px-3">Serviço</th>
-                  <th className="py-3 px-3">Pagamento</th>
+                  <th className="py-3 px-3 text-center">Pagamento</th>
                   <th className="py-3 px-3 text-right">Valor Cobrado</th>
                 </tr>
               </thead>
@@ -675,17 +722,30 @@ export default function FinancialDashboard({
                   const payMethod = b.forma_pagamento || 'outro'
 
                   return (
-                    <tr key={b.id} className="hover:bg-gray-50/60 transition">
-                      <td className="py-3.5 px-3 font-medium text-gray-600">{dateFormatted}</td>
-                      <td className="py-3.5 px-3 font-semibold">{b.clientes?.nome || 'Cliente'}</td>
-                      <td className="py-3.5 px-3 font-medium">{b.servicos?.nome || 'Personalizado'}</td>
-                      <td className="py-3.5 px-3">
-                        <span className="inline-flex items-center gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1 font-semibold text-gray-700 border border-gray-200">
-                          <PaymentIcon method={payMethod} className="h-3.5 w-3.5" />
-                          <span>{PAYMENT_LABELS[payMethod] || 'Outro'}</span>
+                    <tr
+                      key={b.id}
+                      onClick={() => setSelectedBookingForDetail(b)}
+                      className="hover:bg-purple-50/50 transition cursor-pointer group"
+                      title="Clique para ver os detalhes completos deste atendimento"
+                    >
+                      <td className="py-3.5 px-3 font-medium text-gray-600 whitespace-nowrap">{dateFormatted}</td>
+                      <td className="py-3.5 px-3 font-semibold">
+                        <span className="truncate max-w-[150px] block group-hover:text-purple-900 transition">
+                          {b.clientes?.nome || 'Cliente'}
                         </span>
                       </td>
-                      <td className="py-3.5 px-3 text-right font-bold text-emerald-700">
+                      <td className="py-3.5 px-3 font-medium text-gray-600">
+                        <span className="truncate max-w-[180px] block">
+                          {b.servicos?.nome || 'Personalizado'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-3 text-center">
+                        <span className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-gray-50 px-2.5 py-1 font-semibold text-gray-700 border border-gray-200 w-28 text-center shrink-0">
+                          <PaymentIcon method={payMethod} className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{PAYMENT_LABELS[payMethod] || 'Outro'}</span>
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-3 text-right font-bold text-emerald-700 whitespace-nowrap">
                         R$ {valor.toFixed(2)}
                       </td>
                     </tr>
@@ -696,6 +756,38 @@ export default function FinancialDashboard({
           </div>
         )}
       </div>
+
+      {/* Modal de Detalhamento do Atendimento (Mesmo padrão da Agenda) */}
+      {selectedBookingForDetail && (
+        <BookingDetailModal
+          booking={{
+            id: selectedBookingForDetail.id,
+            profissional_id: selectedBookingForDetail.profissional_id,
+            cliente_id: selectedBookingForDetail.cliente_id,
+            servico_id: selectedBookingForDetail.servico_id,
+            data_hora_inicio: selectedBookingForDetail.data_hora_inicio,
+            data_hora_fim: selectedBookingForDetail.data_hora_fim,
+            status: selectedBookingForDetail.status,
+            google_event_id: null,
+            forma_pagamento: selectedBookingForDetail.forma_pagamento,
+            valor_cobrado: selectedBookingForDetail.valor_cobrado,
+            pago: selectedBookingForDetail.pago,
+            observacao_pagamento: selectedBookingForDetail.observacao_pagamento,
+            clientes: selectedBookingForDetail.clientes,
+            servicos: selectedBookingForDetail.servicos
+              ? {
+                  nome: selectedBookingForDetail.servicos.nome,
+                  duracao_minutos: 60,
+                  preco: selectedBookingForDetail.servicos.preco,
+                }
+              : null,
+          }}
+          onClose={() => setSelectedBookingForDetail(null)}
+          onRefresh={() => {
+            router.refresh()
+          }}
+        />
+      )}
     </div>
   )
 }

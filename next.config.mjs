@@ -16,6 +16,17 @@ function getSupabaseRemotePattern() {
 const supabasePattern = getSupabaseRemotePattern();
 
 const nextConfig = {
+  // Permite testar pelo celular na rede local sem emitir aviso de cross-origin no terminal
+  allowedDevOrigins: [
+    '10.149.7.56',
+    '10.149.7.56:3000',
+    '10.149.7.56:3001',
+    '10.102.42.16',
+    '10.102.42.16:3000',
+    '10.102.42.16:3001',
+    'localhost:3000',
+    'localhost:3001',
+  ],
   eslint: {
     ignoreDuringBuilds: true,
   },

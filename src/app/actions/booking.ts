@@ -9,6 +9,7 @@ import {
   updateGoogleCalendarEvent,
   deleteGoogleCalendarEvent,
 } from '@/lib/google-calendar'
+import { sendPushToProfissional } from '@/lib/push/pushService'
 import { revalidatePath } from 'next/cache'
 
 export interface CreateBookingResponse {
@@ -102,6 +103,7 @@ export async function createBookingAction(formData: {
   profissional_id: string
   servico_id: string
   servico_ids?: string[]
+  combo_id?: string | null
   data_hora_inicio: string
   cliente_nome: string
   cliente_telefone: string
@@ -163,8 +165,26 @@ export async function createBookingAction(formData: {
 
     // Calcular duração total acumulada e preço total acumulado
     const totalDuracaoMinutos = servicosList.reduce((sum, s) => sum + s.duracao_minutos, 0)
-    const totalPreco = servicosList.reduce((sum, s) => sum + Number(s.preco), 0)
-    const nomesCombo = servicosList.map((s) => s.nome).join(' + ')
+    let totalPreco = servicosList.reduce((sum, s) => sum + Number(s.preco), 0)
+    let nomesCombo = servicosList.map((s) => s.nome).join(' + ')
+
+    // Prompt 61: Se foi contratado via combo, busca o valor do combo para aplicar o preço do pacote
+    if (formData.combo_id) {
+      const { data: comboData } = await supabase
+        .from('combos')
+        .select('id, nome, preco_combo')
+        .eq('id', formData.combo_id)
+        .maybeSingle()
+
+      if (comboData) {
+        if (comboData.preco_combo !== null && comboData.preco_combo !== undefined) {
+          totalPreco = Number(comboData.preco_combo)
+        }
+        if (comboData.nome) {
+          nomesCombo = `${comboData.nome} (${nomesCombo})`
+        }
+      }
+    }
 
     // Calcular data_hora_fim com base na duração total do combo
     const inicioDate = new Date(data_hora_inicio)
@@ -230,6 +250,7 @@ export async function createBookingAction(formData: {
       profissional_id,
       cliente_id: clienteId,
       servico_id: servicoIdsList[0],
+      combo_id: formData.combo_id || null,
       data_hora_inicio: data_hora_inicio_iso,
       data_hora_fim: data_hora_fim_iso,
       valor_cobrado: totalPreco,
@@ -328,6 +349,21 @@ export async function createBookingAction(formData: {
       }
     } catch (googleError) {
       console.error('[Google Calendar] Erro ao integrar no agendamento:', googleError)
+    }
+
+    // Disparar notificação Push para a profissional
+    try {
+      const dataInicioObj = new Date(data_hora_inicio_iso)
+      const dataFormatada = dataInicioObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+      const horaFormatada = dataInicioObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false })
+      sendPushToProfissional(profissional_id, {
+        title: '📅 Novo Agendamento Recebido!',
+        body: `${cliente_nome} agendou ${nomesCombo} para ${dataFormatada} às ${horaFormatada}.`,
+        url: '/dashboard/agenda',
+        tag: `booking-new-${novoAgendamento.id}`,
+      }).catch((err) => console.error('[Push Notification] Erro ao enviar push de novo agendamento:', err))
+    } catch (pushErr) {
+      console.error('[Push Notification] Erro no push de createBookingAction:', pushErr)
     }
 
     revalidatePath('/dashboard')
@@ -572,6 +608,7 @@ export async function markNoShowBookingAction(
 
 export interface ClientBookingItem {
   id: string
+  profissional_id?: string
   data_hora_inicio: string
   data_hora_fim: string
   status: 'confirmado' | 'cancelado' | 'concluido' | 'no_show'
@@ -591,6 +628,7 @@ export async function lookupClientBookingsAction(
 ): Promise<{
   success: boolean
   message?: string
+  profissionalId?: string
   upcoming?: ClientBookingItem[]
   past?: ClientBookingItem[]
   whatsappProfissional?: string | null
@@ -651,7 +689,7 @@ export async function lookupClientBookingsAction(
     // 3. Buscar agendamentos vinculados
     const { data: agendamentosData, error: agError } = await supabase
       .from('agendamentos')
-      .select('id, data_hora_inicio, data_hora_fim, status, servicos(nome, preco, duracao_minutos)')
+      .select('id, profissional_id, data_hora_inicio, data_hora_fim, status, servicos(nome, preco, duracao_minutos)')
       .eq('profissional_id', prof.id)
       .eq('cliente_id', cliente.id)
       .order('data_hora_inicio', { ascending: false })
@@ -675,6 +713,7 @@ export async function lookupClientBookingsAction(
 
     return {
       success: true,
+      profissionalId: prof.id,
       upcoming,
       past,
       whatsappProfissional: prof.whatsapp,
@@ -772,6 +811,22 @@ export async function cancelClientBookingAction(params: {
       }
     }
 
+    // Disparar notificação Push para a profissional
+    try {
+      const inicioObj = new Date(agendamento.data_hora_inicio)
+      const dataFormatada = inicioObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+      const horaFormatada = inicioObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false })
+      const nomeCliente = clienteObj?.nome || 'Uma cliente'
+      sendPushToProfissional(agendamento.profissional_id, {
+        title: '❌ Agendamento Cancelado',
+        body: `${nomeCliente} cancelou o agendamento de ${dataFormatada} às ${horaFormatada}.`,
+        url: '/dashboard/agenda',
+        tag: `booking-cancel-${agendamentoId}`,
+      }).catch((err) => console.error('[Push Notification] Erro ao enviar push de cancelamento:', err))
+    } catch (pushErr) {
+      console.error('[Push Notification] Erro ao disparar push no cancelClientBookingAction:', pushErr)
+    }
+
     revalidatePath('/p/[slug]', 'page')
     revalidatePath('/dashboard')
 
@@ -782,6 +837,210 @@ export async function cancelClientBookingAction(params: {
     return {
       success: false,
       message: err?.message || 'Erro ao cancelar o agendamento.',
+    }
+  }
+}
+
+/**
+ * Server Action pública para o cliente remarcar seu próprio agendamento (regra de 4h e proteção contra conflitos).
+ */
+export async function rescheduleClientBookingAction(params: {
+  agendamentoId: string
+  telefone: string
+  profissionalSlug: string
+  novaDataHoraInicio: string
+}): Promise<{
+  success: boolean
+  message?: string
+  errorType?: 'EXCLUSION_VIOLATION' | 'VALIDATION_ERROR' | 'UNKNOWN'
+  isLate?: boolean
+  whatsappProfissional?: string | null
+  novoInicio?: string
+  novoFim?: string
+}> {
+  try {
+    const { agendamentoId, telefone, profissionalSlug, novaDataHoraInicio } = params
+    const cleanPhone = telefone.replace(/\D/g, '')
+
+    const supabase = createAdminClient()
+
+    // 1. Buscar agendamento e verificar pertencimento
+    const { data: agendamento, error: fetchError } = await supabase
+      .from('agendamentos')
+      .select('id, data_hora_inicio, data_hora_fim, status, google_event_id, profissional_id, servico_id, clientes(id, nome, telefone), profissionais(id, slug, whatsapp), servicos(nome, duracao_minutos)')
+      .eq('id', agendamentoId)
+      .maybeSingle()
+
+    if (fetchError || !agendamento) {
+      return { success: false, message: 'Agendamento não encontrado.' }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const clienteObj = agendamento.clientes as any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const profObj = agendamento.profissionais as any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const servicoObj = agendamento.servicos as any
+
+    const clientPhone = (clienteObj?.telefone || '').replace(/\D/g, '')
+    const profSlug = profObj?.slug || ''
+
+    if (clientPhone !== cleanPhone || profSlug.toLowerCase() !== profissionalSlug.toLowerCase()) {
+      return { success: false, message: 'Você não tem permissão para remarcar este agendamento.' }
+    }
+
+    if (agendamento.status !== 'confirmado') {
+      return {
+        success: false,
+        message: `Não é possível remarcar um agendamento com status "${agendamento.status}". Apenas agendamentos confirmados podem ser remarcados.`,
+      }
+    }
+
+    // 2. Verificar antecedência mínima de 4 horas para a data atual do agendamento
+    const inicioDate = new Date(agendamento.data_hora_inicio)
+    const diffHours = (inicioDate.getTime() - Date.now()) / (1000 * 60 * 60)
+
+    if (diffHours < CANCEL_NOTICE_HOURS) {
+      return {
+        success: false,
+        isLate: true,
+        whatsappProfissional: profObj?.whatsapp,
+        message: `Remarcações online só são permitidas com no mínimo ${CANCEL_NOTICE_HOURS} horas de antecedência. Para remarcar em cima da hora, entre em contato direto pelo WhatsApp da profissional.`,
+      }
+    }
+
+    // 3. Validar novo horário
+    const novaInicioDate = new Date(novaDataHoraInicio)
+    if (isNaN(novaInicioDate.getTime()) || novaInicioDate.getTime() <= Date.now()) {
+      return { success: false, message: 'O novo horário deve ser uma data e hora futura válida.' }
+    }
+
+    // Calcular duração original do agendamento
+    let duracaoMinutos = 30
+    if (agendamento.data_hora_inicio && agendamento.data_hora_fim) {
+      const msDiff = new Date(agendamento.data_hora_fim).getTime() - new Date(agendamento.data_hora_inicio).getTime()
+      if (msDiff > 0) {
+        duracaoMinutos = Math.round(msDiff / 60000)
+      }
+    } else if (servicoObj?.duracao_minutos) {
+      duracaoMinutos = Number(servicoObj.duracao_minutos)
+    }
+
+    const novaFimDate = new Date(novaInicioDate.getTime() + duracaoMinutos * 60 * 1000)
+    const novaDataHoraInicioIso = novaInicioDate.toISOString()
+    const novaDataHoraFimIso = novaFimDate.toISOString()
+
+    // 4. Proteção contra conflito de horário (Exclusion / Overlapping check)
+    const { data: conflitos, error: conflitoError } = await supabase
+      .from('agendamentos')
+      .select('id')
+      .eq('profissional_id', agendamento.profissional_id)
+      .eq('status', 'confirmado')
+      .neq('id', agendamentoId)
+      .lt('data_hora_inicio', novaDataHoraFimIso)
+      .gt('data_hora_fim', novaDataHoraInicioIso)
+
+    if (conflitoError) {
+      console.error('[rescheduleClientBookingAction] Erro ao verificar conflitos:', conflitoError)
+    }
+
+    if (conflitos && conflitos.length > 0) {
+      return {
+        success: false,
+        errorType: 'EXCLUSION_VIOLATION',
+        message: 'Ops! Esse horário acabou de ser reservado por outro cliente. Por favor, escolha outro horário.',
+      }
+    }
+
+    // Verificar bloqueios de disponibilidade
+    const { data: bloqueios } = await supabase
+      .from('bloqueios_disponibilidade')
+      .select('id')
+      .eq('profissional_id', agendamento.profissional_id)
+      .lt('data_hora_inicio', novaDataHoraFimIso)
+      .gt('data_hora_fim', novaDataHoraInicioIso)
+
+    if (bloqueios && bloqueios.length > 0) {
+      return {
+        success: false,
+        message: 'A profissional possui um intervalo/bloqueio programado neste horário. Por favor, escolha outro horário.',
+      }
+    }
+
+    // 5. Atualizar agendamento
+    const { error: updateError } = await supabase
+      .from('agendamentos')
+      .update({
+        data_hora_inicio: novaDataHoraInicioIso,
+        data_hora_fim: novaDataHoraFimIso,
+      })
+      .eq('id', agendamentoId)
+
+    if (updateError) {
+      const isExclusionError =
+        updateError.message?.toLowerCase().includes('exclusion') ||
+        updateError.message?.toLowerCase().includes('overlap') ||
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (updateError as any).details?.toLowerCase().includes('no_overlapping_agendamentos')
+
+      if (isExclusionError) {
+        return {
+          success: false,
+          errorType: 'EXCLUSION_VIOLATION',
+          message: 'Ops! Esse horário acabou de ser reservado por outro cliente. Por favor, escolha outro horário.',
+        }
+      }
+      throw updateError
+    }
+
+    // 6. Sincronizar com Google Calendar se configurado
+    if (agendamento.google_event_id) {
+      try {
+        await updateGoogleCalendarEvent({
+          profissionalId: agendamento.profissional_id,
+          googleEventId: agendamento.google_event_id,
+          clienteNome: clienteObj?.nome || 'Cliente',
+          clienteTelefone: clienteObj?.telefone || '',
+          servicoNome: servicoObj?.nome || 'Atendimento',
+          dataHoraInicio: novaDataHoraInicioIso,
+          dataHoraFim: novaDataHoraFimIso,
+        })
+      } catch (gErr) {
+        console.error('[Google Calendar] Erro ao sincronizar remarcação:', gErr)
+      }
+    }
+
+    // 7. Disparar notificação Push para a profissional
+    try {
+      const dataFormatada = novaInicioDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+      const horaFormatada = novaInicioDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false })
+      const nomeCliente = clienteObj?.nome || 'Uma cliente'
+
+      sendPushToProfissional(agendamento.profissional_id, {
+        title: '🔄 Agendamento Remarcado!',
+        body: `${nomeCliente} remarcou o atendimento para ${dataFormatada} às ${horaFormatada}.`,
+        url: '/dashboard/agenda',
+        tag: `booking-reschedule-${agendamentoId}`,
+      }).catch((err) => console.error('[Push Notification] Erro ao enviar push de remarcação:', err))
+    } catch (pushErr) {
+      console.error('[Push Notification] Erro no push de remarcação:', pushErr)
+    }
+
+    revalidatePath('/p/[slug]', 'page')
+    revalidatePath('/dashboard')
+
+    return {
+      success: true,
+      novoInicio: novaDataHoraInicioIso,
+      novoFim: novaDataHoraFimIso,
+      message: 'Agendamento remarcado com sucesso!',
+    }
+  } catch (error: unknown) {
+    console.error('[rescheduleClientBookingAction] Erro:', error)
+    const err = error as { message?: string }
+    return {
+      success: false,
+      message: err?.message || 'Erro ao remarcar agendamento.',
     }
   }
 }

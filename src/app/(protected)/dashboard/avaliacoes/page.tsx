@@ -190,10 +190,6 @@ export default async function AvaliacoesDashboardPage() {
                       <Calendar className="h-3 w-3 text-[#B8A9D9]" />
                       {dataAtendimento}
                     </span>
-                    <span className="flex items-center gap-1 text-emerald-600 font-medium">
-                      <CheckCircle2 className="h-3 w-3" />
-                      Verificado
-                    </span>
                   </div>
                 </div>
               )

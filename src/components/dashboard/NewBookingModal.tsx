@@ -263,7 +263,7 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
                       <span className="truncate">{client.nome}</span>
                       {client.telefone && (
                         <span className="text-[11px] font-normal text-gray-400 shrink-0">
-                          {client.telefone}
+                          {formatPhone(client.telefone)}
                         </span>
                       )}
                     </button>

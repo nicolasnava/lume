@@ -38,6 +38,7 @@ import {
   Activity,
 } from 'lucide-react'
 import CustomSelect from '@/components/ui/CustomSelect'
+import { formatPhoneNumber } from '@/lib/utils/phone'
 
 interface AdminProfissionalDetailClientProps {
   initialData: Awaited<ReturnType<typeof getAdminProfissionalDetail>>
@@ -463,7 +464,7 @@ export default function AdminProfissionalDetailClient({
                   className="font-semibold text-[#2EB886] hover:underline inline-flex items-center gap-1.5 mt-1 font-mono"
                 >
                   <MessageCircle className="h-3.5 w-3.5 text-[#2EB886]" />
-                  <span>{prof.whatsapp}</span>
+                  <span>{formatPhoneNumber(prof.whatsapp)}</span>
                   <ExternalLink className="h-3 w-3 text-[#9C9C9F]" />
                 </a>
               ) : (
@@ -564,6 +565,64 @@ export default function AdminProfissionalDetailClient({
                   <span className="font-bold text-[#2EB886] font-mono">{formatCurrency(Number(s.preco))}</span>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Programa de Indicação & Árvore de Indicações */}
+        <div className="lg:col-span-3 bg-[#1A1A1C] p-6 rounded-2xl border border-white/[0.06] shadow-[0_4px_24px_-4px_rgba(0,0,0,0.4)] space-y-4">
+          <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+            <div className="flex items-center gap-2">
+              <Gift className="h-4 w-4 text-[#B8A9D9]" />
+              <h3 className="text-sm font-bold text-[#F5F5F4]">Programa de Indicação</h3>
+            </div>
+            {data.referralTree?.codigoIndicacao && (
+              <span className="text-xs font-mono text-[#9C9C9F] bg-white/[0.04] px-2.5 py-1 rounded-lg border border-white/[0.06]">
+                Código: <strong className="text-[#F5F5F4]">{data.referralTree.codigoIndicacao}</strong>
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-[#141416] p-4 rounded-xl border border-white/[0.06]">
+              <span className="text-[10px] font-semibold text-[#9C9C9F] uppercase block">Indicada por</span>
+              {data.referralTree?.indicadaPor ? (
+                <Link
+                  href={`/admin/profissionais/${data.referralTree.indicadaPor.id}`}
+                  className="text-xs font-bold text-[#B8A9D9] hover:underline flex items-center gap-1 mt-1 truncate"
+                >
+                  <span>{data.referralTree.indicadaPor.nome}</span>
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                </Link>
+              ) : (
+                <span className="text-xs font-medium text-[#9C9C9F] mt-1 block">
+                  Cadastro direto (sem indicação)
+                </span>
+              )}
+            </div>
+
+            <div className="bg-[#141416] p-4 rounded-xl border border-white/[0.06]">
+              <span className="text-[10px] font-semibold text-[#9C9C9F] uppercase block">Indicações Geradas</span>
+              <div className="mt-1 flex items-baseline gap-1.5">
+                <span className="text-lg font-bold text-[#F5F5F4] font-mono">
+                  {data.referralTree?.totalIndicadas || 0}
+                </span>
+                <span className="text-[11px] text-[#2EB886] font-semibold">
+                  ({data.referralTree?.indicadasAtivas || 0} ativas)
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-[#141416] p-4 rounded-xl border border-white/[0.06]">
+              <span className="text-[10px] font-semibold text-[#9C9C9F] uppercase block">Desconto em Mensalidade</span>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-lg font-bold text-[#2EB886] font-mono">
+                  {data.referralTree?.descontoAtualPct || 0}% OFF
+                </span>
+                <span className="text-[11px] text-[#9C9C9F] font-mono">
+                  (R$ {Number(prof.valor_mensalidade || 69.90).toFixed(2)}/mês)
+                </span>
+              </div>
             </div>
           </div>
         </div>

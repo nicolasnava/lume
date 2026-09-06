@@ -36,10 +36,15 @@ import {
   Store,
   Check,
   Smartphone,
+  QrCode,
+  Instagram,
 } from 'lucide-react'
 
 import PaymentIcon from '@/components/common/PaymentIcon'
-import ProfileTourModal from '@/components/profile/ProfileTourModal'
+import QrCodeModal from '@/components/profile/QrCodeModal'
+import StoriesShareModal from '@/components/profile/StoriesShareModal'
+import PushNotificationToggle from '@/components/profile/PushNotificationToggle'
+import { obterDadosEstudioUsuario } from '@/app/actions/estudio'
 
 type ProfissionalRow = Database['public']['Tables']['profissionais']['Row']
 
@@ -148,6 +153,32 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
   const [uploadingCapa, setUploadingCapa] = useState(false)
   const [disconnectingGoogle, setDisconnectingGoogle] = useState(false)
 
+  // Prompt 59: Modais de QR Code e Compartilhamento de Stories
+  const [showQrModal, setShowQrModal] = useState(false)
+  const [showStoriesModal, setShowStoriesModal] = useState(false)
+  const [studioInfo, setStudioInfo] = useState<{ studioSlug: string; userSlug: string } | null>(null)
+
+  useEffect(() => {
+    obterDadosEstudioUsuario()
+      .then((status) => {
+        if (status && (status.papel === 'membro' || status.papel === 'dona') && status.estudio?.slug) {
+          setStudioInfo({
+            studioSlug: status.estudio.slug,
+            userSlug: status.userSlug || currentSlug,
+          })
+        }
+      })
+      .catch((e) => console.warn('Erro ao obter studio info para perfil:', e))
+  }, [currentSlug])
+
+  const publicVitrineUrl = typeof window !== 'undefined'
+    ? studioInfo
+      ? `${window.location.origin}/studio/${studioInfo.studioSlug}/${studioInfo.userSlug}`
+      : `${window.location.origin}/p/${currentSlug}`
+    : studioInfo
+      ? `https://lume.com.br/studio/${studioInfo.studioSlug}/${studioInfo.userSlug}`
+      : `https://lume.com.br/p/${currentSlug}`
+
   // Autosave Status: 'idle' | 'saving' | 'saved'
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -159,28 +190,6 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
 
   // Toast State
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' } | null>(null)
-
-  // Tour Guiado do Perfil
-  const [isTourOpen, setIsTourOpen] = useState(false)
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      const seenProfileTour = localStorage.getItem('lume_profile_tour_seen')
-
-      // Abre automaticamente APENAS na primeira vez que a profissional entra no perfil (ou se passar ?tour=1 na URL)
-      if (!seenProfileTour || params.get('tour') === '1') {
-        setIsTourOpen(true)
-      }
-    }
-  }, [])
-
-  const handleCloseTour = () => {
-    setIsTourOpen(false)
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('lume_profile_tour_seen', 'true')
-    }
-  }
 
   // Função centralizada para execução do salvamento via Server Action
   const executeSave = useCallback(
@@ -546,17 +555,14 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
 
               <div>
                 <h3 className="text-base font-bold text-[#4A3F5C]">{nome || 'Seu Nome no Lumê'}</h3>
-                <p className="text-xs text-gray-500 font-medium">Foto de perfil exibida para suas clientes</p>
-                <p className="text-[11px] text-gray-500 font-medium mt-0.5">
-                  Tamanho recomendado: mínimo 400x400px (quadrada). JPG, PNG ou WebP até 5MB.
-                </p>
+                <p className="text-xs text-gray-500 font-medium">Foto de perfil exibida</p>
               </div>
             </div>
 
             <div id="profile-tour-basic-info" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-bold text-[#4A3F5C] mb-1">
-                  Nome Completo ou Nome Profissional *
+                  Nome Exibido
                 </label>
                 <input
                   type="text"
@@ -570,7 +576,7 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
 
               <div>
                 <label className="block text-sm font-bold text-[#4A3F5C] mb-1">
-                  Frase de Destaque / Tagline
+                  Frase de Destaque
                 </label>
                 <input
                   type="text"
@@ -582,10 +588,10 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
               </div>
             </div>
 
-            {/* Biografia / Apresentação */}
+            {/* Apresentação */}
             <div>
               <label className="block text-sm font-bold text-[#4A3F5C] mb-1">
-                Biografia / Apresentação
+                Apresentação
               </label>
               <textarea
                 rows={3}
@@ -616,25 +622,32 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
                   className="w-full rounded-2xl border border-gray-200 bg-gray-50/50 p-3 text-xs text-[#4A3F5C] focus:border-[#B8A9D9] focus:bg-white focus:outline-none font-semibold"
                   placeholder="(11) 99999-9999"
                 />
-                <p className="text-[10px] text-gray-400 mt-1">Formatação automática enquanto você digita</p>
               </div>
 
               <div>
                 <label className="block text-sm font-bold text-[#4A3F5C] mb-1">
-                  Instagram (@)
+                  Instagram
                 </label>
-                <input
-                  type="text"
-                  value={instagram}
-                  onChange={(e) => setInstagram(e.target.value)}
-                  className="w-full rounded-2xl border border-gray-200 bg-gray-50/50 p-3 text-xs text-[#4A3F5C] focus:border-[#B8A9D9] focus:bg-white focus:outline-none"
-                  placeholder="@seu.perfil"
-                />
+                <div className="relative flex items-center">
+                  <span className="absolute left-3.5 text-xs font-bold text-gray-400 select-none">
+                    @
+                  </span>
+                  <input
+                    type="text"
+                    value={instagram ? instagram.replace(/^@+/, '') : ''}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/^@+/, '').trim()
+                      setInstagram(clean ? `@${clean}` : '')
+                    }}
+                    className="w-full rounded-2xl border border-gray-200 bg-gray-50/50 p-3 pl-8 text-xs text-[#4A3F5C] focus:border-[#B8A9D9] focus:bg-white focus:outline-none font-semibold"
+                    placeholder="seu.perfil"
+                  />
+                </div>
               </div>
 
               <div>
                 <label className="block text-sm font-bold text-[#4A3F5C] mb-1">
-                  Localização / Cidade
+                  Localização
                 </label>
                 <input
                   type="text"
@@ -649,12 +662,11 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
 
           {/* Modalidades de Atendimento */}
           <div id="profile-tour-modalidades" className="rounded-3xl bg-white p-5 sm:p-6 shadow-2xs border border-gray-200/80 space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <div>
-                <h3 className="text-base font-bold text-[#4A3F5C]">Modalidades de Atendimento</h3>
-                <p className="text-xs text-gray-500">Como você realiza os seus atendimentos</p>
-              </div>
-              <span className="text-[11px] text-gray-400 font-medium">Seleção múltipla</span>
+            <div className="border-b border-gray-100 pb-3">
+              <h3 className="text-base font-bold text-[#4A3F5C] whitespace-nowrap">
+                Modalidades de Atendimento
+              </h3>
+              <p className="text-xs text-gray-500">Como você realiza os seus atendimentos</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -787,16 +799,11 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
             </p>
           </div>
 
-          {/* Rodapé: Tutorial, Tour e Sair da Conta (Modo Escuro REMOVIDO) */}
+          {/* Notificações Push Web (Prompt 59) */}
+          <PushNotificationToggle />
+
+          {/* Rodapé: Tour e Sair da Conta (Modo Escuro REMOVIDO) */}
           <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-6 border-t border-gray-200/80">
-            <button
-              type="button"
-              onClick={() => setIsTourOpen(true)}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-purple-50 text-purple-900 border border-purple-200/80 text-xs font-bold hover:bg-purple-100 transition cursor-pointer flex items-center justify-center gap-2 shadow-2xs"
-            >
-              <Sparkles className="h-4 w-4 text-purple-600" />
-              <span>Tutorial do perfil</span>
-            </button>
 
             <button
               type="button"
@@ -827,59 +834,194 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
       {/* Conteúdo da Aba 2: VITRINE */}
       {activeTab === 'vitrine' && (
         <div className="space-y-6">
-          {/* Link / URL Pública */}
-          <div id="profile-tour-slug" className="rounded-3xl bg-white p-5 sm:p-6 shadow-2xs border border-gray-200/80 space-y-3">
+          {/* Link / URL Pública & Link do Studio no mesmo card */}
+          <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-2xs border border-gray-200/80 space-y-5">
+            {/* 1. Link da Página Pessoal */}
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-bold text-[#4A3F5C] mb-1">
+                  Link da sua página (URL pública) *
+                </label>
+                <p className="text-xs text-gray-500 font-medium">
+                  Endereço exclusivo onde suas clientes acessam sua vitrine e agendam horários
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 min-w-[180px]">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">
+                    /p/
+                  </span>
+                  <input
+                    type="text"
+                    value={slugInput}
+                    onChange={(e) => handleSlugInputChange(e.target.value)}
+                    className="w-full rounded-2xl border border-gray-200 bg-gray-50/50 py-3 pl-10 pr-4 text-xs font-bold text-[#4A3F5C] focus:border-[#B8A9D9] focus:bg-white focus:outline-none"
+                  />
+                </div>
+
+                {slugInput !== currentSlug && slugStatus.available && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSlugConfirmModal(true)}
+                    className="px-4 py-3 rounded-2xl bg-[#4A3F5C] text-white text-xs font-bold hover:bg-purple-900 transition shrink-0 cursor-pointer shadow-2xs"
+                  >
+                    Salvar Link
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const personalUrl = typeof window !== 'undefined' ? `${window.location.origin}/p/${currentSlug}` : `https://lume.com.br/p/${currentSlug}`
+                    const success = await copyToClipboard(personalUrl)
+                    if (success) {
+                      setToast({ show: true, message: 'Link pessoal copiado com sucesso!', type: 'success' })
+                    } else {
+                      setToast({ show: true, message: 'Não foi possível copiar o link.', type: 'error' })
+                    }
+                  }}
+                  className="p-3 rounded-2xl border border-gray-200 bg-white text-[#4A3F5C] hover:bg-gray-50 transition shrink-0 cursor-pointer shadow-2xs flex items-center gap-1.5 text-xs font-bold"
+                  title="Copiar link público da página pessoal"
+                >
+                  <Copy className="h-4 w-4 text-[#B8A9D9]" />
+                  <span>Copiar</span>
+                </button>
+              </div>
+
+              <a
+                href={`/p/${currentSlug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3 px-4 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 text-[#4A3F5C] text-xs font-bold transition flex items-center justify-center gap-2 shadow-2xs cursor-pointer"
+              >
+                <ExternalLink className="h-4 w-4 text-[#B8A9D9]" />
+                <span>Ver página</span>
+              </a>
+
+              <p className="text-[11px] text-gray-500 font-medium">{slugStatus.message}</p>
+            </div>
+
+            {/* 2. Link do Studio (no mesmo card, logo abaixo) */}
+            <div className="pt-4 border-t border-gray-100 space-y-3">
+              <div>
+                <label className="block text-sm font-bold text-[#4A3F5C] mb-1">
+                  Link do seu Studio
+                </label>
+                <p className="text-xs text-gray-500 font-medium">
+                  Endereço público da sua página integrada ao Studio em que você atende
+                </p>
+              </div>
+
+              {studioInfo ? (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative flex-1 min-w-[180px]">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">
+                        /studio/
+                      </span>
+                      <input
+                        type="text"
+                        readOnly
+                        value={`${studioInfo.studioSlug}/${studioInfo.userSlug}`}
+                        className="w-full rounded-2xl border border-gray-200 bg-gray-50/50 py-3 pl-[4.75rem] pr-4 text-xs font-bold text-[#4A3F5C] focus:outline-none cursor-default"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const studioPublicUrl = `${window.location.origin}/studio/${studioInfo.studioSlug}/${studioInfo.userSlug}`
+                        const success = await copyToClipboard(studioPublicUrl)
+                        if (success) {
+                          setToast({ show: true, message: 'Link do studio copiado com sucesso!', type: 'success' })
+                        } else {
+                          setToast({ show: true, message: 'Não foi possível copiar o link.', type: 'error' })
+                        }
+                      }}
+                      className="p-3 rounded-2xl border border-gray-200 bg-white text-[#4A3F5C] hover:bg-gray-50 transition shrink-0 cursor-pointer shadow-2xs flex items-center gap-1.5 text-xs font-bold"
+                      title="Copiar link da página no Studio"
+                    >
+                      <Copy className="h-4 w-4 text-[#B8A9D9]" />
+                      <span>Copiar</span>
+                    </button>
+                  </div>
+
+                  <a
+                    href={`/studio/${studioInfo.studioSlug}/${studioInfo.userSlug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3 px-4 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 text-[#4A3F5C] text-xs font-bold transition flex items-center justify-center gap-2 shadow-2xs cursor-pointer"
+                  >
+                    <ExternalLink className="h-4 w-4 text-[#B8A9D9]" />
+                    <span>Ver página</span>
+                  </a>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 p-4 text-center text-xs text-gray-400 font-medium">
+                  Você ainda não faz parte de um Studio parceiro. Ao ser convidada ou criar um studio, o link correspondente aparecerá aqui.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Card Separado: Divulgação & Redes Sociais (QR Code e Instagram Stories) */}
+          <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-2xs border border-gray-200/80 space-y-4">
             <div>
-              <label className="block text-sm font-bold text-[#4A3F5C] mb-1">
-                Link da sua página (URL pública) *
-              </label>
-              <p className="text-xs text-gray-500 font-medium">
-                Endereço exclusivo onde suas clientes acessam sua vitrine e agendam horários
+              <h3 className="text-sm font-bold text-[#4A3F5C] flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-[#B8A9D9]" />
+                <span>Divulgação & Redes Sociais</span>
+              </h3>
+              <p className="text-xs text-gray-500 font-medium mt-0.5">
+                Materiais visuais prontos para divulgar sua vitrine e facilitar o agendamento das suas clientes
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">
-                  /p/
-                </span>
-                <input
-                  type="text"
-                  value={slugInput}
-                  onChange={(e) => handleSlugInputChange(e.target.value)}
-                  className="w-full rounded-2xl border border-gray-200 bg-gray-50/50 py-3 pl-10 pr-4 text-xs font-bold text-[#4A3F5C] focus:border-[#B8A9D9] focus:bg-white focus:outline-none"
-                />
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+              {/* QR Code */}
+              <div className="rounded-2xl border border-purple-100 bg-purple-50/40 p-4 flex flex-col justify-between space-y-3 hover:border-purple-200 transition">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm font-bold text-[#4A3F5C]">
+                    <QrCode className="h-4 w-4 text-[#4A3F5C]" />
+                    <span>QR Code da Vitrine</span>
+                  </div>
+                  <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                    Baixe em alta qualidade para imprimir em displays de mesa, balcões e cartões de visita.
+                  </p>
+                </div>
 
-              {slugInput !== currentSlug && slugStatus.available && (
                 <button
                   type="button"
-                  onClick={() => setShowSlugConfirmModal(true)}
-                  className="px-4 py-3 rounded-2xl bg-[#4A3F5C] text-white text-xs font-bold hover:bg-purple-900 transition shrink-0 cursor-pointer shadow-2xs"
+                  onClick={() => setShowQrModal(true)}
+                  className="w-full py-2.5 px-3 rounded-xl bg-[#4A3F5C] hover:bg-purple-900 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-2xs cursor-pointer"
                 >
-                  Salvar Link
+                  <QrCode className="h-4 w-4" />
+                  <span>Ver e Baixar QR Code</span>
                 </button>
-              )}
+              </div>
 
-              <button
-                type="button"
-                onClick={async () => {
-                  const fullUrl = typeof window !== 'undefined' ? `${window.location.origin}/p/${currentSlug}` : `https://lume.com/p/${currentSlug}`
-                  const success = await copyToClipboard(fullUrl)
-                  if (success) {
-                    setToast({ show: true, message: 'Link copiado com sucesso!', type: 'success' })
-                  } else {
-                    setToast({ show: true, message: 'Não foi possível copiar o link.', type: 'error' })
-                  }
-                }}
-                className="p-3 rounded-2xl border border-gray-200 bg-white text-[#4A3F5C] hover:bg-gray-50 transition shrink-0 cursor-pointer shadow-2xs flex items-center gap-1.5 text-xs font-bold"
-                title="Copiar link público da página"
-              >
-                <Copy className="h-4 w-4 text-[#B8A9D9]" />
-                <span className="hidden sm:inline">Copiar</span>
-              </button>
+              {/* Instagram Stories */}
+              <div className="rounded-2xl border border-pink-100 bg-gradient-to-br from-purple-50/40 via-pink-50/30 to-white p-4 flex flex-col justify-between space-y-3 hover:border-pink-200 transition">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm font-bold text-[#4A3F5C]">
+                    <Instagram className="h-4 w-4 text-pink-600" />
+                    <span>Instagram Stories (9:16)</span>
+                  </div>
+                  <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                    Gere uma arte no formato Story pronta para postar no Instagram com seu QR code e suas cores.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowStoriesModal(true)}
+                  className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-2xs cursor-pointer"
+                >
+                  <Instagram className="h-4 w-4" />
+                  <span>Criar Story para Divulgação</span>
+                </button>
+              </div>
             </div>
-            <p className="text-[11px] text-gray-500 font-medium">{slugStatus.message}</p>
           </div>
 
           {/* Foto de Capa (Banner da Vitrine) */}
@@ -1271,12 +1413,6 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
         </div>
       )}
 
-      {/* Modal do Tour Guiado do Perfil */}
-      <ProfileTourModal
-        isOpen={isTourOpen}
-        onClose={handleCloseTour}
-      />
-
       {/* Modal de Confirmação ao Trocar Slug */}
       {showSlugConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
@@ -1296,10 +1432,10 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
 
             <div className="rounded-2xl bg-amber-50 p-3.5 border border-amber-200 text-xs font-medium text-amber-900 space-y-2">
               <p>
-                <strong>Atenção:</strong> Ao confirmar a alteração para <strong className="font-bold text-purple-900">/p/{slugInput}</strong>, o seu link atual deixará de funcionar imediatamente.
+                <strong>Tem certeza que deseja mudar? Isso só é possível a cada 30 dias.</strong>
               </p>
               <p>
-                Além disso, você só poderá alterar o seu link novamente após <strong>30 dias</strong>.
+                Ao confirmar a alteração para <strong className="font-bold text-purple-900">/p/{slugInput}</strong>, o seu link atual deixará de funcionar imediatamente.
               </p>
             </div>
 
@@ -1328,6 +1464,27 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
         message={toast?.message || ''}
         type={toast?.type}
         onClose={() => setToast(null)}
+      />
+
+      {/* Modal QR Code (Prompt 59) */}
+      <QrCodeModal
+        isOpen={showQrModal}
+        onClose={() => setShowQrModal(false)}
+        url={publicVitrineUrl}
+        nomeProfissional={nome}
+        corPrimaria={corPrimaria}
+      />
+
+      {/* Modal Instagram Stories (Prompt 59) */}
+      <StoriesShareModal
+        isOpen={showStoriesModal}
+        onClose={() => setShowStoriesModal(false)}
+        url={publicVitrineUrl}
+        nomeProfissional={nome}
+        fotoUrl={fotoUrl}
+        tagline={tagline}
+        corPrimaria={corPrimaria}
+        corSecundaria={corSecundaria}
       />
     </div>
   )

@@ -26,7 +26,18 @@ import {
   Camera,
   AlertTriangle,
   CheckCircle2,
+  Sparkles,
+  Tag,
+  Check,
 } from 'lucide-react'
+import {
+  ComboItem,
+  createComboAction,
+  updateComboAction,
+  deleteComboAction,
+  toggleComboStatusAction,
+  getCombosProfissionalAction,
+} from '@/app/actions/combos'
 
 export interface ServiceRow {
   id: string
@@ -44,6 +55,7 @@ export interface ServiceRow {
 
 interface ServicesManagerProps {
   initialServices: ServiceRow[]
+  initialCombos?: ComboItem[]
   profissionalId?: string
 }
 
@@ -57,8 +69,11 @@ function getStoragePathFromPublicUrl(url: string, bucketName: string): string | 
   return null
 }
 
-export default function ServicesManager({ initialServices, profissionalId }: ServicesManagerProps) {
+export default function ServicesManager({ initialServices, initialCombos, profissionalId }: ServicesManagerProps) {
+  const [activeTab, setActiveTab] = useState<'servicos' | 'combos'>('servicos')
   const [services, setServices] = useState<ServiceRow[]>(initialServices)
+  const [combos, setCombos] = useState<ComboItem[]>(initialCombos || [])
+
   const [showModal, setShowModal] = useState(false)
   const [editingService, setEditingService] = useState<ServiceRow | null>(null)
 
@@ -78,8 +93,251 @@ export default function ServicesManager({ initialServices, profissionalId }: Ser
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
+  // Combos State & Handlers
+  const [showComboModal, setShowComboModal] = useState(false)
+  const [editingCombo, setEditingCombo] = useState<ComboItem | null>(null)
+  const [comboNome, setComboNome] = useState('')
+  const [comboDescricao, setComboDescricao] = useState('')
+  const [comboPreco, setComboPreco] = useState('')
+  const [comboFotoUrl, setComboFotoUrl] = useState('')
+  const [comboServicoIds, setComboServicoIds] = useState<string[]>([])
+  const [comboSaving, setComboSaving] = useState(false)
+  const [comboUploading, setComboUploading] = useState(false)
+  const [deletingComboId, setDeletingComboId] = useState<string | null>(null)
+
   // Toast State
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' | 'info' } | null>(null)
+
+  const openCreateComboModal = () => {
+    setEditingCombo(null)
+    setComboNome('')
+    setComboDescricao('')
+    setComboPreco('')
+    setComboFotoUrl('')
+    setComboServicoIds([])
+    setShowComboModal(true)
+  }
+
+  const openEditComboModal = (c: ComboItem) => {
+    setEditingCombo(c)
+    setComboNome(c.nome)
+    setComboDescricao(c.descricao || '')
+    setComboPreco(String(c.preco_combo))
+    setComboFotoUrl(c.foto_url || '')
+    setComboServicoIds(c.servicos.map((s) => s.id))
+    setShowComboModal(true)
+  }
+
+  const toggleComboServico = (id: string) => {
+    setComboServicoIds((prev) =>
+      prev.includes(id) ? prev.filter((sId) => sId !== id) : [...prev, id]
+    )
+  }
+
+  const selectedServicosForCombo = services.filter((s) => comboServicoIds.includes(s.id))
+  const comboDuracaoCalculada = selectedServicosForCombo.reduce((acc, s) => acc + s.duracao_minutos, 0)
+  const comboPrecoOriginalSoma = selectedServicosForCombo.reduce((acc, s) => acc + Number(s.preco), 0)
+  const comboPrecoNum = Number(comboPreco) || 0
+  const comboEconomiaCalculada = Math.max(0, comboPrecoOriginalSoma - comboPrecoNum)
+
+  const handleComboPhotoUpload = async (file: File) => {
+    if (!file) return
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    if (!allowedTypes.includes(file.type)) {
+      setToast({
+        show: true,
+        message: 'Formato inválido. Selecione uma imagem JPG, PNG, WEBP ou GIF.',
+        type: 'error',
+      })
+      return
+    }
+
+    const maxSize = 5 * 1024 * 1024
+    if (file.size > maxSize) {
+      setToast({
+        show: true,
+        message: 'A imagem excede o tamanho máximo de 5MB.',
+        type: 'error',
+      })
+      return
+    }
+
+    setComboUploading(true)
+
+    try {
+      const validation = await validateImageMagicBytes(file)
+      if (!validation.valid) {
+        setToast({
+          show: true,
+          message: validation.error || 'Arquivo de imagem inválido.',
+          type: 'error',
+        })
+        return
+      }
+
+      const supabase = createClient()
+      let profId = profissionalId
+      if (!profId) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        profId = user?.id
+      }
+
+      if (!profId) throw new Error('Usuário não autenticado.')
+
+      const fileExt = validation.detectedType || file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const filePath = `${profId}/combo-${Date.now()}.${fileExt}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('servicos')
+        .upload(filePath, file, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data: publicUrlData } = supabase.storage
+        .from('servicos')
+        .getPublicUrl(filePath)
+
+      setComboFotoUrl(publicUrlData.publicUrl)
+      setToast({
+        show: true,
+        message: 'Foto do combo carregada!',
+        type: 'success',
+      })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao enviar foto'
+      setToast({ show: true, message: msg, type: 'error' })
+    } finally {
+      setComboUploading(false)
+    }
+  }
+
+  const handleComboSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (comboServicoIds.length < 2) {
+      setToast({
+        show: true,
+        message: 'Selecione ao menos 2 serviços para compor o combo.',
+        type: 'error',
+      })
+      return
+    }
+
+    const precoNumVal = Number(comboPreco)
+    if (!precoNumVal || precoNumVal <= 0) {
+      setToast({
+        show: true,
+        message: 'Informe um preço válido para o combo.',
+        type: 'error',
+      })
+      return
+    }
+
+    setComboSaving(true)
+
+    try {
+      if (editingCombo) {
+        const res = await updateComboAction(editingCombo.id, {
+          nome: comboNome,
+          descricao: comboDescricao || null,
+          preco_combo: precoNumVal,
+          foto_url: comboFotoUrl || null,
+          servico_ids: comboServicoIds,
+        })
+
+        if (!res.success) {
+          setToast({ show: true, message: res.message || 'Erro ao atualizar combo.', type: 'error' })
+          return
+        }
+
+        const selectedServicos = services.filter((s) => comboServicoIds.includes(s.id))
+        const duracaoTotalMinutos = selectedServicos.reduce((acc, s) => acc + s.duracao_minutos, 0)
+        const precoOriginalTotal = selectedServicos.reduce((acc, s) => acc + Number(s.preco), 0)
+
+        setCombos((prev) =>
+          prev.map((c) =>
+            c.id === editingCombo.id
+              ? {
+                  ...c,
+                  nome: comboNome,
+                  descricao: comboDescricao || null,
+                  preco_combo: precoNumVal,
+                  foto_url: comboFotoUrl || null,
+                  servicos: selectedServicos.map((s) => ({
+                    id: s.id,
+                    nome: s.nome,
+                    duracao_minutos: s.duracao_minutos,
+                    preco: s.preco,
+                    foto_url: s.foto_url,
+                  })),
+                  duracaoTotalMinutos,
+                  precoOriginalTotal,
+                  descontoEconomia: Math.max(0, precoOriginalTotal - precoNumVal),
+                }
+              : c
+          )
+        )
+        setToast({ show: true, message: 'Combo atualizado com sucesso!', type: 'success' })
+      } else {
+        const res = await createComboAction({
+          nome: comboNome,
+          descricao: comboDescricao || null,
+          preco_combo: precoNumVal,
+          foto_url: comboFotoUrl || null,
+          servico_ids: comboServicoIds,
+        })
+
+        if (!res.success) {
+          setToast({ show: true, message: res.message || 'Erro ao cadastrar combo.', type: 'error' })
+          return
+        }
+
+        const reloaded = await getCombosProfissionalAction(profissionalId)
+        setCombos(reloaded)
+        setToast({ show: true, message: 'Combo cadastrado com sucesso!', type: 'success' })
+      }
+
+      setShowComboModal(false)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao salvar combo.'
+      setToast({ show: true, message: msg, type: 'error' })
+    } finally {
+      setComboSaving(false)
+    }
+  }
+
+  const handleToggleComboStatus = async (comboId: string, currentAtivo: boolean) => {
+    const newAtivo = !currentAtivo
+    setCombos((prev) => prev.map((c) => (c.id === comboId ? { ...c, ativo: newAtivo } : c)))
+    const res = await toggleComboStatusAction(comboId, newAtivo)
+    if (!res.success) {
+      setCombos((prev) => prev.map((c) => (c.id === comboId ? { ...c, ativo: currentAtivo } : c)))
+      setToast({ show: true, message: res.message || 'Erro ao alterar status.', type: 'error' })
+    } else {
+      setToast({
+        show: true,
+        message: newAtivo ? 'Combo ativado!' : 'Combo pausado.',
+        type: 'info',
+      })
+    }
+  }
+
+  const handleDeleteCombo = async (comboId: string) => {
+    if (!confirm('Deseja realmente excluir este combo? As clientes não poderão mais agendá-lo.')) {
+      return
+    }
+    setDeletingComboId(comboId)
+    const res = await deleteComboAction(comboId)
+    setDeletingComboId(null)
+    if (!res.success) {
+      setToast({ show: true, message: res.message || 'Erro ao excluir combo.', type: 'error' })
+    } else {
+      setCombos((prev) => prev.filter((c) => c.id !== comboId))
+      setToast({ show: true, message: 'Combo excluído com sucesso!', type: 'success' })
+    }
+  }
 
   const openCreateModal = () => {
     setEditingService(null)
@@ -335,52 +593,87 @@ export default function ServicesManager({ initialServices, profissionalId }: Ser
 
   return (
     <div className="space-y-6">
-      {/* Card de Destaque + Botão Cadastrar Novo Serviço Esticado (Item 6) */}
-      <div className="space-y-3">
-        <div className="rounded-3xl bg-white p-5 border border-gray-200/80 shadow-2xs flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-50 text-[#4A3F5C] border border-[#B8A9D9]/30">
-              <Scissors className="h-5 w-5 text-[#B8A9D9]" />
-            </div>
-            <div>
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Total de Serviços Cadastrados</span>
-              <strong className="text-xl font-bold text-[#4A3F5C]">
-                {services.length} {services.length === 1 ? 'serviço' : 'serviços'}
-              </strong>
-            </div>
-          </div>
-        </div>
-
+      {/* Seletor de Abas: Serviços Individuais vs Combos */}
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-gray-100/80 border border-gray-200/80 max-w-md">
         <button
-          onClick={openCreateModal}
-          className="w-full py-3.5 rounded-2xl bg-[#4A3F5C] text-xs font-semibold text-white shadow-xs hover:bg-[#393047] transition cursor-pointer flex items-center justify-center gap-2"
+          type="button"
+          onClick={() => setActiveTab('servicos')}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+            activeTab === 'servicos'
+              ? 'bg-white text-[#4A3F5C] shadow-2xs'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
         >
-          <Plus className="h-4 w-4 text-[#B8A9D9]" />
-          <span>Cadastrar Novo Serviço</span>
+          <Scissors className="h-4 w-4 text-[#8675A9]" />
+          <span>Serviços Individuais ({services.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('combos')}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+            activeTab === 'combos'
+              ? 'bg-white text-[#4A3F5C] shadow-2xs'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <Sparkles className="h-4 w-4 text-[#8675A9]" />
+          <span>Combos ({combos.length})</span>
         </button>
       </div>
 
-      {/* Lista de Serviços */}
-      {services.length === 0 ? (
-        <div className="rounded-2xl bg-white p-12 text-center border border-gray-100 shadow-xs space-y-3">
-          <Scissors className="mx-auto h-8 w-8 text-[#B8A9D9]" />
-          <h3 className="text-sm font-bold text-[#4A3F5C]">Nenhum serviço cadastrado</h3>
-          <p className="text-xs text-gray-500 max-w-sm mx-auto">
-            Cadastre seus serviços com preço e duração para que suas clientes possam agendar pela página pública.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {services.map((s) => {
-            const isAtivo = s.ativo !== false
+      {activeTab === 'servicos' ? (
+        <>
+          {/* Card de Destaque + Botão Cadastrar Novo Serviço Esticado (Item 6) */}
+          <div className="space-y-3">
+            <div className="rounded-3xl bg-white p-5 border border-gray-200/80 shadow-2xs flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-50 text-[#4A3F5C] border border-[#B8A9D9]/30">
+                  <Scissors className="h-5 w-5 text-[#B8A9D9]" />
+                </div>
+                <div>
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Total de Serviços Cadastrados</span>
+                  <strong className="text-xl font-bold text-[#4A3F5C]">
+                    {services.length} {services.length === 1 ? 'serviço' : 'serviços'}
+                  </strong>
+                </div>
+              </div>
+            </div>
 
-            return (
-              <div
-                key={s.id}
-                className={`rounded-3xl bg-white p-4 shadow-xs border transition flex flex-col justify-between h-full space-y-4 ${
-                  isAtivo ? 'border-gray-200/80 hover:border-[#B8A9D9]' : 'border-gray-200 opacity-60 bg-gray-50/50'
-                }`}
+            <button
+              onClick={openCreateModal}
+              className="w-full py-3.5 rounded-2xl bg-[#4A3F5C] text-xs font-semibold text-white shadow-xs hover:bg-[#393047] transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Plus className="h-4 w-4 text-[#B8A9D9]" />
+              <span>Cadastrar Novo Serviço</span>
+            </button>
+          </div>
+
+          {services.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-gray-300 p-12 text-center bg-white shadow-2xs">
+              <Scissors className="mx-auto h-12 w-12 text-[#B8A9D9] mb-4" />
+              <h3 className="text-base font-bold text-[#4A3F5C]">Nenhum serviço cadastrado</h3>
+              <p className="mt-1 text-xs text-gray-500 font-medium max-w-sm mx-auto">
+                Cadastre seus procedimentos para começar a receber agendamentos online de suas clientes.
+              </p>
+              <button
+                onClick={openCreateModal}
+                className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-[#4A3F5C] px-5 py-3 text-xs font-semibold text-white shadow-xs hover:bg-[#393047] transition cursor-pointer"
               >
+                <Plus className="h-4 w-4 text-[#B8A9D9]" />
+                <span>Adicionar Primeiro Serviço</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {services.map((s) => {
+                const isAtivo = s.ativo !== false
+                return (
+                  <div
+                    key={s.id}
+                    className={`rounded-3xl bg-white p-4 shadow-xs border transition flex flex-col justify-between h-full space-y-4 ${
+                      isAtivo ? 'border-gray-200/80 hover:border-[#B8A9D9]' : 'border-gray-200 opacity-60 bg-gray-50/50'
+                    }`}
+                  >
                 <div className="space-y-3 flex-1 flex flex-col justify-between">
                   <div>
                     {/* Foto Banner Ampliada (Item 15) */}
@@ -497,6 +790,194 @@ export default function ServicesManager({ initialServices, profissionalId }: Ser
           })}
         </div>
       )}
+        </>
+      ) : (
+        <>
+          {/* Aba de Combos: Header e Botão */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="rounded-3xl bg-white p-5 border border-gray-200/80 shadow-2xs flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-50 text-[#4A3F5C] border border-[#B8A9D9]/30">
+                  <Sparkles className="h-5 w-5 text-[#B8A9D9]" />
+                </div>
+                <div>
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Total de Combos Cadastrados</span>
+                  <strong className="text-xl font-bold text-[#4A3F5C]">
+                    {combos.length} {combos.length === 1 ? 'combo' : 'combos'}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={openCreateComboModal}
+              className="w-full py-3.5 rounded-2xl bg-[#4A3F5C] text-xs font-semibold text-white shadow-xs hover:bg-[#393047] transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Plus className="h-4 w-4 text-[#B8A9D9]" />
+              <span>Criar Novo Combo</span>
+            </button>
+          </div>
+
+          {/* Lista de Combos */}
+          {combos.length === 0 ? (
+            <div className="rounded-2xl bg-white p-12 text-center border border-gray-100 shadow-xs space-y-3">
+              <Sparkles className="mx-auto h-8 w-8 text-[#B8A9D9]" />
+              <h3 className="text-sm font-bold text-[#4A3F5C]">Nenhum combo cadastrado</h3>
+              <p className="text-xs text-gray-500 max-w-sm mx-auto">
+                Agrupe 2 ou mais serviços em um pacote com preço promocional para incentivar agendamentos completos.
+              </p>
+              <button
+                type="button"
+                onClick={openCreateComboModal}
+                className="mt-2 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-100 text-[#4A3F5C] text-xs font-bold hover:bg-purple-200 transition cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Criar Primeiro Combo</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {combos.map((combo) => {
+                const isAtivo = combo.ativo !== false
+
+                return (
+                  <div
+                    key={combo.id}
+                    className={`rounded-3xl bg-white p-4 shadow-xs border transition flex flex-col justify-between h-full space-y-4 ${
+                      isAtivo ? 'border-gray-200/80 hover:border-[#B8A9D9]' : 'border-gray-200 opacity-60 bg-gray-50/50'
+                    }`}
+                  >
+                    <div className="space-y-3 flex-1 flex flex-col justify-between">
+                      <div>
+                        {/* Foto Banner do Combo */}
+                        <div className="relative h-40 w-full shrink-0 rounded-2xl overflow-hidden border border-gray-100 bg-purple-50/60 mb-3 shadow-2xs">
+                          {combo.foto_url ? (
+                            <Image src={combo.foto_url} alt={combo.nome} fill className="object-cover" unoptimized />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-[#B8A9D9]">
+                              <Sparkles className="h-10 w-10 opacity-70" />
+                            </div>
+                          )}
+
+                          {!isAtivo ? (
+                            <div className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-900/80 text-white backdrop-blur-xs">
+                              Pausado
+                            </div>
+                          ) : (
+                            <div className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-900/80 text-white backdrop-blur-xs flex items-center gap-1">
+                              <Tag className="h-3 w-3 text-pink-300" />
+                              <span>Combo Especial</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Nome do Combo */}
+                        <h3 className="font-bold text-base text-[#4A3F5C] leading-snug line-clamp-1">
+                          {combo.nome}
+                        </h3>
+
+                        {/* Descrição */}
+                        <div className="min-h-[2rem] flex items-center mt-1">
+                          {combo.descricao ? (
+                            <p className="text-xs text-[#4A3F5C]/75 leading-relaxed line-clamp-2">
+                              {combo.descricao}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-transparent select-none">—</p>
+                          )}
+                        </div>
+
+                        {/* Serviços Inclusos (Tags) */}
+                        <div className="mt-2 space-y-1.5 pt-2 border-t border-gray-100">
+                          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">
+                            Serviços inclusos ({combo.servicos.length}):
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {combo.servicos.map((s) => (
+                              <span
+                                key={s.id}
+                                className="text-[11px] font-semibold bg-purple-50 text-[#4A3F5C] border border-[#B8A9D9]/30 px-2 py-0.5 rounded-lg truncate max-w-full"
+                              >
+                                {s.nome}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Duração e Preço */}
+                        <div className="flex items-center justify-between text-xs font-semibold pt-3 border-t border-gray-100 mt-3">
+                          <div className="flex items-center gap-1.5 text-[#4A3F5C]/80 bg-gray-50 px-2.5 py-1 rounded-xl border border-gray-200/60">
+                            <Clock className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                            <span>{combo.duracaoTotalMinutos} min</span>
+                          </div>
+
+                          <div className="flex flex-col items-end">
+                            {combo.precoOriginalTotal > combo.preco_combo && (
+                              <span className="text-[11px] text-gray-400 line-through">
+                                R$ {combo.precoOriginalTotal.toFixed(2)}
+                              </span>
+                            )}
+                            <span className="font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-xl border border-emerald-100">
+                              R$ {combo.preco_combo.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Economia */}
+                        {combo.descontoEconomia > 0 && (
+                          <div className="mt-2 flex items-center justify-center p-1.5 rounded-xl bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-200/60">
+                            <span>Economia de R$ {combo.descontoEconomia.toFixed(2)}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Ações do Combo */}
+                      <div className="flex items-center gap-2 pt-3 border-t border-gray-100 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleComboStatus(combo.id, combo.ativo)}
+                          className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${
+                            isAtivo
+                              ? 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
+                              : 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700'
+                          }`}
+                        >
+                          <Power className="h-3.5 w-3.5" />
+                          <span>{isAtivo ? 'Pausar' : 'Ativar'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => openEditComboModal(combo)}
+                          className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-[#4A3F5C] transition cursor-pointer shadow-2xs"
+                          title="Editar combo"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={deletingComboId === combo.id}
+                          onClick={() => handleDeleteCombo(combo.id)}
+                          className="p-2 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 transition cursor-pointer shadow-2xs disabled:opacity-50"
+                          title="Excluir combo"
+                        >
+                          {deletingComboId === combo.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </>
+      )}
 
       {/* Modal de Criação / Edição de Serviço (Item 10a: Responsivo para mobile) */}
       {showModal && (
@@ -585,7 +1066,7 @@ export default function ServicesManager({ initialServices, profissionalId }: Ser
                       <div className="flex items-center gap-2">
                         <label className="cursor-pointer inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-gray-300 bg-white text-xs font-semibold text-[#4A3F5C] hover:bg-gray-100 transition shadow-2xs">
                           <Camera className="h-3.5 w-3.5 text-[#B8A9D9]" />
-                          <span>Trocar Imagem</span>
+                          <span>Trocar</span>
                           <input
                             type="file"
                             accept="image/jpeg,image/png,image/webp,image/gif"
@@ -703,6 +1184,203 @@ export default function ServicesManager({ initialServices, profissionalId }: Ser
                   className="rounded-xl bg-[#4A3F5C] px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-[#393047] transition disabled:opacity-50 flex items-center gap-2 cursor-pointer"
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar Serviço'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Criação / Edição de Combo */}
+      {showComboModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-3xl bg-white p-4 sm:p-6 shadow-2xl space-y-5 relative max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="text-lg sm:text-xl font-bold text-[#4A3F5C]">
+                {editingCombo ? 'Editar Combo Promocional' : 'Novo Combo Promocional'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowComboModal(false)}
+                className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleComboSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80 mb-1">
+                  Nome do Combo *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={comboNome}
+                  onChange={(e) => setComboNome(e.target.value)}
+                  placeholder="Ex: Combo Cílios + Sobrancelha Perfeita"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 px-4 text-sm text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80">
+                    Descrição Breve (Opcional)
+                  </label>
+                  <span className={`text-[11px] font-bold ${comboDescricao.length >= 60 ? 'text-amber-600' : 'text-gray-400'}`}>
+                    {comboDescricao.length}/60
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  maxLength={60}
+                  value={comboDescricao}
+                  onChange={(e) => setComboDescricao(e.target.value)}
+                  placeholder="Ex: Pacote completo para realçar o olhar"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 px-4 text-sm text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-none"
+                />
+              </div>
+
+              {/* Upload de Foto do Combo */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80 mb-1">
+                  Foto do Combo (Opcional)
+                </label>
+                {comboFotoUrl ? (
+                  <div className="relative h-32 w-full rounded-2xl overflow-hidden border border-gray-200 bg-gray-50">
+                    <Image src={comboFotoUrl} alt="Foto Combo" fill className="object-cover" unoptimized />
+                    <button
+                      type="button"
+                      onClick={() => setComboFotoUrl('')}
+                      className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1.5 hover:bg-black/80 transition cursor-pointer"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 hover:border-[#B8A9D9] rounded-2xl p-4 bg-gray-50/50 cursor-pointer transition">
+                    <UploadCloud className="h-6 w-6 text-[#B8A9D9] mb-1" />
+                    <span className="text-xs font-semibold text-[#4A3F5C]">
+                      {comboUploading ? 'Enviando foto...' : 'Clique para adicionar foto do combo'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleComboPhotoUpload(file)
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* Seleção de Serviços que Compõem o Combo */}
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80">
+                  Serviços Inclusos no Combo (Selecione ao menos 2) *
+                </label>
+
+                {services.length < 2 ? (
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
+                    Você precisa ter ao menos 2 serviços cadastrados para criar um combo.
+                  </div>
+                ) : (
+                  <div className="max-h-48 overflow-y-auto space-y-1.5 border border-gray-200 rounded-2xl p-2 bg-gray-50/50">
+                    {services.map((s) => {
+                      const isSelected = comboServicoIds.includes(s.id)
+                      return (
+                        <div
+                          key={s.id}
+                          onClick={() => toggleComboServico(s.id)}
+                          className={`flex items-center justify-between p-2.5 rounded-xl border transition cursor-pointer ${
+                            isSelected
+                              ? 'bg-purple-50/80 border-[#B8A9D9] text-[#4A3F5C]'
+                              : 'bg-white border-gray-200/80 text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className={`h-5 w-5 rounded-md border flex items-center justify-center shrink-0 ${
+                                isSelected ? 'bg-[#4A3F5C] border-[#4A3F5C] text-white' : 'border-gray-300 bg-white'
+                              }`}
+                            >
+                              {isSelected && <Check className="h-3.5 w-3.5" />}
+                            </div>
+                            <span className="text-xs font-bold leading-tight line-clamp-1">{s.nome}</span>
+                          </div>
+                          <div className="text-right shrink-0 text-[11px] font-semibold text-gray-500">
+                            <span>{s.duracao_minutos} min • R$ {Number(s.preco).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Cálculo em tempo real: Duração e Preço Sugerido */}
+              {comboServicoIds.length > 0 && (
+                <div className="p-3.5 rounded-2xl bg-purple-50/60 border border-purple-200/80 space-y-2 text-xs">
+                  <div className="flex justify-between font-semibold text-[#4A3F5C]">
+                    <span>Duração combinada total:</span>
+                    <strong className="font-bold">{comboDuracaoCalculada} min</strong>
+                  </div>
+                  <div className="flex justify-between font-semibold text-[#4A3F5C]">
+                    <span>Soma dos preços avulsos:</span>
+                    <strong className="font-bold font-mono">R$ {comboPrecoOriginalSoma.toFixed(2)}</strong>
+                  </div>
+                </div>
+              )}
+
+              {/* Preço do Combo */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80 mb-1">
+                  Preço Especial do Combo (R$) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
+                    R$
+                  </span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    required
+                    value={comboPreco}
+                    onChange={(e) => setComboPreco(e.target.value)}
+                    placeholder={comboPrecoOriginalSoma > 0 ? String(Math.round(comboPrecoOriginalSoma * 0.8)) : '150.00'}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 pl-10 pr-4 text-sm font-bold text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-none"
+                  />
+                </div>
+                {comboEconomiaCalculada > 0 && comboPrecoNum > 0 && (
+                  <p className="text-xs text-emerald-700 font-semibold mt-1">
+                    ✨ Desconto de R$ {comboEconomiaCalculada.toFixed(2)} para suas clientes!
+                  </p>
+                )}
+                {comboPrecoNum > comboPrecoOriginalSoma && comboPrecoOriginalSoma > 0 && (
+                  <p className="text-xs text-amber-700 font-semibold mt-1">
+                    ⚠️ Atenção: O preço do combo está maior que a soma dos serviços avulsos.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setShowComboModal(false)}
+                  className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={comboSaving || comboUploading || comboServicoIds.length < 2}
+                  className="rounded-xl bg-[#4A3F5C] px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-[#393047] transition disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                >
+                  {comboSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar Combo'}
                 </button>
               </div>
             </form>

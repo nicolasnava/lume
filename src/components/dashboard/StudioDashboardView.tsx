@@ -27,6 +27,9 @@ import {
   Search,
   Palette,
   Camera,
+  Store,
+  Crown,
+  User,
 } from 'lucide-react'
 import {
   StudioUserStatus,
@@ -656,6 +659,9 @@ function OwnerStudioSection({
 }) {
   const router = useRouter()
 
+  // Aba ativa: studio, equipe ou vitrine (igual ao /perfil)
+  const [activeTab, setActiveTab] = useState<'studio' | 'equipe' | 'vitrine'>('studio')
+
   // Estados de edição do studio
   const [nome, setNome] = useState(estudio.nome)
   const [slug, setSlug] = useState(estudio.slug)
@@ -668,6 +674,7 @@ function OwnerStudioSection({
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [isUploadingEdit, setIsUploadingEdit] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [showStudioSlugModal, setShowStudioSlugModal] = useState(false)
 
   const handleUploadFotoEspaco = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -727,29 +734,26 @@ function OwnerStudioSection({
   } | null>(null)
   const [isRemovingMember, setIsRemovingMember] = useState(false)
 
-  // Entrar na equipe de atendimento (dona)
-  const handleJoinTeam = async () => {
-    setIsJoiningTeam(true)
-    try {
-      await alternarDonaComoAtendente(true)
-      router.refresh()
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Erro ao entrar na equipe.')
-    } finally {
-      setIsJoiningTeam(false)
-    }
-  }
+  // Status unificado de atendimento da dona
+  const isAtendendo = donaNaEquipe && ativoState
 
-  // Alternar atendimento da dona
-  const handleToggleAtivo = async () => {
+  // Alternar atendimento da dona de forma simplificada e direta
+  const handleToggleAtendimentoDona = async () => {
     setIsTogglingAtivo(true)
     try {
-      const next = !ativoState
-      await alternarAtivoNoEstudio(next)
-      setAtivoState(next)
+      if (isAtendendo) {
+        await alternarAtivoNoEstudio(false)
+        setAtivoState(false)
+      } else {
+        if (!donaNaEquipe) {
+          await alternarDonaComoAtendente(true)
+        }
+        await alternarAtivoNoEstudio(true)
+        setAtivoState(true)
+      }
       router.refresh()
     } catch (err) {
-      console.error(err)
+      console.error('Erro ao alternar status de atendimento:', err)
     } finally {
       setIsTogglingAtivo(false)
     }
@@ -870,8 +874,12 @@ function OwnerStudioSection({
   }
 
   // Salvar edição do studio
-  const handleSaveEdit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSaveEdit = async (e?: React.FormEvent, force = false) => {
+    if (e) e.preventDefault()
+    if (!force && slug !== estudio.slug) {
+      setShowStudioSlugModal(true)
+      return
+    }
     setIsSavingEdit(true)
     setSaveSuccess(false)
     try {
@@ -886,6 +894,7 @@ function OwnerStudioSection({
         fotos_espaco: fotosEspaco,
       })
       setSaveSuccess(true)
+      setShowStudioSlugModal(false)
       setTimeout(() => setSaveSuccess(false), 4000)
       router.refresh()
     } catch (err: unknown) {
@@ -903,765 +912,921 @@ function OwnerStudioSection({
           <div className="relative h-44 sm:h-60 w-full">
             <Image src={estudio.foto_capa_url} alt={estudio.nome} fill className="object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-            <div className="absolute bottom-4 left-6 sm:bottom-6 sm:left-8 z-10 text-white">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-bold uppercase tracking-wider mb-2">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                <span>Administradora do Studio</span>
-              </span>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight">{estudio.nome}</h1>
-              <p className="text-xs text-gray-200 mt-0.5">/studio/{estudio.slug}</p>
+            <div className="absolute bottom-4 left-6 sm:bottom-6 sm:left-8 right-6 sm:right-8 z-10 text-white flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+              <div>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-bold uppercase tracking-wider mb-2">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>Administradora do Studio</span>
+                </span>
+                <h1 className="text-2xl sm:text-3xl font-black tracking-tight">{estudio.nome}</h1>
+                <p className="text-xs text-gray-200 mt-0.5 font-mono">/studio/{estudio.slug}</p>
+              </div>
+
+              <Link
+                href={`/studio/${estudio.slug}`}
+                target="_blank"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-white/30 bg-white/20 backdrop-blur-md text-xs font-semibold text-white hover:bg-white/30 transition cursor-pointer self-start sm:self-auto shadow-sm"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                <span>Ver vitrine</span>
+              </Link>
             </div>
           </div>
         ) : (
-          <div className="p-6 sm:p-8 bg-gradient-to-r from-purple-50 to-white border-b border-gray-100 flex items-center justify-between">
+          <div className="p-6 sm:p-8 bg-gradient-to-r from-purple-50 via-pink-50/20 to-white border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#B8A9D9]/20 text-[#4A3F5C] border border-[#B8A9D9]/30 text-[11px] font-bold uppercase tracking-wider mb-2">
                 <ShieldCheck className="h-3.5 w-3.5 text-[#4A3F5C]" />
                 <span>Administradora do Studio</span>
               </span>
               <h1 className="text-2xl sm:text-3xl font-black text-[#4A3F5C]">{estudio.nome}</h1>
-              <p className="text-xs text-gray-500 mt-0.5">/studio/{estudio.slug}</p>
+              <p className="text-xs text-gray-500 mt-0.5 font-mono">/studio/{estudio.slug}</p>
             </div>
 
             <Link
               href={`/studio/${estudio.slug}`}
               target="_blank"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition cursor-pointer self-start sm:self-auto shadow-2xs"
             >
               <ExternalLink className="h-3.5 w-3.5 text-[#B8A9D9]" />
               <span>Ver vitrine</span>
             </Link>
           </div>
         )}
-
-        <div className="p-6 sm:p-8 space-y-6">
-          {donaNaEquipe ? (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-purple-50/40 border border-purple-100">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-gray-900">
-                    Sua participação nos atendimentos do studio
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-[#B8A9D9]/20 text-[#4A3F5C] border border-[#B8A9D9]/30 text-[10px] font-bold">
-                    Na Equipe
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500 max-w-xl leading-relaxed">
-                  Você faz parte da equipe de atendimento e está visível para agendamentos. Você pode pausar temporariamente ou sair da equipe caso queira apenas administrar.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                <button
-                  type="button"
-                  disabled={isTogglingAtivo}
-                  onClick={handleToggleAtivo}
-                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
-                    ativoState
-                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
-                      : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
-                  }`}
-                >
-                  {isTogglingAtivo ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <UserCheck className="h-3.5 w-3.5" />
-                  )}
-                  <span>{ativoState ? 'Atendendo no Studio' : 'Em Pausa (Oculta)'}</span>
-                </button>
-
-                {(() => {
-                  const ownerMember = membros.find((m) => m.isOwner)
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (ownerMember) {
-                          setMemberToRemove({
-                            id: ownerMember.id,
-                            nome: ownerMember.nome,
-                            isOwner: true,
-                          })
-                        }
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 transition cursor-pointer"
-                      title="Deixar de atender no studio e atuar apenas como dona/administradora"
-                    >
-                      <UserMinus className="h-3.5 w-3.5 text-gray-500" />
-                      <span>Deixar de Atender</span>
-                    </button>
-                  )
-                })()}
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-amber-50/60 border border-amber-200/80">
-              <div className="space-y-1">
-                <span className="text-xs font-bold text-amber-950 block">
-                  Modo de Atuação: Apenas Administradora
-                </span>
-                <p className="text-xs text-amber-900/80 max-w-xl leading-relaxed">
-                  Você é a proprietária deste studio, mas não faz parte da equipe de atendimento. Seu perfil não aparece na vitrine e não recebe agendamentos pelo studio. Você pode entrar na equipe a qualquer momento.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                disabled={isJoiningTeam}
-                onClick={handleJoinTeam}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#4A3F5C] hover:bg-[#3d334d] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shrink-0 shadow-xs"
-              >
-                {isJoiningTeam ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <UserPlus className="h-3.5 w-3.5" />
-                )}
-                <span>Começar a atender no Studio</span>
-              </button>
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* 2. Painel de Informações do Studio (estilo /perfil) */}
-      <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-50 text-[#4A3F5C] border border-[#B8A9D9]/30">
-              <Building2 className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-[#4A3F5C]">Informações do Studio</h2>
-              <p className="text-xs text-gray-500">
-                Personalize o nome, link, bio, capa e cores do seu studio
-              </p>
-            </div>
-          </div>
+      {/* 2. Abas de Navegação (Igualmente distribuídas preenchendo o espaço, idêntico a /perfil) */}
+      <div className="grid grid-cols-3 border-b border-gray-200/80 pb-px w-full">
+        <button
+          type="button"
+          onClick={() => setActiveTab('studio')}
+          className={`flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer text-center w-full ${
+            activeTab === 'studio'
+              ? 'border-purple-600 text-[#4A3F5C]'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          <Building2 className={`h-4 w-4 shrink-0 ${activeTab === 'studio' ? 'text-purple-600' : 'text-gray-400'}`} />
+          <span className="truncate">Studio</span>
+        </button>
 
-          <Link
-            href={`/studio/${estudio.slug}`}
-            target="_blank"
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition cursor-pointer self-start sm:self-auto"
-          >
-            <ExternalLink className="h-3.5 w-3.5 text-[#B8A9D9]" />
-            <span>Ver vitrine pública</span>
-          </Link>
-        </div>
+        <button
+          type="button"
+          onClick={() => setActiveTab('equipe')}
+          className={`flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer text-center w-full ${
+            activeTab === 'equipe'
+              ? 'border-purple-600 text-[#4A3F5C]'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          <Users className={`h-4 w-4 shrink-0 ${activeTab === 'equipe' ? 'text-purple-600' : 'text-gray-400'}`} />
+          <span className="truncate">Equipe</span>
+          <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 shrink-0">
+            {membros.length}
+          </span>
+        </button>
 
-        <form onSubmit={handleSaveEdit} className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {/* Nome */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-700 block">
-                Nome do Studio <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                placeholder="Ex: Maison Lumière Concept"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#4A3F5C] focus:ring-1 focus:ring-[#4A3F5C] outline-hidden text-sm font-semibold text-[#4A3F5C]"
-              />
-            </div>
+        <button
+          type="button"
+          onClick={() => setActiveTab('vitrine')}
+          className={`flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer text-center w-full ${
+            activeTab === 'vitrine'
+              ? 'border-purple-600 text-[#4A3F5C]'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          <Store className={`h-4 w-4 shrink-0 ${activeTab === 'vitrine' ? 'text-purple-600' : 'text-gray-400'}`} />
+          <span className="truncate">Vitrine</span>
+        </button>
+      </div>
 
-            {/* Slug */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-700 block">
-                Link do Studio (slug) <span className="text-rose-500">*</span>
-              </label>
-              <div className="flex items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs text-gray-500 focus-within:border-[#4A3F5C] focus-within:ring-1 focus-within:ring-[#4A3F5C] focus-within:bg-white">
-                <span className="shrink-0 font-medium">/studio/</span>
-                <input
-                  type="text"
-                  required
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  className="w-full bg-transparent px-1 outline-hidden font-bold text-gray-900 text-sm font-mono"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Bio */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-700 block">
-              Biografia / Apresentação do Studio
-            </label>
-            <textarea
-              rows={3}
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="Descreva o conceito do espaço, especialidades da equipe ou diferenciais..."
-              className="w-full rounded-2xl border border-gray-200 bg-gray-50/50 p-3 text-xs text-[#4A3F5C] focus:border-[#B8A9D9] focus:bg-white focus:outline-hidden resize-none leading-relaxed"
-            />
-          </div>
-
-          {/* Foto de Capa */}
-          <div className="space-y-2 pt-2 border-t border-gray-100">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-gray-700 block">Foto de Capa do Studio</label>
-              <span className="text-[11px] text-gray-400">Recomendado: 1200x400 (paisagem)</span>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              {fotoCapaUrl ? (
-                <div className="relative h-28 w-full sm:w-60 rounded-2xl overflow-hidden border border-gray-200 shadow-2xs">
-                  <Image src={fotoCapaUrl} alt="Capa" fill className="object-cover" />
-                </div>
-              ) : (
-                <div className="h-24 w-full sm:w-60 rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 text-xs">
-                  <Camera className="h-6 w-6 mb-1 text-gray-300" />
-                  <span>Sem foto de capa</span>
-                </div>
-              )}
-
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-bold text-gray-700 transition cursor-pointer">
-                  {isUploadingEdit ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Upload className="h-4 w-4" />
-                  )}
-                  <span>{fotoCapaUrl ? 'Alterar Imagem' : 'Enviar Imagem'}</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    disabled={isUploadingEdit}
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
-                      setIsUploadingEdit(true)
-                      try {
-                        const supabase = createClient()
-                        const ext = file.name.split('.').pop()
-                        const fileName = `estudio-capa-${Date.now()}.${ext}`
-                        await supabase.storage
-                          .from('avatars')
-                          .upload(fileName, file, { upsert: true })
-                        const { data } = supabase.storage
-                          .from('avatars')
-                          .getPublicUrl(fileName)
-                        setFotoCapaUrl(data.publicUrl)
-                      } finally {
-                        setIsUploadingEdit(false)
-                      }
-                    }}
-                    className="hidden"
-                  />
-                </label>
-                {fotoCapaUrl && (
-                  <button
-                    type="button"
-                    onClick={() => setFotoCapaUrl('')}
-                    className="text-xs text-rose-600 hover:underline font-semibold cursor-pointer"
-                  >
-                    Remover capa
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Identidade Visual & Cores */}
-          <div className="space-y-4 pt-2 border-t border-gray-100">
-            <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
-              <Palette className="h-4 w-4 text-[#B8A9D9]" />
-              <span>Identidade Visual do Studio</span>
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* Cor Primária */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-[#4A3F5C]">
-                  Cor Primária de Destaque
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={corPrimaria}
-                    onChange={(e) => setCorPrimaria(e.target.value)}
-                    className="h-10 w-12 cursor-pointer rounded-lg border border-gray-200 p-1"
-                  />
-                  <input
-                    type="text"
-                    value={corPrimaria}
-                    onChange={(e) => setCorPrimaria(e.target.value)}
-                    className="w-28 rounded-xl border border-gray-200 bg-gray-50/50 p-2 text-xs font-mono text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-hidden font-bold"
-                  />
-                </div>
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  {['#B8A9D9', '#E8C5C8', '#4A3F5C', '#D4B89B', '#A8D5C5', '#E2BDAB'].map((hex) => (
-                    <button
-                      key={hex}
-                      type="button"
-                      onClick={() => setCorPrimaria(hex)}
-                      className={`h-6 w-6 rounded-full border transition-transform cursor-pointer ${
-                        corPrimaria.toLowerCase() === hex.toLowerCase()
-                          ? 'scale-110 ring-2 ring-[#4A3F5C]'
-                          : 'hover:scale-105'
-                      }`}
-                      style={{ backgroundColor: hex }}
-                      title={hex}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Cor Secundária */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-[#4A3F5C]">
-                  Cor Secundária (Fundo)
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={corSecundaria}
-                    onChange={(e) => setCorSecundaria(e.target.value)}
-                    className="h-10 w-12 cursor-pointer rounded-lg border border-gray-200 p-1"
-                  />
-                  <input
-                    type="text"
-                    value={corSecundaria}
-                    onChange={(e) => setCorSecundaria(e.target.value)}
-                    className="w-28 rounded-xl border border-gray-200 bg-gray-50/50 p-2 text-xs font-mono text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-hidden font-bold"
-                  />
-                </div>
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  {['#FAF7F5', '#FFFFFF', '#F5F3FF', '#FFFBEB', '#F0FDF4', '#FDF2F8'].map((hex) => (
-                    <button
-                      key={hex}
-                      type="button"
-                      onClick={() => setCorSecundaria(hex)}
-                      className={`h-6 w-6 rounded-full border transition-transform cursor-pointer ${
-                        corSecundaria.toLowerCase() === hex.toLowerCase()
-                          ? 'scale-110 ring-2 ring-[#4A3F5C]'
-                          : 'hover:scale-105'
-                      }`}
-                      style={{ backgroundColor: hex }}
-                      title={hex}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 3. Nosso Espaço (Fotos do Ambiente) */}
-          <div className="space-y-4 pt-4 border-t border-gray-100">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-              <div>
-                <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-[#B8A9D9]" />
-                  <span>Nosso Espaço (Fotos do Ambiente)</span>
-                </h3>
-                <p className="text-[11px] text-gray-500 mt-0.5">
-                  Adicione fotos do seu studio (recepção, macas, iluminação). Se não houver foto cadastrada, o título e seção não aparecerão na vitrine.
+      {/* ABA 1: STUDIO */}
+      {activeTab === 'studio' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Card Participação nos atendimentos (Simplificado com Toggle Único) */}
+          <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-purple-50/40 border border-purple-100/80">
+              <div className="space-y-1">
+                <span className="text-sm font-bold text-[#4A3F5C]">
+                  Atendimento de Clientes no Studio
+                </span>
+                <p className="text-xs text-gray-500 max-w-xl leading-relaxed">
+                  {isAtendendo
+                    ? 'Você está disponível na equipe e visível para receber agendamentos na vitrine pública do studio.'
+                    : 'Você está atuando apenas na administração do studio e da equipe, sem receber agendamentos na vitrine.'}
                 </p>
               </div>
-              <span className="text-xs font-bold text-gray-400">
-                {fotosEspaco.length} / 6 fotos
-              </span>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-3 bg-white px-3.5 py-2 rounded-2xl border border-gray-200/80 shadow-2xs">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isAtendendo}
+                    disabled={isTogglingAtivo}
+                    onClick={handleToggleAtendimentoDona}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50 ${
+                      isAtendendo ? 'bg-emerald-600' : 'bg-gray-300'
+                    }`}
+                    title={isAtendendo ? 'Clique para pausar seus atendimentos no studio' : 'Clique para ativar seus atendimentos no studio'}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                        isAtendendo ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                  <span className="text-xs font-bold text-[#4A3F5C] min-w-[145px]">
+                    {isTogglingAtivo ? 'Atualizando...' : isAtendendo ? 'Atendendo no Studio' : 'Apenas Administrando'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Dados Principais do Studio */}
+          <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-6">
+            <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-50 text-[#4A3F5C] border border-[#B8A9D9]/30">
+                <Building2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-[#4A3F5C]">Informações do Studio</h2>
+                <p className="text-xs text-gray-500">
+                  Personalize o nome, link e apresentação do seu studio
+                </p>
+              </div>
             </div>
 
-            {/* Grid de fotos atuais */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {fotosEspaco.map((foto, index) => (
-                <div
-                  key={index}
-                  className="relative aspect-4/3 rounded-2xl overflow-hidden border border-gray-200 group bg-gray-100 shadow-2xs"
+            <form onSubmit={handleSaveEdit} className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* Nome */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-700 block">
+                    Nome do Studio <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                    placeholder="Ex: Maison Lumière Concept"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#4A3F5C] focus:ring-1 focus:ring-[#4A3F5C] outline-hidden text-sm font-semibold text-[#4A3F5C]"
+                  />
+                </div>
+
+                {/* Slug */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-700 block">
+                    Link do Studio (slug) <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="flex items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs text-gray-500 focus-within:border-[#4A3F5C] focus-within:ring-1 focus-within:ring-[#4A3F5C] focus-within:bg-white">
+                    <span className="shrink-0 font-medium">/studio/</span>
+                    <input
+                      type="text"
+                      required
+                      value={slug}
+                      onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                      className="w-full bg-transparent px-1 outline-hidden font-bold text-gray-900 text-sm font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Bio */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-700 block">
+                  Biografia / Apresentação do Studio
+                </label>
+                <textarea
+                  rows={4}
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="Descreva o conceito do espaço, especialidades da equipe ou diferenciais..."
+                  className="w-full rounded-2xl border border-gray-200 bg-gray-50/50 p-3 text-xs text-[#4A3F5C] focus:border-[#B8A9D9] focus:bg-white focus:outline-hidden resize-none leading-relaxed font-medium"
+                />
+              </div>
+
+              {/* Rodapé com botão Salvar */}
+              <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
+                {saveSuccess ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 animate-in fade-in">
+                    <Check className="h-4 w-4" />
+                    <span>Informações do Studio salvas com sucesso!</span>
+                  </span>
+                ) : (
+                  <span />
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#4A3F5C] hover:bg-[#3d334d] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-xs"
                 >
-                  <Image src={foto} alt={`Espaço ${index + 1}`} fill className="object-cover" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  {isSavingEdit && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>Salvar Alterações</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ABA 2: EQUIPE */}
+      {activeTab === 'equipe' && (
+        <div className="space-y-8 animate-in fade-in duration-200">
+          {/* Membros do Studio */}
+          <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-[#4A3F5C] flex items-center gap-2">
+                  <Users className="h-5 w-5 text-[#B8A9D9]" />
+                  <span>Equipe do Studio</span>
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {membros.length} {membros.length === 1 ? 'profissional' : 'profissionais'} fazendo
+                  parte deste espaço
+                </p>
+              </div>
+            </div>
+
+            <div className="divide-y divide-gray-100 border border-gray-100 rounded-2xl overflow-hidden">
+              {membros.map((membro) => (
+                <div
+                  key={membro.id}
+                  className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50/50 transition"
+                >
+                  <div className="flex items-center gap-3.5">
+                    <div className="relative h-12 w-12 shrink-0 rounded-full overflow-hidden bg-gray-100 border border-purple-200">
+                      {membro.foto_url ? (
+                        <Image src={membro.foto_url} alt={membro.nome} fill className="object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center font-bold text-purple-700">
+                          {membro.nome.charAt(0)}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="text-sm font-bold text-gray-900">{membro.nome}</h3>
+                        {membro.isOwner ? (
+                          <span title="Dona / Administradora do Studio" className="inline-flex items-center text-amber-500">
+                            <Crown className="h-4 w-4 fill-amber-400/25" />
+                          </span>
+                        ) : (
+                          <span title="Membro da Equipe" className="inline-flex items-center text-gray-400">
+                            <User className="h-4 w-4" />
+                          </span>
+                        )}
+                      </div>
+                      {(() => {
+                        const categorias = parseCategorias(membro.categoria)
+                        return (
+                          <p className="text-xs text-gray-500">
+                            {categorias.length > 0
+                              ? categorias.map((c) => getCategoryLabel(c, true)).join(' • ')
+                              : 'Profissional de beleza'}
+                          </p>
+                        )
+                      })()}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 self-end sm:self-center">
+                    <span
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                        membro.ativo_no_estudio
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          membro.ativo_no_estudio ? 'bg-emerald-500' : 'bg-gray-400'
+                        }`}
+                      />
+                      <span>{membro.ativo_no_estudio ? 'Atendendo' : 'Oculta'}</span>
+                    </span>
+
                     <button
                       type="button"
-                      onClick={() => handleRemoveFotoEspaco(index)}
-                      className="p-1.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition cursor-pointer shadow-xs"
-                      title="Remover foto"
+                      onClick={() =>
+                        setMemberToRemove({
+                          id: membro.id,
+                          nome: membro.nome,
+                          isOwner: membro.isOwner,
+                        })
+                      }
+                      className={`p-2 rounded-xl transition cursor-pointer ${
+                        membro.isOwner
+                          ? 'text-gray-400 hover:text-amber-700 hover:bg-amber-50'
+                          : 'text-gray-400 hover:text-rose-600 hover:bg-rose-50'
+                      }`}
+                      title={
+                        membro.isOwner
+                          ? 'Deixar de atender neste studio (Apenas administrar)'
+                          : 'Remover membro do studio'
+                      }
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
               ))}
-
-              {/* Botão de upload se menos de 6 fotos */}
-              {fotosEspaco.length < 6 && (
-                <label className="relative aspect-4/3 rounded-2xl border-2 border-dashed border-gray-200 hover:border-[#B8A9D9] hover:bg-purple-50/20 transition flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-[#4A3F5C] cursor-pointer p-2 text-center">
-                  {isUploadingEspaco ? (
-                    <Loader2 className="h-5 w-5 animate-spin text-purple-600" />
-                  ) : (
-                    <Plus className="h-5 w-5 text-gray-400" />
-                  )}
-                  <span className="text-[11px] font-bold">
-                    {isUploadingEspaco ? 'Enviando...' : 'Adicionar Foto'}
-                  </span>
-                  <span className="text-[9px] text-gray-400">Até 6 fotos</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    disabled={isUploadingEspaco}
-                    onChange={handleUploadFotoEspaco}
-                    className="hidden"
-                  />
-                </label>
-              )}
             </div>
           </div>
 
-          {/* Rodapé com botão Salvar */}
-          <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
-            {saveSuccess ? (
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 animate-in fade-in">
-                <Check className="h-4 w-4" />
-                <span>Informações do Studio salvas com sucesso!</span>
-              </span>
-            ) : (
-              <span />
-            )}
-
-            <button
-              type="submit"
-              disabled={isSavingEdit}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#4A3F5C] hover:bg-[#3d334d] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-xs"
-            >
-              {isSavingEdit && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              <span>Salvar Alterações</span>
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {/* 3. Equipe do Studio (Membros) */}
-      <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-[#4A3F5C] flex items-center gap-2">
-              <Users className="h-5 w-5 text-[#B8A9D9]" />
-              <span>Equipe do Studio</span>
-            </h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              {membros.length} {membros.length === 1 ? 'profissional' : 'profissionais'} fazendo
-              parte deste espaço
-            </p>
-          </div>
-        </div>
-
-        <div className="divide-y divide-gray-100 border border-gray-100 rounded-2xl overflow-hidden">
-          {membros.map((membro) => (
-            <div
-              key={membro.id}
-              className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50/50 transition"
-            >
-              <div className="flex items-center gap-3.5">
-                <div className="relative h-12 w-12 shrink-0 rounded-full overflow-hidden bg-gray-100 border border-purple-200">
-                  {membro.foto_url ? (
-                    <Image src={membro.foto_url} alt={membro.nome} fill className="object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center font-bold text-purple-700">
-                      {membro.nome.charAt(0)}
-                    </div>
-                  )}
-                </div>
-
-                <div>
+          {/* Convidar Profissionais (Link + Email) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Lado A: Convite por Link */}
+            <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-5 flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-gray-900">{membro.nome}</h3>
-                    {membro.isOwner ? (
-                      <span className="px-2 py-0.5 rounded-md bg-[#B8A9D9]/20 text-[#4A3F5C] border border-[#B8A9D9]/30 text-[10px] font-bold">
-                        Dona
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 text-[10px] font-semibold">
-                        Membro
-                      </span>
-                    )}
+                    <div className="h-8 w-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center">
+                      <Link2 className="h-4 w-4" />
+                    </div>
+                    <h3 className="text-sm font-bold text-gray-900">Convite por Link</h3>
                   </div>
-                  {(() => {
-                    const categorias = parseCategorias(membro.categoria)
-                    return (
-                      <p className="text-xs text-gray-500">
-                        {categorias.length > 0
-                          ? categorias.map((c) => getCategoryLabel(c, true)).join(' • ')
-                          : 'Profissional de beleza'}
-                      </p>
-                    )
-                  })()}
+
+                  <button
+                    type="button"
+                    disabled={isGeneratingLink}
+                    onClick={handleGenerateLink}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#4A3F5C] hover:bg-[#3d334d] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer"
+                  >
+                    {isGeneratingLink ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Plus className="h-3 w-3" />
+                    )}
+                    <span>Gerar Link</span>
+                  </button>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-3 self-end sm:self-center">
-                <span
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                    membro.ativo_no_estudio
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}
-                >
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${
-                      membro.ativo_no_estudio ? 'bg-emerald-500' : 'bg-gray-400'
-                    }`}
-                  />
-                  <span>{membro.ativo_no_estudio ? 'Atendendo' : 'Oculta'}</span>
-                </span>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setMemberToRemove({
-                      id: membro.id,
-                      nome: membro.nome,
-                      isOwner: membro.isOwner,
-                    })
-                  }
-                  className={`p-2 rounded-xl transition cursor-pointer ${
-                    membro.isOwner
-                      ? 'text-gray-400 hover:text-amber-700 hover:bg-amber-50'
-                      : 'text-gray-400 hover:text-rose-600 hover:bg-rose-50'
-                  }`}
-                  title={
-                    membro.isOwner
-                      ? 'Deixar de atender neste studio (Apenas administrar)'
-                      : 'Remover membro do studio'
-                  }
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 3. Convidar Profissionais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Lado A: Convite por Link */}
-        <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-5 flex flex-col justify-between">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center">
-                  <Link2 className="h-4 w-4" />
-                </div>
-                <h3 className="text-sm font-bold text-gray-900">Convite por Link</h3>
-              </div>
-
-              <button
-                type="button"
-                disabled={isGeneratingLink}
-                onClick={handleGenerateLink}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#4A3F5C] hover:bg-[#3d334d] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer"
-              >
-                {isGeneratingLink ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Plus className="h-3 w-3" />
-                )}
-                <span>Gerar Link</span>
-              </button>
-            </div>
-
-            <p className="text-xs text-gray-500 leading-relaxed">
-              Gere um link temporário seguro. Qualquer profissional que clicar poderá aceitar e se
-              juntar ao studio. O link expira automaticamente em 7 dias.
-            </p>
-          </div>
-
-          <div className="space-y-2 pt-2">
-            <h4 className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-              Links Ativos ({convites.filter((c) => c.tipo === 'link').length})
-            </h4>
-
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {convites.filter((c) => c.tipo === 'link').length === 0 ? (
-                <p className="text-xs text-gray-400 italic py-2">
-                  Nenhum link ativo. Clique em &quot;Gerar Link&quot; acima.
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  Gere um link temporário seguro. Qualquer profissional que clicar poderá aceitar e se
+                  juntar ao studio. O link expira automaticamente em 7 dias.
                 </p>
-              ) : (
-                convites
-                  .filter((c) => c.tipo === 'link')
-                  .map((convite) => (
-                    <div
-                      key={convite.id}
-                      className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-200/70 text-xs"
-                    >
-                      <div className="flex items-center gap-1.5 overflow-hidden">
-                        <Clock className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                        <span className="truncate font-mono text-gray-600">
-                          .../{convite.codigo}
-                        </span>
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                  Links Ativos ({convites.filter((c) => c.tipo === 'link').length})
+                </h4>
+
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {convites.filter((c) => c.tipo === 'link').length === 0 ? (
+                    <p className="text-xs text-gray-400 italic py-2">
+                      Nenhum link ativo. Clique em &quot;Gerar Link&quot; acima.
+                    </p>
+                  ) : (
+                    convites
+                      .filter((c) => c.tipo === 'link')
+                      .map((convite) => (
+                        <div
+                          key={convite.id}
+                          className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-200/70 text-xs"
+                        >
+                          <div className="flex items-center gap-1.5 overflow-hidden">
+                            <Clock className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                            <span className="truncate font-mono text-gray-600">
+                              .../{convite.codigo}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyLink(convite.codigo || '', convite.id)}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 text-[11px] font-bold text-gray-700 transition cursor-pointer"
+                            >
+                              {copiedId === convite.id ? (
+                                <>
+                                  <Check className="h-3 w-3 text-emerald-600" />
+                                  <span className="text-emerald-700">Copiado</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="h-3 w-3 text-gray-500" />
+                                  <span>Copiar</span>
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleCancelInvite(convite.id)}
+                              className="p-1 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition cursor-pointer"
+                              title="Cancelar convite"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Lado B: Convite por Email */}
+            <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-5 flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center">
+                    <Mail className="h-4 w-4" />
+                  </div>
+                  <h3 className="text-sm font-bold text-gray-900">Convidar por Email</h3>
+                </div>
+
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  Digite o email de uma profissional cadastrada no Lumê. Ela receberá um aviso de convite
+                  diretamente no painel dela.
+                </p>
+
+                <form onSubmit={handleSearchEmail} className="flex gap-2">
+                  <input
+                    type="email"
+                    required
+                    value={emailInput}
+                    onChange={(e) => {
+                      setEmailInput(e.target.value)
+                      setEmailFeedback(null)
+                      setFoundProf(null)
+                    }}
+                    placeholder="email@profissional.com"
+                    className="flex-1 px-3.5 py-2 rounded-xl border border-gray-200 text-xs focus:border-[#4A3F5C] focus:ring-1 focus:ring-[#4A3F5C] outline-hidden"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isSearchingEmail || !emailInput}
+                    className="px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-bold text-gray-700 transition disabled:opacity-50 cursor-pointer inline-flex items-center gap-1.5"
+                  >
+                    {isSearchingEmail ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Search className="h-3.5 w-3.5" />
+                    )}
+                    <span>Buscar</span>
+                  </button>
+                </form>
+
+                {emailFeedback && (
+                  <div
+                    className={`p-3 rounded-xl text-xs font-medium ${
+                      emailFeedback.type === 'success'
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                        : emailFeedback.type === 'error'
+                        ? 'bg-rose-50 text-rose-800 border border-rose-200'
+                        : 'bg-purple-50 text-purple-800 border border-purple-200'
+                    }`}
+                  >
+                    {emailFeedback.message}
+                  </div>
+                )}
+
+                {foundProf && (
+                  <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-50 to-white border border-purple-200 flex items-center justify-between gap-3 animate-in fade-in">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-9 w-9 rounded-full bg-purple-200 text-purple-800 font-bold flex items-center justify-center text-xs overflow-hidden">
+                        {foundProf.foto_url ? (
+                          <Image
+                            src={foundProf.foto_url}
+                            alt={foundProf.nome}
+                            width={36}
+                            height={36}
+                            className="object-cover"
+                          />
+                        ) : (
+                          foundProf.nome.charAt(0)
+                        )}
                       </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleCopyLink(convite.codigo || '', convite.id)}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 text-[11px] font-bold text-gray-700 transition cursor-pointer"
-                        >
-                          {copiedId === convite.id ? (
-                            <>
-                              <Check className="h-3 w-3 text-emerald-600" />
-                              <span className="text-emerald-700">Copiado</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-3 w-3 text-gray-500" />
-                              <span>Copiar</span>
-                            </>
-                          )}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleCancelInvite(convite.id)}
-                          className="p-1 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition cursor-pointer"
-                          title="Cancelar convite"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                      <div>
+                        <strong className="text-xs text-gray-900 block">{foundProf.nome}</strong>
+                        <span className="text-[10px] text-gray-500">{foundProf.email}</span>
                       </div>
                     </div>
-                  ))
-              )}
+
+                    <button
+                      type="button"
+                      disabled={isSendingEmail}
+                      onClick={handleSendEmailInvite}
+                      className="px-3 py-1.5 rounded-xl bg-[#4A3F5C] hover:bg-[#3d334d] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer inline-flex items-center gap-1"
+                    >
+                      {isSendingEmail && <Loader2 className="h-3 w-3 animate-spin" />}
+                      <span>Enviar Convite</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                  Convites Pendentes ({convites.filter((c) => c.tipo === 'email').length})
+                </h4>
+
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {convites.filter((c) => c.tipo === 'email').length === 0 ? (
+                    <p className="text-xs text-gray-400 italic py-2">Nenhum convite por email pendente.</p>
+                  ) : (
+                    convites
+                      .filter((c) => c.tipo === 'email')
+                      .map((convite) => (
+                        <div
+                          key={convite.id}
+                          className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-200/70 text-xs"
+                        >
+                          <div className="flex items-center gap-1.5 overflow-hidden">
+                            <Mail className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                            <span className="truncate text-gray-700 font-medium">
+                              {convite.email_convidado}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md font-bold">
+                              Pendente
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCancelInvite(convite.id)}
+                              className="p-1 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition cursor-pointer"
+                              title="Cancelar convite"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
+      )}
 
-        {/* Lado B: Convite por Email */}
-        <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-5 flex flex-col justify-between">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center">
-                <Mail className="h-4 w-4" />
+      {/* ABA 3: VITRINE */}
+      {activeTab === 'vitrine' && (
+        <div className="space-y-8 animate-in fade-in duration-200">
+          <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-3">
+                <Store className="h-6 w-6 text-[#4A3F5C] shrink-0" />
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-[#4A3F5C]">Vitrine do Studio</h2>
+                  <p className="text-xs text-gray-500">
+                    Capa, paleta de cores e fotos do ambiente do seu espaço
+                  </p>
+                </div>
               </div>
-              <h3 className="text-sm font-bold text-gray-900">Convidar por Email</h3>
+
+              <Link
+                href={`/studio/${estudio.slug}`}
+                target="_blank"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition cursor-pointer self-start sm:self-auto shadow-2xs"
+              >
+                <ExternalLink className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                <span>Ver vitrine pública</span>
+              </Link>
             </div>
 
-            <p className="text-xs text-gray-500 leading-relaxed">
-              Digite o email de uma profissional cadastrada no Lumê. Ela receberá um aviso de convite
-              diretamente no painel dela.
-            </p>
+            <form onSubmit={handleSaveEdit} className="space-y-6">
+              {/* Foto de Capa */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-gray-700 block">Foto de Capa do Studio</label>
+                  <span className="text-[11px] text-gray-400">Recomendado: 1200x400 (paisagem)</span>
+                </div>
 
-            <form onSubmit={handleSearchEmail} className="flex gap-2">
-              <input
-                type="email"
-                required
-                value={emailInput}
-                onChange={(e) => {
-                  setEmailInput(e.target.value)
-                  setEmailFeedback(null)
-                  setFoundProf(null)
-                }}
-                placeholder="email@profissional.com"
-                className="flex-1 px-3.5 py-2 rounded-xl border border-gray-200 text-xs focus:border-[#4A3F5C] focus:ring-1 focus:ring-[#4A3F5C] outline-hidden"
-              />
-              <button
-                type="submit"
-                disabled={isSearchingEmail || !emailInput}
-                className="px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-bold text-gray-700 transition disabled:opacity-50 cursor-pointer inline-flex items-center gap-1.5"
-              >
-                {isSearchingEmail ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Search className="h-3.5 w-3.5" />
-                )}
-                <span>Buscar</span>
-              </button>
-            </form>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  {fotoCapaUrl ? (
+                    <div className="relative h-28 w-full sm:w-60 rounded-2xl overflow-hidden border border-gray-200 shadow-2xs">
+                      <Image src={fotoCapaUrl} alt="Capa" fill className="object-cover" />
+                    </div>
+                  ) : (
+                    <div className="h-24 w-full sm:w-60 rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 text-xs">
+                      <Camera className="h-6 w-6 mb-1 text-gray-300" />
+                      <span>Sem foto de capa</span>
+                    </div>
+                  )}
 
-            {emailFeedback && (
-              <div
-                className={`p-3 rounded-xl text-xs font-medium ${
-                  emailFeedback.type === 'success'
-                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                    : emailFeedback.type === 'error'
-                    ? 'bg-rose-50 text-rose-800 border border-rose-200'
-                    : 'bg-purple-50 text-purple-800 border border-purple-200'
-                }`}
-              >
-                {emailFeedback.message}
-              </div>
-            )}
-
-            {foundProf && (
-              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-50 to-white border border-purple-200 flex items-center justify-between gap-3 animate-in fade-in">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-9 w-9 rounded-full bg-purple-200 text-purple-800 font-bold flex items-center justify-center text-xs overflow-hidden">
-                    {foundProf.foto_url ? (
-                      <Image
-                        src={foundProf.foto_url}
-                        alt={foundProf.nome}
-                        width={36}
-                        height={36}
-                        className="object-cover"
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-bold text-gray-700 transition cursor-pointer">
+                      {isUploadingEdit ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4" />
+                      )}
+                      <span>{fotoCapaUrl ? 'Alterar Imagem' : 'Enviar Imagem'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={isUploadingEdit}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0]
+                          if (!file) return
+                          setIsUploadingEdit(true)
+                          try {
+                            const supabase = createClient()
+                            const ext = file.name.split('.').pop()
+                            const fileName = `estudio-capa-${Date.now()}.${ext}`
+                            await supabase.storage
+                              .from('avatars')
+                              .upload(fileName, file, { upsert: true })
+                            const { data } = supabase.storage
+                              .from('avatars')
+                              .getPublicUrl(fileName)
+                            setFotoCapaUrl(data.publicUrl)
+                          } finally {
+                            setIsUploadingEdit(false)
+                          }
+                        }}
+                        className="hidden"
                       />
-                    ) : (
-                      foundProf.nome.charAt(0)
+                    </label>
+                    {fotoCapaUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setFotoCapaUrl('')}
+                        className="text-xs text-rose-600 hover:underline font-semibold cursor-pointer"
+                      >
+                        Remover capa
+                      </button>
                     )}
                   </div>
-                  <div>
-                    <strong className="text-xs text-gray-900 block">{foundProf.nome}</strong>
-                    <span className="text-[10px] text-gray-500">{foundProf.email}</span>
+                </div>
+              </div>
+
+              {/* Identidade Visual & Cores */}
+              <div className="space-y-4 pt-2 border-t border-gray-100">
+                <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+                  <Palette className="h-4 w-4 text-[#B8A9D9]" />
+                  <span>Identidade Visual do Studio</span>
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {/* Cor Primária */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-[#4A3F5C]">
+                      Cor Primária de Destaque
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={corPrimaria}
+                        onChange={(e) => setCorPrimaria(e.target.value)}
+                        className="h-10 w-12 cursor-pointer rounded-lg border border-gray-200 p-1"
+                      />
+                      <input
+                        type="text"
+                        value={corPrimaria}
+                        onChange={(e) => setCorPrimaria(e.target.value)}
+                        className="w-28 rounded-xl border border-gray-200 bg-gray-50/50 p-2 text-xs font-mono text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-hidden font-bold"
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      {['#B8A9D9', '#E8C5C8', '#4A3F5C', '#D4B89B', '#A8D5C5', '#E2BDAB'].map((hex) => (
+                        <button
+                          key={hex}
+                          type="button"
+                          onClick={() => setCorPrimaria(hex)}
+                          className={`h-6 w-6 rounded-full border transition-transform cursor-pointer ${
+                            corPrimaria.toLowerCase() === hex.toLowerCase()
+                              ? 'scale-110 ring-2 ring-[#4A3F5C]'
+                              : 'hover:scale-105'
+                          }`}
+                          style={{ backgroundColor: hex }}
+                          title={hex}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Cor Secundária */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-[#4A3F5C]">
+                      Cor Secundária (Fundo)
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={corSecundaria}
+                        onChange={(e) => setCorSecundaria(e.target.value)}
+                        className="h-10 w-12 cursor-pointer rounded-lg border border-gray-200 p-1"
+                      />
+                      <input
+                        type="text"
+                        value={corSecundaria}
+                        onChange={(e) => setCorSecundaria(e.target.value)}
+                        className="w-28 rounded-xl border border-gray-200 bg-gray-50/50 p-2 text-xs font-mono text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-hidden font-bold"
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      {['#FAF7F5', '#FFFFFF', '#F5F3FF', '#FFFBEB', '#F0FDF4', '#FDF2F8'].map((hex) => (
+                        <button
+                          key={hex}
+                          type="button"
+                          onClick={() => setCorSecundaria(hex)}
+                          className={`h-6 w-6 rounded-full border transition-transform cursor-pointer ${
+                            corSecundaria.toLowerCase() === hex.toLowerCase()
+                              ? 'scale-110 ring-2 ring-[#4A3F5C]'
+                              : 'hover:scale-105'
+                          }`}
+                          style={{ backgroundColor: hex }}
+                          title={hex}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  disabled={isSendingEmail}
-                  onClick={handleSendEmailInvite}
-                  className="px-3 py-1.5 rounded-xl bg-[#4A3F5C] hover:bg-[#3d334d] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer inline-flex items-center gap-1"
-                >
-                  {isSendingEmail && <Loader2 className="h-3 w-3 animate-spin" />}
-                  <span>Enviar Convite</span>
-                </button>
-              </div>
-            )}
-          </div>
+                {/* Prévia da Vitrine do Studio em Tempo Real */}
+                <div className="space-y-2 pt-3 border-t border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-700 block">Prévia da Vitrine do Studio</label>
+                    <span className="text-[11px] text-gray-400 font-medium">Atualização em tempo real</span>
+                  </div>
 
-          <div className="space-y-2 pt-2">
-            <h4 className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-              Convites Pendentes ({convites.filter((c) => c.tipo === 'email').length})
-            </h4>
-
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {convites.filter((c) => c.tipo === 'email').length === 0 ? (
-                <p className="text-xs text-gray-400 italic py-2">Nenhum convite por email pendente.</p>
-              ) : (
-                convites
-                  .filter((c) => c.tipo === 'email')
-                  .map((convite) => (
-                    <div
-                      key={convite.id}
-                      className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-200/70 text-xs"
-                    >
-                      <div className="flex items-center gap-1.5 overflow-hidden">
-                        <Mail className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                        <span className="truncate text-gray-700 font-medium">
-                          {convite.email_convidado}
-                        </span>
+                  <div
+                    className="p-5 sm:p-6 rounded-3xl border transition-all duration-300 space-y-4 shadow-sm"
+                    style={{
+                      backgroundColor: corSecundaria || '#FAF7F5',
+                      borderColor: corPrimaria || '#B8A9D9',
+                    }}
+                  >
+                    <div className="flex items-center justify-between border-b border-black/5 pb-3">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="h-9 w-9 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-xs"
+                          style={{ backgroundColor: corPrimaria || '#B8A9D9' }}
+                        >
+                          <Building2 className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <span className="text-xs font-extrabold text-[#4A3F5C] block">
+                            {nome || 'Nome do Studio'}
+                          </span>
+                          <span className="text-[10px] text-gray-500">
+                            {slug ? `/studio/${slug}` : '/studio/seu-studio'}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md font-bold">
-                          Pendente
-                        </span>
+                      <span
+                        className="px-2.5 py-1 rounded-full text-[10px] font-bold shadow-2xs"
+                        style={{
+                          backgroundColor: corPrimaria,
+                          color: getContrastingTextColor(corPrimaria),
+                        }}
+                      >
+                        Studio
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-gray-600 line-clamp-2">
+                      {bio || 'Conheça nosso espaço e agende com uma de nossas profissionais parceiras.'}
+                    </p>
+
+                    <div className="space-y-2 pt-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
+                        Equipe de Atendimento:
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="bg-white/90 p-3 rounded-xl border border-gray-200/70 flex items-center gap-3 shadow-2xs">
+                          <div
+                            className="h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
+                            style={{
+                              backgroundColor: getLightTint(corPrimaria, 25),
+                              color: corPrimaria,
+                            }}
+                          >
+                            <Crown className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-[#4A3F5C] truncate">Dona do Studio</p>
+                            <p className="text-[10px] text-gray-500 truncate">Administradora</p>
+                          </div>
+                        </div>
+
+                        <div className="bg-white/90 p-3 rounded-xl border border-gray-200/70 flex items-center gap-3 shadow-2xs">
+                          <div
+                            className="h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 text-gray-500 bg-gray-100"
+                          >
+                            <User className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-[#4A3F5C] truncate">Profissional Parceira</p>
+                            <p className="text-[10px] text-gray-500 truncate">Membro da Equipe</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-1 flex justify-center sm:justify-start">
+                      <div
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold shadow-2xs"
+                        style={{
+                          backgroundColor: corPrimaria,
+                          color: getContrastingTextColor(corPrimaria),
+                        }}
+                      >
+                        <Users className="h-3.5 w-3.5" />
+                        <span>Qualquer profissional disponível</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Nosso Espaço (Fotos do Ambiente) */}
+              <div className="space-y-4 pt-4 border-t border-gray-100">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <div>
+                    <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-[#B8A9D9]" />
+                      <span>Nosso Espaço (Fotos do Ambiente)</span>
+                    </h3>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Adicione fotos do seu studio (recepção, macas, iluminação). Se não houver foto cadastrada, o título e seção não aparecerão na vitrine.
+                    </p>
+                  </div>
+                  <span className="text-xs font-bold text-gray-400">
+                    {fotosEspaco.length} / 6 fotos
+                  </span>
+                </div>
+
+                {/* Grid de fotos atuais */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {fotosEspaco.map((foto, index) => (
+                    <div
+                      key={index}
+                      className="relative aspect-4/3 rounded-2xl overflow-hidden border border-gray-200 group bg-gray-100 shadow-2xs"
+                    >
+                      <Image src={foto} alt={`Espaço ${index + 1}`} fill className="object-cover" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <button
                           type="button"
-                          onClick={() => handleCancelInvite(convite.id)}
-                          className="p-1 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition cursor-pointer"
-                          title="Cancelar convite"
+                          onClick={() => handleRemoveFotoEspaco(index)}
+                          className="p-1.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition cursor-pointer shadow-xs"
+                          title="Remover foto"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
-                  ))
-              )}
-            </div>
+                  ))}
+
+                  {/* Botão de upload se menos de 6 fotos */}
+                  {fotosEspaco.length < 6 && (
+                    <label className="relative aspect-4/3 rounded-2xl border-2 border-dashed border-gray-200 hover:border-[#B8A9D9] hover:bg-purple-50/20 transition flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-[#4A3F5C] cursor-pointer p-2 text-center">
+                      {isUploadingEspaco ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-purple-600" />
+                      ) : (
+                        <Plus className="h-5 w-5 text-gray-400" />
+                      )}
+                      <span className="text-[11px] font-bold">
+                        {isUploadingEspaco ? 'Enviando...' : 'Adicionar Foto'}
+                      </span>
+                      <span className="text-[9px] text-gray-400">Até 6 fotos</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={isUploadingEspaco}
+                        onChange={handleUploadFotoEspaco}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              {/* Rodapé com botão Salvar */}
+              <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
+                {saveSuccess ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 animate-in fade-in">
+                    <Check className="h-4 w-4" />
+                    <span>Informações da vitrine salvas com sucesso!</span>
+                  </span>
+                ) : (
+                  <span />
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#4A3F5C] hover:bg-[#3d334d] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-xs"
+                >
+                  {isSavingEdit && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>Salvar Alterações da Vitrine</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Modal de Remoção de Membro ou Desvinculação da Dona */}
       {memberToRemove && (
@@ -1713,6 +1878,53 @@ function OwnerStudioSection({
                     ? 'Sim, deixar de atender'
                     : 'Sim, desvincular'}
                 </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação ao Trocar Slug do Studio */}
+      {showStudioSlugModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4 relative border border-gray-100">
+            <div className="flex items-center gap-3 text-amber-600">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 shrink-0">
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
+              </div>
+              <h3 className="text-base font-bold text-[#4A3F5C]">
+                Confirmar alteração de link do Studio?
+              </h3>
+            </div>
+
+            <p className="text-xs text-gray-700 leading-relaxed font-medium">
+              O link atual do seu studio é <strong className="font-bold text-[#4A3F5C]">/studio/{estudio.slug}</strong>.
+            </p>
+
+            <div className="rounded-2xl bg-amber-50 p-3.5 border border-amber-200 text-xs font-medium text-amber-900 space-y-2">
+              <p>
+                <strong>Tem certeza que deseja mudar? Isso só é possível a cada 30 dias.</strong>
+              </p>
+              <p>
+                Ao confirmar a alteração para <strong className="font-bold text-purple-900">/studio/{slug}</strong>, o link anterior deixará de funcionar imediatamente para todas as profissionais da equipe.
+              </p>
+            </div>
+
+            <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowStudioSlugModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isSavingEdit}
+                onClick={() => handleSaveEdit(undefined, true)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#4A3F5C] hover:bg-purple-900 transition shadow-md cursor-pointer"
+              >
+                {isSavingEdit ? 'Salvando...' : 'Confirmar e Salvar Link'}
               </button>
             </div>
           </div>

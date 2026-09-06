@@ -38,6 +38,8 @@ export type Database = {
           deletado_em?: string | null
           estudio_id?: string | null
           ativo_no_estudio?: boolean
+          codigo_indicacao?: string | null
+          indicado_por?: string | null
           created_at: string
         }
         Insert: {
@@ -68,6 +70,8 @@ export type Database = {
           deletado_em?: string | null
           estudio_id?: string | null
           ativo_no_estudio?: boolean
+          codigo_indicacao?: string | null
+          indicado_por?: string | null
           created_at?: string
         }
         Update: {
@@ -95,8 +99,11 @@ export type Database = {
           valor_mensalidade?: number
           trial_ends_at?: string | null
           proximo_vencimento?: string | null
+          deletado_em?: string | null
           estudio_id?: string | null
           ativo_no_estudio?: boolean
+          codigo_indicacao?: string | null
+          indicado_por?: string | null
           created_at?: string
         }
         Relationships: []
@@ -241,6 +248,7 @@ export type Database = {
           pago: boolean
           observacao_pagamento: string | null
           forma_pagamento_preferida?: string | null
+          combo_id?: string | null
           created_at: string
         }
         Insert: {
@@ -259,6 +267,7 @@ export type Database = {
           pago?: boolean
           observacao_pagamento?: string | null
           forma_pagamento_preferida?: string | null
+          combo_id?: string | null
           created_at?: string
         }
         Update: {
@@ -277,6 +286,61 @@ export type Database = {
           pago?: boolean
           observacao_pagamento?: string | null
           forma_pagamento_preferida?: string | null
+          combo_id?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      combos: {
+        Row: {
+          id: string
+          profissional_id: string
+          nome: string
+          descricao: string | null
+          preco_combo: number
+          foto_url: string | null
+          ativo: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          profissional_id: string
+          nome: string
+          descricao?: string | null
+          preco_combo: number
+          foto_url?: string | null
+          ativo?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          profissional_id?: string
+          nome?: string
+          descricao?: string | null
+          preco_combo?: number
+          foto_url?: string | null
+          ativo?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      combo_servicos: {
+        Row: {
+          id: string
+          combo_id: string
+          servico_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          combo_id: string
+          servico_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          combo_id?: string
+          servico_id?: string
           created_at?: string
         }
         Relationships: []
@@ -759,6 +823,33 @@ export type Database = {
           email_convidado?: string | null
           status?: 'pendente' | 'aceito' | 'expirado' | 'cancelado'
           expira_em?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          id: string
+          profissional_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          profissional_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          profissional_id?: string
+          endpoint?: string
+          p256dh?: string
+          auth?: string
           created_at?: string
         }
         Relationships: []

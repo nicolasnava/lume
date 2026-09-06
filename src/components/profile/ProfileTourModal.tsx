@@ -42,35 +42,35 @@ const PROFILE_TOUR_STEPS: TourStep[] = [
     targetId: 'profile-tour-avatar',
     title: 'Aba Perfil: Foto & Identificação',
     description:
-      'Adicione sua foto de perfil profissional, seu nome e uma frase de destaque (tagline) com sua especialidade.',
+      'Adicione sua foto de perfil, seu Nome Exibido, Frase de Destaque e Apresentação profissional.',
     icon: User,
   },
   {
     targetId: 'profile-tour-contacts',
-    title: 'Aba Perfil: Contatos & WhatsApp',
+    title: 'Aba Perfil: Contatos & Localização',
     description:
-      'O WhatsApp conta com máscara automática enquanto você digita para agilizar o contato. Informe também seu Instagram e localização.',
+      'O WhatsApp conta com máscara automática enquanto você digita para agilizar o contato. Informe também seu Instagram e sua Localização.',
     icon: Phone,
   },
   {
     targetId: 'profile-tour-modalidades',
-    title: 'Aba Perfil: Onde Você Atende',
+    title: 'Aba Perfil: Modalidades de Atendimento',
     description:
-      'Indique suas modalidades de atendimento: Studio próprio, a Domicílio ou em Salão parceiro.',
+      'Indique onde você realiza seus atendimentos: Studio próprio, a Domicílio ou em Salão parceiro.',
     icon: Building2,
   },
   {
     targetId: 'profile-tour-google',
-    title: 'Aba Perfil: Google Agenda & Aplicativo',
+    title: 'Aba Perfil: Notificações Push & Integrações',
     description:
-      'Sincronize com o Google Agenda e instale o Lumê direto na tela inicial do seu celular para acesso rápido.',
+      'Ative notificações push em tempo real para novos agendamentos e remarcações, sincronize com o Google Agenda e instale o app Lumê.',
     icon: Calendar,
   },
   {
     targetId: 'profile-tour-slug',
-    title: 'Aba Vitrine: Link Exclusivo',
+    title: 'Aba Vitrine: Link, QR Code & Stories',
     description:
-      'Endereço direto da sua página pública. Copie e adicione na bio do seu Instagram para receber agendamentos.',
+      'Copie o link da sua vitrine, gere seu QR Code em alta resolução pronto para impressão no balcão e crie artes para postar no Instagram Stories!',
     icon: ExternalLink,
   },
   {

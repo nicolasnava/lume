@@ -27,7 +27,9 @@ import {
   ArrowLeft,
   Calendar,
   Zap,
+  Sparkles,
 } from 'lucide-react'
+import { ComboItem } from '@/app/actions/combos'
 
 type ProfissionalRow = Database['public']['Views']['profissionais_publico']['Row']
 type ServicoRow = Database['public']['Tables']['servicos']['Row']
@@ -35,6 +37,7 @@ type ServicoRow = Database['public']['Tables']['servicos']['Row']
 interface BookingWizardPageClientProps {
   profissional: ProfissionalRow
   allServicos: ServicoRow[]
+  allCombos?: ComboItem[]
   initialServicoId?: string
   studioContext?: {
     nome: string
@@ -51,20 +54,23 @@ const PAYMENT_OPTIONS = [
 export default function BookingWizardPageClient({
   profissional,
   allServicos,
+  allCombos = [],
   initialServicoId,
   studioContext,
 }: BookingWizardPageClientProps) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
+  const initialServico = allServicos.find((s) => s.id === initialServicoId) || null
+
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(() => (initialServico ? 2 : 1))
 
   const vitrineUrl = studioContext
     ? `/studio/${studioContext.slug}/${profissional.slug}`
     : `/p/${profissional.slug}`
 
-  const initialServico = allServicos.find((s) => s.id === initialServicoId) || null
-
   const [selectedServicos, setSelectedServicos] = useState<ServicoRow[]>(() =>
     initialServico ? [initialServico] : []
   )
+
+  const [selectedCombo, setSelectedCombo] = useState<ComboItem | null>(null)
 
   const [workingDays, setWorkingDays] = useState<WorkingDayInfo[]>([])
   const [loadingDays, setLoadingDays] = useState(false)
@@ -96,7 +102,13 @@ export default function BookingWizardPageClient({
   const textColorOnPrimary = getContrastingTextColor(corPrimaria)
 
   const totalDuracaoMinutos = selectedServicos.reduce((sum, s) => sum + s.duracao_minutos, 0)
-  const totalPreco = selectedServicos.reduce((sum, s) => sum + Number(s.preco), 0)
+  // Se houver combo selecionado, usa o preço promocional do combo mais eventuais avulsos extras
+  const totalPreco = selectedCombo
+    ? Number(selectedCombo.preco_combo) +
+      selectedServicos
+        .filter((s) => !selectedCombo.servicos.some((cs) => cs.id === s.id))
+        .reduce((sum, s) => sum + Number(s.preco), 0)
+    : selectedServicos.reduce((sum, s) => sum + Number(s.preco), 0)
 
   // Item 17: Carregar dias considerando a janela configurada da profissional
   useEffect(() => {
@@ -123,6 +135,45 @@ export default function BookingWizardPageClient({
 
   const handleRemoveServico = (servicoId: string) => {
     setSelectedServicos((prev) => prev.filter((s) => s.id !== servicoId))
+    // Se o serviço removido pertencia ao combo selecionado, desfaz o combo para não cobrar valor promocional incompleto
+    if (selectedCombo && selectedCombo.servicos.some((cs) => cs.id === servicoId)) {
+      setSelectedCombo(null)
+    }
+  }
+
+  // Prompt 61: Adicionar combo completo ao atendimento
+  const handleAddCombo = (combo: ComboItem) => {
+    setSelectedCombo(combo)
+
+    // Converte os serviços do combo em objetos ServicoRow compatíveis
+    const comboServicosList: ServicoRow[] = combo.servicos.map((cs) => {
+      const match = allServicos.find((s) => s.id === cs.id)
+      if (match) return match
+      return {
+        id: cs.id,
+        profissional_id: profissional.id,
+        nome: cs.nome,
+        descricao: null,
+        preco: cs.preco,
+        duracao_minutos: cs.duracao_minutos,
+        categoria: 'outros',
+        foto_url: cs.foto_url || null,
+        ordem: 0,
+        ativo: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        deletado_em: null,
+        comissao_percentual: null,
+        intervalo_manutencao_dias: null,
+      } as ServicoRow
+    })
+
+    setSelectedServicos(comboServicosList)
+  }
+
+  const handleRemoveCombo = () => {
+    setSelectedCombo(null)
+    setSelectedServicos([])
   }
 
   const handleSelectDate = async (dateStr: string) => {
@@ -169,6 +220,7 @@ export default function BookingWizardPageClient({
       profissional_id: profissional.id,
       servico_id: servicoIdsList[0],
       servico_ids: servicoIdsList,
+      combo_id: selectedCombo?.id || null,
       data_hora_inicio: selectedSlot.dataHoraInicio,
       cliente_nome: clienteNome,
       cliente_telefone: clienteTelefone,
@@ -291,6 +343,12 @@ export default function BookingWizardPageClient({
             </div>
 
             <div className="rounded-2xl bg-[#FAF7F5] p-4 text-left border border-gray-100 space-y-2 text-xs font-medium">
+              {selectedCombo && (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-100 text-purple-900 font-bold text-xs mb-1">
+                  <Sparkles className="h-3.5 w-3.5 text-purple-600" />
+                  <span>Combo Especial: {selectedCombo.nome}</span>
+                </div>
+              )}
               <p>
                 Serviços:{' '}
                 <strong className="text-[#4A3F5C]">
@@ -366,9 +424,17 @@ export default function BookingWizardPageClient({
                           </div>
 
                           <div className="flex-1 space-y-1 min-w-0">
-                            <h4 className="text-xs sm:text-sm font-semibold text-[#4A3F5C] break-words line-clamp-2">
-                              {servico.nome}
-                            </h4>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h4 className="text-xs sm:text-sm font-semibold text-[#4A3F5C] break-words line-clamp-2">
+                                {servico.nome}
+                              </h4>
+                              {selectedCombo && selectedCombo.servicos.some((cs) => cs.id === servico.id) && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                                  <Sparkles className="h-2.5 w-2.5 text-purple-600" />
+                                  <span>Incluso no Combo</span>
+                                </span>
+                              )}
+                            </div>
                             <div className="flex items-center gap-3 text-xs text-gray-500 font-medium">
                               <span className="flex items-center gap-1">
                                 <Clock className="h-3.5 w-3.5 shrink-0" style={{ color: corPrimaria }} />
@@ -449,6 +515,132 @@ export default function BookingWizardPageClient({
                   </div>
                 )}
 
+                {/* Prompt 61: Seção de Combos Promocionais (só aparece se houver pelo menos 1 combo ativo) */}
+                {allCombos && allCombos.length > 0 && (
+                  <div className="space-y-3 pt-4 border-t border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-[#4A3F5C] flex items-center gap-1.5">
+                        <Sparkles className="h-4 w-4 text-[#8675A9]" />
+                        <span>Combos e Pacotes Especiais</span>
+                      </h4>
+                      <span className="text-[10px] font-bold text-purple-700 bg-purple-100/70 px-2 py-0.5 rounded-full">
+                        Preço promocional
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      {allCombos.map((combo) => {
+                        const isSelected = selectedCombo?.id === combo.id
+                        return (
+                          <div
+                            key={combo.id}
+                            className={`flex flex-col justify-between bg-white p-4 rounded-2xl border transition space-y-3 group shadow-2xs ${
+                              isSelected
+                                ? 'border-purple-400 ring-2 ring-purple-300/40 bg-purple-50/20'
+                                : 'border-gray-200 hover:border-[#B8A9D9]'
+                            }`}
+                          >
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#8675A9] text-white">
+                                  <Sparkles className="h-2.5 w-2.5" />
+                                  Combo
+                                </span>
+                                {combo.descontoEconomia > 0 && (
+                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                    Economize R$ {combo.descontoEconomia.toFixed(2)}
+                                  </span>
+                                )}
+                              </div>
+
+                              {combo.foto_url && (
+                                <div className="relative h-28 w-full overflow-hidden rounded-xl bg-purple-50 border border-gray-100">
+                                  <Image
+                                    src={combo.foto_url}
+                                    alt={combo.nome}
+                                    fill
+                                    className="object-cover group-hover:scale-105 transition duration-300"
+                                    unoptimized
+                                  />
+                                </div>
+                              )}
+
+                              <div>
+                                <h5 className="text-sm font-bold text-[#4A3F5C] leading-snug">
+                                  {combo.nome}
+                                </h5>
+                                {combo.descricao && (
+                                  <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">
+                                    {combo.descricao}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Lista de serviços inclusos */}
+                              <div className="bg-gray-50/80 rounded-xl p-2.5 border border-gray-100 space-y-1">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
+                                  Serviços inclusos ({combo.servicos.length}):
+                                </span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {combo.servicos.map((s) => (
+                                    <span
+                                      key={s.id}
+                                      className="text-[11px] font-medium bg-white px-2 py-0.5 rounded-md border border-gray-200 text-gray-700 shadow-3xs"
+                                    >
+                                      ✓ {s.nome}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-3">
+                              <div>
+                                <div className="flex items-center gap-1 text-[11px] text-gray-400 font-medium">
+                                  <Clock className="h-3 w-3" />
+                                  <span>{combo.duracaoTotalMinutos} min</span>
+                                </div>
+                                <div className="flex items-baseline gap-1.5 mt-0.5">
+                                  <span className="text-base font-extrabold text-emerald-700">
+                                    R$ {Number(combo.preco_combo).toFixed(2)}
+                                  </span>
+                                  {combo.precoOriginalTotal > combo.preco_combo && (
+                                    <span className="text-xs text-gray-400 line-through">
+                                      R$ {combo.precoOriginalTotal.toFixed(2)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => (isSelected ? handleRemoveCombo() : handleAddCombo(combo))}
+                                className={`py-2 px-3.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                                  isSelected
+                                    ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs'
+                                    : 'bg-[#B8A9D9]/20 text-[#4A3F5C] border border-[#B8A9D9]/40 hover:bg-[#B8A9D9]/30'
+                                }`}
+                              >
+                                {isSelected ? (
+                                  <>
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    <span>Combo Selecionado</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Plus className="h-3.5 w-3.5" />
+                                    <span>Adicionar Combo</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Barra de Resumo de Acumulados */}
                 <div className="bg-[#FAF7F5] p-4 rounded-xl border border-gray-200 flex items-center justify-between">
                   <div>
@@ -500,6 +692,20 @@ export default function BookingWizardPageClient({
                     Selecione uma data disponível na lista abaixo
                   </p>
                 </div>
+
+                {selectedServicos.length > 0 && (
+                  <div className="flex items-center justify-between bg-purple-50/70 p-3 rounded-2xl border border-[#B8A9D9]/40 text-xs shadow-2xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Scissors className="h-4 w-4 text-[#4A3F5C] shrink-0" />
+                      <span className="font-bold text-[#4A3F5C] truncate">
+                        {selectedServicos.map((s) => s.nome).join(' + ')}
+                      </span>
+                    </div>
+                    <span className="font-black text-emerald-700 shrink-0 ml-2">
+                      R$ {totalPreco.toFixed(2)}
+                    </span>
+                  </div>
+                )}
 
                 {loadingDays ? (
                   <div className="flex h-36 w-full items-center justify-center rounded-2xl bg-gray-50 border border-gray-100">
@@ -625,6 +831,13 @@ export default function BookingWizardPageClient({
 
                   {/* Linhas de Detalhes: Serviços e Data */}
                   <div className="space-y-3 text-xs sm:text-sm font-medium">
+                    {selectedCombo && (
+                      <div className="flex items-center gap-2 text-xs font-bold text-purple-800 bg-purple-50 px-3 py-2 rounded-xl border border-purple-200">
+                        <Sparkles className="h-4 w-4 text-purple-600 shrink-0" />
+                        <span>Combo: {selectedCombo.nome} (Preço especial aplicado)</span>
+                      </div>
+                    )}
+
                     <div className="flex items-start gap-3">
                       <Scissors className="h-4 w-4 sm:h-5 sm:w-5 text-[#B8A9D9] shrink-0 mt-0.5" />
                       <div className="flex-1">

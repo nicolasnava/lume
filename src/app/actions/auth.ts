@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { cadastroMultiStepSchema, CadastroMultiStepInput, cadastroSchema, CadastroInput } from '@/lib/validations'
 import { generateUniqueSlug, normalizeSlug } from '@/lib/utils/slug'
 
-export type SignUpData = CadastroMultiStepInput | CadastroInput
+export type SignUpData = (CadastroMultiStepInput | CadastroInput) & { ref?: string }
 
 export async function signUpAction(formData: SignUpData) {
   try {
@@ -93,6 +93,34 @@ export async function signUpAction(formData: SignUpData) {
     // Formatar instagram limpo (remover @ se houver)
     const cleanInstagram = instagram ? instagram.replace(/^@/, '').trim() : null
 
+    // 3.5. Tratar código de indicação (se presente)
+    let indicadoPorId: string | null = null
+    if (formData.ref && typeof formData.ref === 'string') {
+      try {
+        const cleanRef = formData.ref.trim().toUpperCase()
+        const { data: indicadora } = await adminSupabase
+          .from('profissionais')
+          .select('id')
+          .ilike('codigo_indicacao', cleanRef)
+          .is('deletado_em', null)
+          .maybeSingle()
+
+        if (indicadora && indicadora.id !== userId) {
+          indicadoPorId = indicadora.id
+        }
+      } catch (err) {
+        console.warn('[signUpAction] Erro ao buscar indicadora pelo código:', err)
+      }
+    }
+
+    // Gerar código de indicação único para a nova profissional
+    const baseCode = (finalSlug || nome || 'LUME')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .slice(0, 6)
+    const randSuffix = Math.floor(100 + Math.random() * 900)
+    const novoCodigoIndicacao = `${baseCode || 'LUME'}${randSuffix}`
+
     // 4. Inserir ou atualizar o registro na tabela 'profissionais' usando service_role (bypassing RLS)
     const profPayload: Record<string, unknown> = {
       id: userId,
@@ -111,6 +139,8 @@ export async function signUpAction(formData: SignUpData) {
       slug: finalSlug,
       cor_primaria: cor_primaria || '#B8A9D9',
       cor_secundaria: cor_secundaria || '#FAF7F5',
+      codigo_indicacao: novoCodigoIndicacao,
+      indicado_por: indicadoPorId,
     }
 
     // Helper resiliente para salvar com fallback caso colunas do schema ainda estejam sendo migradas

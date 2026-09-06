@@ -43,9 +43,9 @@ const DESKTOP_TOUR_STEPS: TourStep[] = [
   },
   {
     targetId: 'tour-public-link',
-    title: 'Sua Página Pública',
+    title: 'Sua Página Pública & Autoatendimento',
     description:
-      'Este é o link direto do seu Studio no topo da barra. Copie e adicione na bio do seu Instagram ou envie no WhatsApp para suas clientes agendarem.',
+      'Link direto da sua vitrine. Suas clientes agendam online e contam com autoatendimento para consultar, cancelar ou remarcar seus próprios horários.',
     icon: ExternalLink,
   },
   {
@@ -115,7 +115,7 @@ const DESKTOP_TOUR_STEPS: TourStep[] = [
     targetId: 'tour-nav-perfil',
     title: 'Perfil, Vitrine & Assinatura',
     description:
-      'Organizado em 3 abas: configure seus dados de contato, personalize sua vitrine pública com suas cores e gerencie seu plano com suporte direto no WhatsApp.',
+      'Organizado em 3 abas: configure seu Nome Exibido e contatos, gere seu QR Code e Stories para divulgação, ative Notificações Push e gerencie seu plano com suporte direto no WhatsApp.',
     icon: User,
   },
   {
@@ -139,9 +139,9 @@ const MOBILE_TOUR_STEPS: TourStep[] = [
   },
   {
     targetId: 'tour-public-link-mobile',
-    title: 'Ver Página Pública',
+    title: 'Página Pública & Autoatendimento',
     description:
-      'No topo da tela fica o link direto do seu Studio. Copie e adicione na bio do seu Instagram ou envie no WhatsApp para suas clientes agendarem.',
+      'Link direto da sua vitrine. Suas clientes agendam online e contam com autoatendimento para consultar, cancelar ou remarcar seus próprios horários.',
     icon: ExternalLink,
   },
   {
@@ -224,7 +224,7 @@ const MOBILE_TOUR_STEPS: TourStep[] = [
     requiresMobileMore: true,
     title: 'Perfil, Vitrine & Assinatura',
     description:
-      'Acesse suas 3 abas: dados pessoais no Perfil, personalização de cores na Vitrine e acompanhamento da sua Assinatura.',
+      'Acesse suas 3 abas: configure seu Nome Exibido e contatos, gere seu QR Code e Stories, ative Notificações Push e acompanhe sua assinatura.',
     icon: User,
   },
   {

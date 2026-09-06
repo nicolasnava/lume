@@ -7,6 +7,7 @@ import {
   getProfissionalEngagementMetrics,
   getProfissionalActivityTimeline,
 } from './adminPrompt34'
+import { recalcularDescontoIndicacao } from './referral'
 
 export interface AdminPeriodFilter {
   period: 'hoje' | 'semana' | 'mes' | '30dias' | 'ano' | 'custom'
@@ -530,6 +531,29 @@ export async function getAdminProfissionalDetail(id: string, filterPeriod: Admin
     console.warn('[getAdminProfissionalDetail] Erro ao carregar engajamento/timeline:', err)
   }
 
+  // 7. Dados do Programa de Indicação
+  let indicadaPor: { id: string; nome: string; slug: string } | null = null
+  if ((prof as any).indicado_por) {
+    const { data: indicadora } = await adminSupabase
+      .from('profissionais')
+      .select('id, nome, slug')
+      .eq('id', (prof as any).indicado_por)
+      .maybeSingle()
+    if (indicadora) {
+      indicadaPor = indicadora
+    }
+  }
+
+  const { data: indicadasPorEla } = await adminSupabase
+    .from('profissionais')
+    .select('id, nome, slug, status_conta')
+    .eq('indicado_por', id)
+    .is('deletado_em', null)
+
+  const totalIndicadas = (indicadasPorEla || []).length
+  const indicadasAtivas = (indicadasPorEla || []).filter((p: any) => p.status_conta === 'ativa').length
+  const descontoAtualPct = Math.min(indicadasAtivas * 10, 30)
+
   return {
     profissional: {
       ...prof,
@@ -543,6 +567,13 @@ export async function getAdminProfissionalDetail(id: string, filterPeriod: Admin
     faturamentoPorForma,
     engagementMetrics,
     activityTimeline,
+    referralTree: {
+      indicadaPor,
+      totalIndicadas,
+      indicadasAtivas,
+      descontoAtualPct,
+      codigoIndicacao: (prof as any).codigo_indicacao || null,
+    },
   }
 }
 
@@ -560,10 +591,10 @@ export async function updateProfissionalStatus(
 
   const adminSupabase = createAdminClient()
 
-  // Buscar status atual
+  // Buscar status atual e indicado_por
   const { data: prof } = await adminSupabase
     .from('profissionais')
-    .select('status_conta, nome')
+    .select('status_conta, nome, indicado_por')
     .eq('id', id)
     .single()
 
@@ -578,6 +609,15 @@ export async function updateProfissionalStatus(
   if (error) {
     console.error('[updateProfissionalStatus] Erro ao atualizar status:', error)
     throw new Error('Não foi possível atualizar o status da conta.')
+  }
+
+  // Recalcular desconto da indicadora se existir vínculo
+  if ((prof as any)?.indicado_por) {
+    try {
+      await recalcularDescontoIndicacao((prof as any).indicado_por)
+    } catch (err) {
+      console.warn('[updateProfissionalStatus] Falha ao recalcular desconto da indicadora:', err)
+    }
   }
 
   // Mapear ação para log
@@ -759,7 +799,7 @@ export async function deactivateProfissionalAccount(id: string) {
 
   const { data: prof } = await adminSupabase
     .from('profissionais')
-    .select('nome')
+    .select('nome, indicado_por')
     .eq('id', id)
     .single()
 
@@ -775,6 +815,14 @@ export async function deactivateProfissionalAccount(id: string) {
   if (profError) {
     console.error('[deactivateProfissionalAccount] Erro ao desativar profissional:', profError)
     throw new Error('Erro ao desativar conta da profissional.')
+  }
+
+  if ((prof as any)?.indicado_por) {
+    try {
+      await recalcularDescontoIndicacao((prof as any).indicado_por)
+    } catch (err) {
+      console.warn('[deactivateProfissionalAccount] Falha ao recalcular desconto da indicadora:', err)
+    }
   }
 
   await adminSupabase.from('admin_logs').insert([
@@ -804,7 +852,7 @@ export async function restoreProfissionalAccount(id: string) {
 
   const { data: prof } = await adminSupabase
     .from('profissionais')
-    .select('nome')
+    .select('nome, indicado_por')
     .eq('id', id)
     .single()
 
@@ -819,6 +867,14 @@ export async function restoreProfissionalAccount(id: string) {
   if (profError) {
     console.error('[restoreProfissionalAccount] Erro ao restaurar profissional:', profError)
     throw new Error('Erro ao restaurar conta da profissional.')
+  }
+
+  if ((prof as any)?.indicado_por) {
+    try {
+      await recalcularDescontoIndicacao((prof as any).indicado_por)
+    } catch (err) {
+      console.warn('[restoreProfissionalAccount] Falha ao recalcular desconto da indicadora:', err)
+    }
   }
 
   await adminSupabase.from('admin_logs').insert([

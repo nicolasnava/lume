@@ -9,6 +9,7 @@ import {
 import Toast from '@/components/ui/Toast'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { copyToClipboard } from '@/lib/utils/clipboard'
+import { formatPhoneNumber } from '@/lib/utils/phone'
 import {
   X,
   Calendar,
@@ -36,7 +37,7 @@ export interface BookingDetail {
   data_hora_fim: string
   status: 'confirmado' | 'cancelado' | 'concluido' | 'no_show'
   google_event_id: string | null
-  forma_pagamento?: 'dinheiro' | 'pix' | 'cartao_credito' | 'cartao_debito' | 'outro' | null
+  forma_pagamento?: 'dinheiro' | 'pix' | 'cartao' | 'cartao_credito' | 'cartao_debito' | 'outro' | null
   forma_pagamento_preferida?: string | null
   valor_cobrado?: number | null
   pago?: boolean | null
@@ -67,6 +68,8 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   cartao_debito: 'Cartão',
   outro: 'Outro',
 }
+
+
 
 export default function BookingDetailModal({
   booking,
@@ -245,20 +248,30 @@ export default function BookingDetailModal({
           <div className="flex items-center justify-between text-sm text-[#4A3F5C]">
             <div className="flex items-center gap-3">
               <Phone className="h-4 w-4 text-[#B8A9D9] shrink-0" />
-              <span>{clienteTelefone || 'Telefone não cadastrado'}</span>
+              <span>{formatPhoneNumber(clienteTelefone) || 'Telefone não cadastrado'}</span>
             </div>
             {whatsappUrl && (
               <a
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition"
+                className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition cursor-pointer shrink-0"
+                title="Conversar no WhatsApp"
               >
-                <MessageCircle className="h-3.5 w-3.5" />
-                <span>WhatsApp</span>
+                <MessageCircle className="h-4 w-4" />
               </a>
             )}
           </div>
+
+          {/* Preferência de Pagamento da Cliente padronizada como as outras infos */}
+          {booking.forma_pagamento_preferida && (
+            <div className="flex items-center gap-3 text-sm text-[#4A3F5C]">
+              <CreditCard className="h-4 w-4 text-[#B8A9D9] shrink-0" />
+              <span>
+                {PAYMENT_METHOD_LABELS[booking.forma_pagamento_preferida] || booking.forma_pagamento_preferida}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* 2. Dados do Pagamento se Concluído */}
@@ -306,20 +319,7 @@ export default function BookingDetailModal({
           </div>
         )}
 
-        {/* 3. Tipo / Preferência de Pagamento da Cliente */}
-        {booking.forma_pagamento_preferida && (
-          <div className="flex items-center gap-2 text-xs text-[#4A3F5C] bg-purple-50/60 p-3 rounded-xl border border-purple-100">
-            <CreditCard className="h-4 w-4 text-[#B8A9D9] shrink-0" />
-            <span>
-              Preferência de Pagamento da Cliente:{' '}
-              <strong className="font-bold text-purple-900">
-                {PAYMENT_METHOD_LABELS[booking.forma_pagamento_preferida] || booking.forma_pagamento_preferida}
-              </strong>
-            </span>
-          </div>
-        )}
-
-        {/* 4. Status Atual */}
+        {/* 3. Status Atual */}
         <div className="flex items-center justify-between bg-[#FAF7F5] p-3.5 rounded-xl border border-gray-100">
           <span className="text-xs font-semibold text-gray-500">Status atual:</span>
           <span
@@ -343,17 +343,23 @@ export default function BookingDetailModal({
           </span>
         </div>
 
-        {/* 5. Serviço e Valor Final */}
-        <div className="flex items-start justify-between gap-4 text-sm text-[#4A3F5C] pt-3 border-t border-gray-100">
-          <div className="flex items-start gap-2.5 min-w-0 flex-1">
+        {/* 4. Serviço e Valor Total (Texto do serviço acima, linha divisória e valor total com ícone) */}
+        <div className="pt-3 border-t border-gray-100 space-y-2.5">
+          <div className="flex items-start gap-3 text-sm text-[#4A3F5C]">
             <Scissors className="h-4 w-4 text-[#B8A9D9] shrink-0 mt-0.5" />
-            <span className="font-semibold text-[#4A3F5C] leading-relaxed line-clamp-2 pr-1">
+            <span className="font-bold text-[#4A3F5C] leading-snug">
               {servicoNome}
             </span>
           </div>
-          <div className="flex items-center gap-1.5 font-bold text-base sm:text-lg text-[#4A3F5C] shrink-0 text-right whitespace-nowrap bg-gray-50/80 px-2.5 py-1 rounded-xl border border-gray-100">
-            <DollarSign className="h-4 w-4 text-emerald-600 shrink-0" />
-            <span className="whitespace-nowrap">{servicoPreco}</span>
+
+          <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between text-sm text-[#4A3F5C]">
+            <div className="flex items-center gap-3">
+              <DollarSign className="h-4 w-4 text-[#B8A9D9] shrink-0" />
+              <span className="text-gray-500 font-medium text-xs">Valor Total</span>
+            </div>
+            <span className="font-extrabold text-base sm:text-lg text-emerald-700">
+              {servicoPreco}
+            </span>
           </div>
         </div>
 
@@ -365,7 +371,7 @@ export default function BookingDetailModal({
           >
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-900">
-                Concluir Atendimento & Pagamento
+                Concluir Atendimento
               </h4>
             </div>
 
@@ -445,7 +451,7 @@ export default function BookingDetailModal({
                 ) : (
                   <>
                     <Check className="h-4 w-4" />
-                    <span>Salvar e Marcar Concluído</span>
+                    <span>Concluir</span>
                   </>
                 )}
               </button>

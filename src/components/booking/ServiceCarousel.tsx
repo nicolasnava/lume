@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { Database } from '@/lib/supabase/database.types'
 import { getContrastingTextColor } from '@/lib/utils/contrast'
 import { Clock, ChevronLeft, ChevronRight, CalendarCheck, Scissors, History } from 'lucide-react'
@@ -103,11 +104,9 @@ export default function ServiceCarousel({
           const hasFoto = !!servico.foto_url
 
           return (
-            <a
+            <Link
               key={servico.id}
               href={`${bookingBaseUrl}/agendar?servico=${servico.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
               className="snap-center shrink-0 w-[85%] sm:w-[260px] min-h-[290px] flex flex-col rounded-2xl overflow-hidden shadow-sm group cursor-pointer transition transform hover:-translate-y-1 hover:shadow-lg border border-gray-200/80 bg-white text-left block"
             >
               {/* Parte Superior: Foto Principal com Badge de Duração Discreto */}
@@ -173,7 +172,7 @@ export default function ServiceCarousel({
                   </span>
                 </div>
               </div>
-            </a>
+            </Link>
           )
         })}
       </div>
@@ -196,16 +195,14 @@ export default function ServiceCarousel({
 
       {/* Botões do Rodapé do Carrossel: "Agendar Agora" (Principal) e "Ver meus agendamentos" (Secundário) */}
       <div className="pt-2 space-y-2">
-        <a
+        <Link
           href={`${bookingBaseUrl}/agendar`}
-          target="_blank"
-          rel="noopener noreferrer"
           className="w-full py-3.5 rounded-2xl font-black text-sm text-white shadow-lg transition hover:opacity-90 active:scale-98 cursor-pointer flex items-center justify-center gap-2 block text-center"
           style={{ backgroundColor: corPrimaria, color: textColorOnPrimary }}
         >
           <CalendarCheck className="h-5 w-5 inline" />
           <span>Agendar Agora</span>
-        </a>
+        </Link>
 
         {onOpenClientBookings && (
           <button

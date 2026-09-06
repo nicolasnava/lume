@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useSearchParams } from 'next/navigation'
 import { signUpAction } from '@/app/actions/auth'
 import { checkPublicSlugAvailabilityAction } from '@/app/actions/profile'
 import { getPasswordStrength } from '@/lib/validations/passwordStrength'
@@ -94,7 +95,10 @@ function formatPhone(value: string) {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`
 }
 
-export default function CadastroPage() {
+function CadastroForm() {
+  const searchParams = useSearchParams()
+  const refCode = searchParams.get('ref') || undefined
+
   // Controle de Etapa (1 a 4)
   const [step, setStep] = useState(1)
   const [isCompleted, setIsCompleted] = useState(false)
@@ -346,6 +350,7 @@ export default function CadastroPage() {
       dias_atendimento: diasAtendimento,
       hora_inicio: horaInicio,
       hora_fim: horaFim,
+      ref: refCode,
     }
 
     const res = await signUpAction(payload)
@@ -1326,5 +1331,19 @@ export default function CadastroPage() {
         onClose={() => setToast(null)}
       />
     </div>
+  )
+}
+
+export default function CadastroPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#FAF7F5]">
+          <Loader2 className="h-8 w-8 animate-spin text-[#B8A9D9]" />
+        </div>
+      }
+    >
+      <CadastroForm />
+    </Suspense>
   )
 }
