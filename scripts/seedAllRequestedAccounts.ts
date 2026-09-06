@@ -36,8 +36,7 @@ async function main() {
   const protectedAdminEmails = new Set(
     (adminRows || []).map((a) => (a.email || '').toLowerCase()).filter(Boolean)
   )
-  protectedAdminEmails.add('slicee.on@gmail.com')
-  protectedAdminEmails.add('nicolasnava.senai@gmail.com')
+  protectedAdminEmails.add('nicolasnavasantos@gmail.com')
 
   const protectedAdminIds = new Set((adminRows || []).map((a) => a.id))
 
