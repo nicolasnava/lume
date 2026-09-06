@@ -15,6 +15,8 @@ import {
   Phone,
   DollarSign,
   Sparkles,
+  BarChart2,
+  ChevronRight,
 } from 'lucide-react'
 import NewBookingModal from '@/components/dashboard/NewBookingModal'
 import ProductTourModal from '@/components/dashboard/ProductTourModal'
@@ -254,6 +256,32 @@ export default function GeralViewClient({
           Aqui está o resumo da sua agenda e principais atalhos do dia.
         </p>
       </div>
+
+      {/* TEASER DISCRETO: Relatórios & Metas (Prompt 62) */}
+      <Link
+        href="/dashboard/relatorios"
+        className="group flex items-center justify-between p-4 sm:p-4.5 rounded-2xl bg-gradient-to-r from-purple-50/80 via-white to-purple-50/40 border border-[#B8A9D9]/40 hover:border-[#8675A9] shadow-2xs hover:shadow-xs transition cursor-pointer"
+      >
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-xl bg-white border border-[#B8A9D9]/30 text-[#4A3F5C] flex items-center justify-center shadow-2xs group-hover:scale-105 transition-transform">
+            <BarChart2 className="h-4.5 w-4.5 text-[#8675A9]" />
+          </div>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-[#4A3F5C]">Relatórios & Metas do Mês</span>
+              <span className="px-2 py-0.2 rounded-full bg-purple-100 text-purple-800 text-[10px] font-bold">Novo</span>
+            </div>
+            <p className="text-[11px] text-gray-500 mt-0.5">
+              Acompanhe seu faturamento ao vivo, ritmo diário e progresso da meta →
+            </p>
+          </div>
+        </div>
+
+        <div className="hidden sm:flex items-center gap-1 text-xs font-bold text-[#8675A9] group-hover:text-[#4A3F5C] transition">
+          <span>Ver Relatórios</span>
+          <ChevronRight className="h-4 w-4" />
+        </div>
+      </Link>
 
       {/* PAINEL DE RESUMO DO DIA (Mais compacto e com altura reduzida) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">

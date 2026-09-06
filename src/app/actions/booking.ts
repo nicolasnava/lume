@@ -104,6 +104,8 @@ export async function createBookingAction(formData: {
   servico_id: string
   servico_ids?: string[]
   combo_id?: string | null
+  cupom_id?: string | null
+  desconto_cupom?: number | null
   data_hora_inicio: string
   cliente_nome: string
   cliente_telefone: string
@@ -186,6 +188,11 @@ export async function createBookingAction(formData: {
       }
     }
 
+    // Prompt 62: Se houver cupom aplicado, deduz o desconto do valor total
+    if (formData.cupom_id && formData.desconto_cupom) {
+      totalPreco = Math.max(0, totalPreco - Number(formData.desconto_cupom))
+    }
+
     // Calcular data_hora_fim com base na duração total do combo
     const inicioDate = new Date(data_hora_inicio)
     const fimDate = new Date(inicioDate.getTime() + totalDuracaoMinutos * 60 * 1000)
@@ -242,9 +249,14 @@ export async function createBookingAction(formData: {
     }
 
     // 5. Inserir o agendamento principal no banco com fallback resiliente
-    const obsAtendimento = formData.para_outra_pessoa && formData.nome_pessoa_atendida
+    let obsAtendimento = formData.para_outra_pessoa && formData.nome_pessoa_atendida
       ? `Atendimento para: ${formData.nome_pessoa_atendida} (agendado por ${cliente_nome})`
       : null
+
+    if (formData.cupom_id && formData.desconto_cupom) {
+      const infoCupom = `Desconto Cupom: -R$ ${Number(formData.desconto_cupom).toFixed(2)}`
+      obsAtendimento = obsAtendimento ? `${obsAtendimento} | ${infoCupom}` : infoCupom
+    }
 
     const basePayload: Record<string, unknown> = {
       profissional_id,
@@ -326,6 +338,20 @@ export async function createBookingAction(formData: {
 
     if (servicosInsertError) {
       console.error('[agendamento_servicos] Erro ao registrar serviços do combo:', servicosInsertError)
+    }
+
+    // Prompt 62: Registrar o uso do cupom se aplicável
+    if (formData.cupom_id && novoAgendamento?.id) {
+      try {
+        const { registrarUsoCupomAction } = await import('@/app/actions/coupons')
+        await registrarUsoCupomAction({
+          cupomId: formData.cupom_id,
+          clienteTelefone: telefoneLimpo,
+          agendamentoId: novoAgendamento.id,
+        })
+      } catch (errCupom) {
+        console.warn('[createBookingAction] Erro ao registrar uso do cupom:', errCupom)
+      }
     }
 
     // Criar evento no Google Calendar para a profissional se configurado

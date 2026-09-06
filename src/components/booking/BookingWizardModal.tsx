@@ -25,7 +25,9 @@ import {
   Calendar,
   Zap,
   Clock,
+  Tag,
 } from 'lucide-react'
+import { validarCupomAgendamentoAction } from '@/app/actions/coupons'
 
 type ProfissionalRow = Database['public']['Views']['profissionais_publico']['Row']
 type ServicoRow = Database['public']['Tables']['servicos']['Row']
@@ -95,6 +97,17 @@ export default function BookingWizardModal({
   const [bookingSuccess, setBookingSuccess] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' } | null>(null)
+
+  // Cupons
+  const [cupomCodigoInput, setCupomCodigoInput] = useState('')
+  const [validatingCupom, setValidatingCupom] = useState(false)
+  const [cupomAplicado, setCupomAplicado] = useState<{
+    cupomId: string
+    codigo: string
+    descontoCalculado: number
+    valorFinal: number
+  } | null>(null)
+  const [cupomError, setCupomError] = useState<string | null>(null)
 
   const corPrimaria = profissional.cor_primaria || '#B8A9D9'
   const textColorOnPrimary = getContrastingTextColor(corPrimaria)
@@ -175,6 +188,8 @@ export default function BookingWizardModal({
       profissional_id: profissional.id,
       servico_id: servicoIdsList[0],
       servico_ids: servicoIdsList,
+      cupom_id: cupomAplicado?.cupomId || null,
+      desconto_cupom: cupomAplicado?.descontoCalculado || null,
       data_hora_inicio: selectedSlot.dataHoraInicio,
       cliente_nome: clienteNome,
       cliente_telefone: clienteTelefone,
@@ -190,6 +205,43 @@ export default function BookingWizardModal({
     } else {
       setErrorMsg(res.message || 'Ocorreu um erro ao realizar o agendamento.')
     }
+  }
+
+  const handleAplicarCupom = async () => {
+    if (!cupomCodigoInput.trim()) return
+    setValidatingCupom(true)
+    setCupomError(null)
+
+    const res = await validarCupomAgendamentoAction({
+      profissionalId: profissional.id,
+      codigo: cupomCodigoInput,
+      clienteTelefone: clienteTelefone || null,
+      valorTotal: totalPreco,
+    })
+
+    setValidatingCupom(false)
+
+    if (res.success && res.cupomId && res.descontoCalculado !== undefined) {
+      setCupomAplicado({
+        cupomId: res.cupomId,
+        codigo: res.codigo || cupomCodigoInput.toUpperCase(),
+        descontoCalculado: res.descontoCalculado,
+        valorFinal: res.valorFinal ?? (totalPreco - res.descontoCalculado),
+      })
+      setToast({
+        show: true,
+        type: 'success',
+        message: `Cupom ${res.codigo} aplicado com sucesso! Desconto de R$ ${res.descontoCalculado.toFixed(2)}`,
+      })
+    } else {
+      setCupomError(res.message || 'Cupom inválido ou não aplicável.')
+    }
+  }
+
+  const handleRemoverCupom = () => {
+    setCupomAplicado(null)
+    setCupomCodigoInput('')
+    setCupomError(null)
   }
 
   const servicosSugeridos = allServicos.filter(
@@ -616,12 +668,88 @@ export default function BookingWizardModal({
                     </div>
                   </div>
 
+                  {/* Totais & Cupom */}
+                  {cupomAplicado && (
+                    <div className="pt-2 border-t border-gray-200/60 flex items-center justify-between text-xs">
+                      <span className="text-gray-500 font-semibold">Subtotal:</span>
+                      <span className="line-through text-gray-400 font-bold">
+                        R$ {totalPreco.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+
+                  {cupomAplicado && (
+                    <div className="flex items-center justify-between text-xs text-emerald-700 font-bold">
+                      <span className="flex items-center gap-1.5">
+                        <Tag className="h-3.5 w-3.5" />
+                        <span>Cupom {cupomAplicado.codigo}:</span>
+                      </span>
+                      <span>- R$ {cupomAplicado.descontoCalculado.toFixed(2)}</span>
+                    </div>
+                  )}
+
                   <div className="pt-2.5 border-t border-gray-200/60 flex items-center justify-between">
                     <span className="text-xs sm:text-sm font-bold text-gray-700 uppercase tracking-wider">Valor Total:</span>
                     <strong className="text-xl font-extrabold text-emerald-700">
-                      R$ {totalPreco.toFixed(2)}
+                      R${' '}
+                      {(cupomAplicado
+                        ? Math.max(0, totalPreco - cupomAplicado.descontoCalculado)
+                        : totalPreco
+                      ).toFixed(2)}
                     </strong>
                   </div>
+                </div>
+
+                {/* Campo Opcional: Cupom de Desconto */}
+                <div className="rounded-2xl bg-white p-3.5 border border-gray-200/80 shadow-2xs space-y-2">
+                  <label className="block text-xs font-bold text-[#4A3F5C]">
+                    Tem um cupom de desconto?
+                  </label>
+
+                  {cupomAplicado ? (
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800">
+                      <div className="flex items-center gap-2">
+                        <Tag className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span>
+                          Cupom <strong>{cupomAplicado.codigo}</strong> (-R$ {cupomAplicado.descontoCalculado.toFixed(2)})
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoverCupom}
+                        className="text-xs font-bold text-rose-600 hover:text-rose-800 hover:underline cursor-pointer ml-2"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={cupomCodigoInput}
+                          onChange={(e) => setCupomCodigoInput(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ''))}
+                          placeholder="Digite seu cupom"
+                          className="flex-1 uppercase font-mono tracking-wider rounded-xl border border-gray-200 bg-gray-50 p-2 text-xs text-[#4A3F5C] font-bold focus:border-[#B8A9D9] focus:bg-white focus:outline-hidden"
+                        />
+                        <button
+                          type="button"
+                          disabled={validatingCupom || !cupomCodigoInput.trim()}
+                          onClick={handleAplicarCupom}
+                          className="px-3.5 py-2 rounded-xl bg-[#4A3F5C] text-white text-xs font-bold hover:bg-[#3d334d] disabled:opacity-40 transition cursor-pointer flex items-center gap-1.5 shrink-0"
+                        >
+                          {validatingCupom ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Aplicar'}
+                        </button>
+                      </div>
+
+                      {cupomError && (
+                        <p className="text-[11px] font-semibold text-rose-600 flex items-center gap-1 mt-1">
+                          <AlertCircle className="h-3 w-3 shrink-0" />
+                          <span>{cupomError}</span>
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Banner Informativo */}

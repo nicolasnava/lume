@@ -853,130 +853,129 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                 return (
                   <div
                     key={combo.id}
-                    className={`relative rounded-3xl p-5 shadow-md border transition-all duration-300 flex flex-col justify-between overflow-hidden ${
+                    className={`rounded-3xl bg-white p-5 shadow-xs border transition flex flex-col justify-between h-full space-y-4 ${
                       isAtivo
-                        ? 'bg-[#18141F] border-amber-500/25 hover:border-amber-400/50 text-white'
-                        : 'bg-[#18141F]/70 border-gray-700 opacity-60 text-gray-300'
+                        ? 'border-gray-200/80 hover:border-[#B8A9D9]'
+                        : 'border-gray-200 opacity-60 bg-gray-50/50'
                     }`}
                   >
-                    {/* Brilho sutil no fundo */}
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
-
-                    <div className="space-y-4 relative z-10 flex-1">
-                      {/* Foto Opcional do Pacote */}
-                      {combo.foto_url && (
-                        <div className="relative h-36 w-full rounded-2xl overflow-hidden border border-white/10 mb-2 shadow-inner">
-                          <Image src={combo.foto_url} alt={combo.nome} fill className="object-cover" unoptimized />
-                          {!isAtivo && (
-                            <div className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-black/80 text-white backdrop-blur-xs">
-                              Pausado
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Cabeçalho do Card: Badge + Preço */}
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-2 flex-1">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold tracking-wider bg-amber-500/15 border border-amber-500/30 text-amber-300 uppercase">
-                            <Package className="h-3 w-3 text-amber-300" />
-                            <span>ASSINATURA / PACOTE</span>
-                          </span>
-
-                          <h3 className="font-bold text-base sm:text-lg text-white leading-snug tracking-tight">
-                            {combo.nome}
-                          </h3>
-
-                          <p className="text-xs text-gray-300 leading-relaxed line-clamp-2">
-                            {combo.descricao || 'Pacote especial com serviços combinados'}
-                          </p>
-                        </div>
-
-                        <div className="text-right shrink-0">
-                          {combo.precoOriginalTotal > combo.preco_combo && (
-                            <span className="text-[11px] text-gray-400 line-through block">
-                              R$ {combo.precoOriginalTotal.toFixed(2)}
-                            </span>
-                          )}
-                          <div className="text-xl font-black text-amber-400 tracking-tight">
-                            R$ {combo.preco_combo.toFixed(2)}
+                    <div className="space-y-3.5 flex-1 flex flex-col justify-between">
+                      <div>
+                        {/* Foto Opcional do Pacote */}
+                        {combo.foto_url && (
+                          <div className="relative h-40 w-full shrink-0 rounded-2xl overflow-hidden border border-gray-100 bg-purple-50/60 mb-3 shadow-2xs">
+                            <Image src={combo.foto_url} alt={combo.nome} fill className="object-cover" unoptimized />
+                            {!isAtivo && (
+                              <div className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-900/80 text-white backdrop-blur-xs">
+                                Pausado
+                              </div>
+                            )}
                           </div>
-                          <span className="text-[10px] font-medium text-gray-400 block uppercase tracking-wider">
-                            por pacote
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Usos / Serviços Inclusos (ex: 2x usos por mês / serviços no pacote) */}
-                      <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
-                        <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-200/95 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-xl">
-                          <Layers className="h-3.5 w-3.5 text-amber-400" />
-                          <span>{combo.servicos.length}x serviços inclusos</span>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                          <Clock className="h-3.5 w-3.5 text-gray-400" />
-                          <span>{combo.duracaoTotalMinutos} min total</span>
-                        </div>
-                      </div>
-
-                      {/* Lista de Serviços */}
-                      <div className="flex flex-wrap gap-1 pt-1">
-                        {combo.servicos.map((s) => (
-                          <span
-                            key={s.id}
-                            className="text-[10px] font-semibold bg-white/5 border border-white/10 text-gray-200 px-2 py-0.5 rounded-lg"
-                          >
-                            {s.nome}
-                          </span>
-                        ))}
-                      </div>
-
-                      {/* Economia */}
-                      {combo.descontoEconomia > 0 && (
-                        <div className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-300 text-[11px] font-semibold border border-emerald-500/20 text-center">
-                          Economia de R$ {combo.descontoEconomia.toFixed(2)} para sua cliente
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Ações do Pacote */}
-                    <div className="flex items-center gap-2 pt-4 border-t border-white/10 mt-4 relative z-10">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleComboStatus(combo.id, combo.ativo)}
-                        className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                          isAtivo
-                            ? 'border-white/20 bg-white/10 hover:bg-white/20 text-white'
-                            : 'border-emerald-500/40 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300'
-                        }`}
-                      >
-                        <Power className="h-3.5 w-3.5" />
-                        <span>{isAtivo ? 'Pausar' : 'Ativar'}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => openEditComboModal(combo)}
-                        className="p-2 rounded-xl border border-white/20 bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
-                        title="Editar pacote"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={deletingComboId === combo.id}
-                        onClick={() => handleDeleteCombo(combo.id)}
-                        className="p-2 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 transition cursor-pointer disabled:opacity-50"
-                        title="Excluir pacote"
-                      >
-                        {deletingComboId === combo.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-3.5 w-3.5" />
                         )}
-                      </button>
+
+                        {/* Cabeçalho do Card: Badge + Preço */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1.5 flex-1">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider bg-purple-50 border border-[#B8A9D9]/40 text-[#4A3F5C] uppercase">
+                              <Package className="h-3 w-3 text-[#8675A9]" />
+                              <span>Pacote de Assinatura</span>
+                            </span>
+
+                            <h3 className="font-bold text-base sm:text-lg text-[#4A3F5C] leading-snug tracking-tight">
+                              {combo.nome}
+                            </h3>
+
+                            <p className="text-xs text-[#4A3F5C]/75 leading-relaxed line-clamp-2">
+                              {combo.descricao || 'Pacote especial com serviços combinados'}
+                            </p>
+                          </div>
+
+                          <div className="text-right shrink-0">
+                            {combo.precoOriginalTotal > combo.preco_combo && (
+                              <span className="text-[11px] text-gray-400 line-through block">
+                                R$ {combo.precoOriginalTotal.toFixed(2)}
+                              </span>
+                            )}
+                            <div className="text-xl font-black text-emerald-700 tracking-tight font-mono">
+                              R$ {combo.preco_combo.toFixed(2)}
+                            </div>
+                            <span className="text-[10px] font-semibold text-gray-400 block uppercase tracking-wider">
+                              por pacote
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Usos / Serviços Inclusos */}
+                        <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2 mt-2">
+                          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#4A3F5C] bg-purple-50/80 border border-[#B8A9D9]/40 px-3 py-1 rounded-xl">
+                            <Layers className="h-3.5 w-3.5 text-[#8675A9]" />
+                            <span>{combo.servicos.length}x serviços inclusos</span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500">
+                            <Clock className="h-3.5 w-3.5 text-gray-400" />
+                            <span>{combo.duracaoTotalMinutos} min total</span>
+                          </div>
+                        </div>
+
+                        {/* Lista de Serviços */}
+                        <div className="flex flex-wrap gap-1 pt-2">
+                          {combo.servicos.map((s) => (
+                            <span
+                              key={s.id}
+                              className="text-[11px] font-semibold bg-purple-50 text-[#4A3F5C] border border-[#B8A9D9]/30 px-2 py-0.5 rounded-lg truncate max-w-full"
+                            >
+                              {s.nome}
+                            </span>
+                          ))}
+                        </div>
+
+                        {/* Economia */}
+                        {combo.descontoEconomia > 0 && (
+                          <div className="mt-2.5 p-1.5 rounded-xl bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-200/60 text-center">
+                            Economia de R$ {combo.descontoEconomia.toFixed(2)} para sua cliente
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Ações do Pacote */}
+                      <div className="flex items-center gap-2 pt-3 border-t border-gray-100 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleComboStatus(combo.id, combo.ativo)}
+                          className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${
+                            isAtivo
+                              ? 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
+                              : 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700'
+                          }`}
+                        >
+                          <Power className="h-3.5 w-3.5" />
+                          <span>{isAtivo ? 'Pausar' : 'Ativar'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => openEditComboModal(combo)}
+                          className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-[#4A3F5C] transition cursor-pointer shadow-2xs"
+                          title="Editar pacote"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={deletingComboId === combo.id}
+                          onClick={() => handleDeleteCombo(combo.id)}
+                          className="p-2 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 transition cursor-pointer shadow-2xs disabled:opacity-50"
+                          title="Excluir pacote"
+                        >
+                          {deletingComboId === combo.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )

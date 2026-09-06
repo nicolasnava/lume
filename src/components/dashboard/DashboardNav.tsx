@@ -19,6 +19,7 @@ import {
   Bell,
   MessageSquare,
   Building2,
+  BarChart2,
 } from 'lucide-react'
 import NewBookingModal from './NewBookingModal'
 import FeedbackModal from './FeedbackModal'
@@ -30,6 +31,7 @@ interface DashboardNavProps {
 }
 
 const NAV_ITEMS = [
+  // Par 1: Início / Agenda
   {
     name: 'Início',
     href: '/dashboard/geral',
@@ -40,11 +42,18 @@ const NAV_ITEMS = [
     href: '/dashboard/agenda',
     icon: Calendar,
   },
+  // Par 2: Financeiro / Relatórios
   {
     name: 'Financeiro',
     href: '/dashboard/financeiro',
     icon: DollarSign,
   },
+  {
+    name: 'Relatórios',
+    href: '/dashboard/relatorios',
+    icon: BarChart2,
+  },
+  // Par 3: Clientes / Avaliações
   {
     name: 'Clientes',
     href: '/dashboard/clientes',
@@ -55,16 +64,18 @@ const NAV_ITEMS = [
     href: '/dashboard/avaliacoes',
     icon: Star,
   },
-  {
-    name: 'Serviços',
-    href: '/dashboard/servicos',
-    icon: Scissors,
-  },
+  // Par 4: Disponibilidade / Serviços
   {
     name: 'Disponibilidade',
     href: '/dashboard/disponibilidade',
     icon: Clock,
   },
+  {
+    name: 'Serviços',
+    href: '/dashboard/servicos',
+    icon: Scissors,
+  },
+  // Par 5: Studio / Perfil
   {
     name: 'Studio',
     href: '/dashboard/studio',
@@ -246,8 +257,6 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
                       prefetch={true}
                       onClick={() => setIsMoreOpen(false)}
                       className={`flex items-center gap-3 rounded-2xl p-3 text-xs font-semibold border transition cursor-pointer ${
-                        item.href === '/perfil' ? 'col-span-2' : ''
-                      } ${
                         isActive
                           ? 'bg-[#B8A9D9]/25 border-[#B8A9D9] text-[#4A3F5C]'
                           : 'bg-[#FAF7F5] border-gray-200/80 text-gray-700 hover:bg-white hover:border-[#B8A9D9]'
@@ -349,6 +358,8 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
             ? 'tour-nav-agenda'
             : item.href === '/dashboard/financeiro'
             ? 'tour-nav-financeiro'
+            : item.href === '/dashboard/relatorios'
+            ? 'tour-nav-relatorios'
             : item.href === '/dashboard/clientes'
             ? 'tour-nav-clientes'
             : item.href === '/dashboard/avaliacoes'

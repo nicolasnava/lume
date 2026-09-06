@@ -77,13 +77,13 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
   const adminSupabase = createAdminClient()
   const { start, end, prevStart, prevEnd } = getDateRanges(filter)
 
-  // 1. Buscar profissionais reais (excluindo desativadas por soft delete)
+  // 1. Buscar profissionais reais (excluindo desativadas por soft delete e contas demo)
   const { data: allProfissionais } = await adminSupabase
     .from('profissionais')
-    .select('id, nome, slug, categoria, status_conta, plano_tipo, valor_mensalidade, created_at, deletado_em')
+    .select('id, nome, slug, categoria, status_conta, plano_tipo, valor_mensalidade, created_at, deletado_em, is_demo')
     .is('deletado_em', null)
 
-  const activeProfs = allProfissionais || []
+  const activeProfs = (allProfissionais || []).filter((p: any) => !p.is_demo)
   const totalProfissionais = activeProfs.length
 
   const profsPeriodoAtual = activeProfs.filter((p) => {
@@ -103,14 +103,17 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
     profsVariacaoPct = 100
   }
 
-  // 2. Agendamentos totais e no período
-  const { data: allAgendamentos } = await adminSupabase
+  // 2. Agendamentos totais e no período (filtrando contas demo)
+  const nonDemoIds = new Set(activeProfs.map((p) => p.id))
+  const { data: rawAgendamentos } = await adminSupabase
     .from('agendamentos')
     .select('id, data_hora_inicio, status, valor_cobrado, pago, profissional_id')
 
-  const totalAgendamentosGeral = allAgendamentos?.length || 0
+  const allAgendamentos = (rawAgendamentos || []).filter((a) => nonDemoIds.has(a.profissional_id))
 
-  const agendamentosPeriodo = (allAgendamentos || []).filter((a) => {
+  const totalAgendamentosGeral = allAgendamentos.length
+
+  const agendamentosPeriodo = allAgendamentos.filter((a) => {
     const d = new Date(a.data_hora_inicio)
     return d >= start && d <= end
   })
@@ -357,7 +360,7 @@ export async function getAdminProfissionais(
   // Buscar profissionais (filtrando deletado_em a menos que solicitado)
   let query = adminSupabase
     .from('profissionais')
-    .select('id, nome, slug, categoria, status_conta, created_at, foto_url, notas_internas, deletado_em')
+    .select('id, nome, slug, categoria, status_conta, created_at, foto_url, notas_internas, deletado_em, is_demo')
 
   if (!includeDeactivated) {
     query = query.is('deletado_em', null)
@@ -396,7 +399,7 @@ export async function getAdminProfissionais(
   })
 
   // Mapear resultado completo
-  let result = (profs || []).map((p) => {
+  let result = (profs || []).map((p: any) => {
     return {
       id: p.id,
       nome: p.nome,
@@ -409,6 +412,7 @@ export async function getAdminProfissionais(
       total_agendamentos: agendamentosCountMap[p.id] || 0,
       notas_internas: p.notas_internas || null,
       deletado_em: p.deletado_em || null,
+      is_demo: !!p.is_demo,
     }
   })
 
@@ -902,15 +906,20 @@ export async function getAdminAnalyticsData() {
 
   const adminSupabase = createAdminClient()
 
-  // 1. Todas as profissionais
-  const { data: profs } = await adminSupabase
+  // 1. Todas as profissionais (excluindo contas demo)
+  const { data: rawProfs } = await adminSupabase
     .from('profissionais')
-    .select('id, nome, categoria, status_conta, created_at, valor_mensalidade')
+    .select('id, nome, categoria, status_conta, created_at, valor_mensalidade, is_demo')
 
-  // 2. Todos os agendamentos
-  const { data: agendamentos } = await adminSupabase
+  const profs = (rawProfs || []).filter((p: any) => !p.is_demo)
+  const nonDemoIds = new Set(profs.map((p) => p.id))
+
+  // 2. Todos os agendamentos (excluindo contas demo)
+  const { data: rawAgendamentos } = await adminSupabase
     .from('agendamentos')
-    .select('id, status, valor_cobrado, data_hora_inicio, created_at')
+    .select('id, status, valor_cobrado, data_hora_inicio, created_at, profissional_id')
+
+  const agendamentos = (rawAgendamentos || []).filter((a: any) => nonDemoIds.has(a.profissional_id))
 
   const totalProfs = profs?.length || 0
   const ativasCount = (profs || []).filter((p) => p.status_conta === 'ativa').length

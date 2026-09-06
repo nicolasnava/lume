@@ -329,11 +329,6 @@ export default function SubscriptionSection({ initialData }: SubscriptionSection
                 ? '🎉 Você atingiu o desconto máximo de 30%!'
                 : `${indicadasAtivas} de 3 indicações ativas para o desconto máximo`}
             </span>
-            {descontoPct > 0 && (
-              <span className="font-bold text-emerald-600 font-mono">
-                {descontoPct}% de desconto aplicado
-              </span>
-            )}
           </div>
 
           <div className="h-3 w-full rounded-full bg-gray-100 p-0.5 overflow-hidden">

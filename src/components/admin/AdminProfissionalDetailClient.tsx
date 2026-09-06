@@ -36,9 +36,11 @@ import {
   Sparkles,
   DollarSign,
   Activity,
+  RotateCcw,
 } from 'lucide-react'
 import CustomSelect from '@/components/ui/CustomSelect'
 import { formatPhoneNumber } from '@/lib/utils/phone'
+import { resetAndSeedDemoAccountAction } from '@/app/actions/demoSeed'
 
 interface AdminProfissionalDetailClientProps {
   initialData: Awaited<ReturnType<typeof getAdminProfissionalDetail>>
@@ -62,6 +64,7 @@ export default function AdminProfissionalDetailClient({
   const [isPendingPeriod, startTransitionPeriod] = useTransition()
   const [isPendingSaaSAction, startTransitionSaaS] = useTransition()
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isResettingDemo, setIsResettingDemo] = useState(false)
 
   const [statusFeedback, setStatusFeedback] = useState<string | null>(null)
   const [notasFeedback, setNotasFeedback] = useState<string | null>(null)
@@ -200,6 +203,32 @@ export default function AdminProfissionalDetailClient({
     }
   }
 
+  const handleResetDemoData = async () => {
+    if (
+      !confirm(
+        `ATENÇÃO: Deseja resetar todos os dados da conta demo "${prof.nome}"?\n\nIsso apagará agendamentos, clientes, serviços e repovoará com um histórico realista de 3 meses, serviços, avaliações e cupons.`
+      )
+    ) {
+      return
+    }
+
+    setIsResettingDemo(true)
+    try {
+      const res = await resetAndSeedDemoAccountAction(profissionalId)
+      if (res.success) {
+        alert(res.message)
+        router.refresh()
+      } else {
+        alert(res.message || 'Erro ao resetar conta demo.')
+      }
+    } catch (err) {
+      console.error('Erro ao resetar demo:', err)
+      alert('Erro inesperado ao resetar demo.')
+    } finally {
+      setIsResettingDemo(false)
+    }
+  }
+
   const handlePeriodChange = (newPeriod: AdminPeriodFilter['period']) => {
     setPeriod(newPeriod)
     startTransitionPeriod(async () => {
@@ -331,6 +360,30 @@ export default function AdminProfissionalDetailClient({
                 <span>{status === 'cortesia' ? 'Remov. Cortesia' : 'Dar Cortesia'}</span>
               </button>
             </div>
+
+            {/* Ação exclusiva para Conta Demo (Prompt 62 Parte 3) */}
+            {(prof as any).is_demo && (
+              <div className="pt-2.5 border-t border-white/[0.08] space-y-1.5">
+                <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-400">
+                  <Sparkles className="h-3 w-3 text-amber-400" />
+                  <span>CONTA DEMO DE VENDAS</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleResetDemoData}
+                  disabled={isResettingDemo}
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 px-2.5 py-2 text-[11px] font-bold transition cursor-pointer disabled:opacity-50"
+                  title="Apaga os dados atuais e repovoa com dados fictícios realistas"
+                >
+                  {isResettingDemo ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  )}
+                  <span>Resetar dados da demo</span>
+                </button>
+              </div>
+            )}
 
             {statusFeedback && (
               <p className="text-[11px] font-semibold text-[#2EB886] transition animate-fade-in">

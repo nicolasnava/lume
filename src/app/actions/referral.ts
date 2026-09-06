@@ -32,12 +32,12 @@ export async function validateReferralCodeAction(code: string): Promise<{
 
     const { data: prof, error } = await adminSupabase
       .from('profissionais')
-      .select('id, nome, slug, status_conta')
+      .select('id, nome, slug, status_conta, is_demo')
       .ilike('codigo_indicacao', cleanCode)
       .is('deletado_em', null)
       .maybeSingle()
 
-    if (error || !prof) {
+    if (error || !prof || (prof as any).is_demo) {
       return { valid: false }
     }
 
@@ -72,10 +72,10 @@ export async function recalcularDescontoIndicacao(indicadorId: string): Promise<
   const adminSupabase = createAdminClient()
 
   try {
-    // 1. Contar indicadas ativas
+    // 1. Contar indicadas ativas (excluindo contas demo)
     const { data: indicadas, error: countError } = await adminSupabase
       .from('profissionais')
-      .select('id, status_conta')
+      .select('id, status_conta, is_demo')
       .eq('indicado_por', indicadorId)
       .eq('status_conta', 'ativa')
       .is('deletado_em', null)
@@ -84,7 +84,7 @@ export async function recalcularDescontoIndicacao(indicadorId: string): Promise<
       console.error('[recalcularDescontoIndicacao] Erro ao buscar indicadas:', countError)
     }
 
-    const ativasCount = (indicadas || []).length
+    const ativasCount = (indicadas || []).filter((p: any) => !p.is_demo).length
 
     // Desconto = min(ativas * 10%, 30%)
     const descontoPct = Math.min(ativasCount * 10, 30)
@@ -130,11 +130,11 @@ export async function getReferralStatsAction(): Promise<ReferralStats | null> {
   // Buscar dados da profissional
   const { data: prof } = await adminSupabase
     .from('profissionais')
-    .select('id, codigo_indicacao, valor_mensalidade, slug, nome')
+    .select('id, codigo_indicacao, valor_mensalidade, slug, nome, is_demo')
     .eq('id', user.id)
     .single()
 
-  if (!prof) return null
+  if (!prof || (prof as any).is_demo) return null
 
   // Se não tiver código de indicação, gerar e salvar agora
   let codigo = prof.codigo_indicacao
@@ -151,15 +151,16 @@ export async function getReferralStatsAction(): Promise<ReferralStats | null> {
       .eq('id', user.id)
   }
 
-  // Contar indicadas totais e ativas
+  // Contar indicadas totais e ativas (excluindo contas demo)
   const { data: indicadas } = await adminSupabase
     .from('profissionais')
-    .select('id, status_conta')
+    .select('id, status_conta, is_demo')
     .eq('indicado_por', user.id)
     .is('deletado_em', null)
 
-  const totalIndicadas = (indicadas || []).length
-  const indicadasAtivas = (indicadas || []).filter((p) => p.status_conta === 'ativa').length
+  const nonDemoIndicadas = (indicadas || []).filter((p: any) => !p.is_demo)
+  const totalIndicadas = nonDemoIndicadas.length
+  const indicadasAtivas = nonDemoIndicadas.filter((p) => p.status_conta === 'ativa').length
 
   const descontoPercentual = Math.min(indicadasAtivas * 10, 30)
   const valorBase = 69.90

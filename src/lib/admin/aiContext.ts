@@ -133,13 +133,13 @@ export async function getAggregatedAdminContext(): Promise<AggregatedAdminContex
   const mesAnteriorInicio = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString()
   const mesAnteriorFim = mesAtualInicio
 
-  // 2. BUSCA DE PROFISSIONAIS
+  // 2. BUSCA DE PROFISSIONAIS (Excluindo contas demo)
   const { data: rawProfissionais } = await adminSupabase
     .from('profissionais')
-    .select('id, nome, slug, status_conta, plano_tipo, created_at, deletado_em')
+    .select('id, nome, slug, status_conta, plano_tipo, created_at, deletado_em, is_demo')
     .is('deletado_em', null)
 
-  const profissionais = rawProfissionais || []
+  const profissionais = (rawProfissionais || []).filter((p: any) => !p.is_demo)
   const totalProfissionais = profissionais.length
 
   const porStatus = {
@@ -179,13 +179,14 @@ export async function getAggregatedAdminContext(): Promise<AggregatedAdminContex
     .slice(0, 5)
     .map((p) => p.nome || p.slug || 'Profissional')
 
-  // 4. AGENDAMENTOS E FATURAMENTO
+  // 4. AGENDAMENTOS E FATURAMENTO (Excluindo contas demo)
+  const nonDemoProfIds = new Set(profissionais.map((p) => p.id))
   const { data: rawAgendamentos } = await adminSupabase
     .from('agendamentos')
-    .select('id, status, valor_cobrado, created_at')
+    .select('id, status, valor_cobrado, created_at, profissional_id')
     .gte('created_at', mesAnteriorInicio)
 
-  const allAgendamentos = rawAgendamentos || []
+  const allAgendamentos = (rawAgendamentos || []).filter((a: any) => nonDemoProfIds.has(a.profissional_id))
 
   // Agendamentos dos últimos 30 dias
   const agendamentos30d = allAgendamentos.filter((a) => a.created_at >= mesAtualInicio)

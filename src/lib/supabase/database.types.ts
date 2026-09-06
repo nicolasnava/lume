@@ -40,6 +40,7 @@ export type Database = {
           ativo_no_estudio?: boolean
           codigo_indicacao?: string | null
           indicado_por?: string | null
+          is_demo?: boolean
           created_at: string
         }
         Insert: {
@@ -72,6 +73,7 @@ export type Database = {
           ativo_no_estudio?: boolean
           codigo_indicacao?: string | null
           indicado_por?: string | null
+          is_demo?: boolean
           created_at?: string
         }
         Update: {
@@ -104,6 +106,7 @@ export type Database = {
           ativo_no_estudio?: boolean
           codigo_indicacao?: string | null
           indicado_por?: string | null
+          is_demo?: boolean
           created_at?: string
         }
         Relationships: []
@@ -341,6 +344,144 @@ export type Database = {
           id?: string
           combo_id?: string
           servico_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      metas_mensais: {
+        Row: {
+          id: string
+          profissional_id: string
+          mes_referencia: string
+          tipo_meta: 'faturamento' | 'atendimentos' | 'novos_clientes' | 'ocupacao'
+          valor_meta: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          profissional_id: string
+          mes_referencia: string
+          tipo_meta?: 'faturamento' | 'atendimentos' | 'novos_clientes' | 'ocupacao'
+          valor_meta: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          profissional_id?: string
+          mes_referencia?: string
+          tipo_meta?: 'faturamento' | 'atendimentos' | 'novos_clientes' | 'ocupacao'
+          valor_meta?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      relatorios_mensais_fechados: {
+        Row: {
+          id: string
+          profissional_id: string
+          mes_referencia: string
+          faturamento_total: number
+          atendimentos_concluidos: number
+          servico_mais_vendido_nome: string | null
+          meta_valor: number | null
+          meta_batida: boolean | null
+          comparativo_mes_anterior_pct: number | null
+          destaque_narrativo: string | null
+          congelado_em: string
+        }
+        Insert: {
+          id?: string
+          profissional_id: string
+          mes_referencia: string
+          faturamento_total?: number
+          atendimentos_concluidos?: number
+          servico_mais_vendido_nome?: string | null
+          meta_valor?: number | null
+          meta_batida?: boolean | null
+          comparativo_mes_anterior_pct?: number | null
+          destaque_narrativo?: string | null
+          congelado_em?: string
+        }
+        Update: {
+          id?: string
+          profissional_id?: string
+          mes_referencia?: string
+          faturamento_total?: number
+          atendimentos_concluidos?: number
+          servico_mais_vendido_nome?: string | null
+          meta_valor?: number | null
+          meta_batida?: boolean | null
+          comparativo_mes_anterior_pct?: number | null
+          destaque_narrativo?: string | null
+          congelado_em?: string
+        }
+        Relationships: []
+      }
+      cupons_profissional: {
+        Row: {
+          id: string
+          profissional_id: string
+          codigo: string
+          tipo_desconto: 'percentual' | 'valor_fixo'
+          valor: number
+          segmento_alvo: 'todos' | 'nunca_agendou' | 'inativa'
+          limite_uso_total: number | null
+          limite_uso_por_cliente: number
+          valido_ate: string | null
+          usos_atuais: number
+          ativo: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          profissional_id: string
+          codigo: string
+          tipo_desconto: 'percentual' | 'valor_fixo'
+          valor: number
+          segmento_alvo?: 'todos' | 'nunca_agendou' | 'inativa'
+          limite_uso_total?: number | null
+          limite_uso_por_cliente?: number
+          valido_ate?: string | null
+          usos_atuais?: number
+          ativo?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          profissional_id?: string
+          codigo?: string
+          tipo_desconto?: 'percentual' | 'valor_fixo'
+          valor?: number
+          segmento_alvo?: 'todos' | 'nunca_agendou' | 'inativa'
+          limite_uso_total?: number | null
+          limite_uso_por_cliente?: number
+          valido_ate?: string | null
+          usos_atuais?: number
+          ativo?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      cupom_usos: {
+        Row: {
+          id: string
+          cupom_id: string
+          cliente_telefone: string
+          agendamento_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          cupom_id: string
+          cliente_telefone: string
+          agendamento_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          cupom_id?: string
+          cliente_telefone?: string
+          agendamento_id?: string | null
           created_at?: string
         }
         Relationships: []

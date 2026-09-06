@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   Search,
   User,
@@ -20,6 +20,8 @@ import {
   CreditCard,
   Scissors,
   DollarSign,
+  Tag,
+  Sparkles,
 } from 'lucide-react'
 import CustomSelect from '@/components/ui/CustomSelect'
 import CustomDatePicker from '@/components/ui/CustomDatePicker'
@@ -28,6 +30,8 @@ import {
   calculateClientReliability,
   ClientReliabilityTier,
 } from '@/lib/utils/reliability'
+import CouponsManager from '@/components/dashboard/CouponsManager'
+import { CupomProfissionalItem, getCuponsProfissionalAction } from '@/app/actions/coupons'
 
 function formatPaymentMethod(method: string | null | undefined): string {
   if (!method) return ''
@@ -128,6 +132,28 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedClient, setSelectedClient] = useState<ClientData | null>(null)
   const [showLegendModal, setShowLegendModal] = useState(false)
+
+  // Abas: Clientes vs Cupons de Desconto
+  const [activeTab, setActiveTab] = useState<'clientes' | 'cupons'>('clientes')
+  const [availableCupons, setAvailableCupons] = useState<CupomProfissionalItem[]>([])
+
+  useEffect(() => {
+    getCuponsProfissionalAction().then((res) => {
+      if (res.success && res.cupons) {
+        setAvailableCupons(res.cupons)
+      }
+    })
+  }, [])
+
+  // Cupom contextual sugerido para clientes inativas
+  const cupomInativa = useMemo(() => {
+    return (
+      availableCupons.find((c) => c.ativo && c.segmento_alvo === 'inativa') ||
+      availableCupons.find((c) => c.ativo && c.codigo.toUpperCase().includes('VOLTA')) ||
+      availableCupons.find((c) => c.ativo && c.segmento_alvo === 'todos') ||
+      null
+    )
+  }, [availableCupons])
 
   // Filtro de Última Visita
   const [lastVisitFilter, setLastVisitFilter] = useState<LastVisitFilter>('todas')
@@ -253,19 +279,52 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
 
   return (
     <div className="space-y-6">
-      {/* Topo: Busca, Filtro de Última Visita, Ordenação e Legenda */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        {/* Campo de Busca */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar cliente por nome ou telefone..."
-            className="w-full rounded-2xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-xs text-[#4A3F5C] shadow-2xs transition focus:border-[#B8A9D9] focus:outline-none font-medium"
-          />
-        </div>
+      {/* Abas Superiores: Clientes vs Cupons de Desconto (Prompt 62) */}
+      <div className="flex items-center gap-2 border-b border-gray-200/80 pb-3">
+        <button
+          type="button"
+          onClick={() => setActiveTab('clientes')}
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition cursor-pointer ${
+            activeTab === 'clientes'
+              ? 'bg-[#4A3F5C] text-white shadow-xs'
+              : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+          }`}
+        >
+          <User className="h-4 w-4" />
+          <span>Clientes ({initialClients.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('cupons')}
+          className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition cursor-pointer ${
+            activeTab === 'cupons'
+              ? 'bg-[#4A3F5C] text-white shadow-xs'
+              : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+          }`}
+        >
+          <Tag className="h-4 w-4" />
+          <span>Cupons de Desconto ({availableCupons.length})</span>
+        </button>
+      </div>
+
+      {activeTab === 'cupons' ? (
+        <CouponsManager onCouponsLoaded={setAvailableCupons} />
+      ) : (
+        <>
+          {/* Topo: Busca, Filtro de Última Visita, Ordenação e Legenda */}
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            {/* Campo de Busca */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar cliente por nome ou telefone..."
+                className="w-full rounded-2xl border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-xs text-[#4A3F5C] shadow-2xs transition focus:border-[#B8A9D9] focus:outline-none font-medium"
+              />
+            </div>
 
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           {/* Filtro de Última Visita */}
@@ -345,7 +404,9 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
             const reliabilityInfo = calculateClientReliability(client.agendamentos)
 
             const cleanPhone = client.telefone.replace(/\D/g, '')
-            const reativarMsg = `Oi ${client.nome}, faz um tempinho que você não vem! Bora agendar seu próximo horário?`
+            const reativarMsg = cupomInativa
+              ? `Oi ${client.nome}! Sentimos sua falta aqui no estúdio. Preparei um cupom especial de presente pra você: use o código *${cupomInativa.codigo}* no seu próximo agendamento para garantir seu desconto! Bora agendar?`
+              : `Oi ${client.nome}, faz um tempinho que você não vem! Bora agendar seu próximo horário?`
             const standardMsg = `Olá, ${client.nome}! Tudo bem? Entrando em contato através do Lumê.`
 
             const whatsappUrl = cleanPhone
@@ -437,6 +498,29 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
                     </div>
                   </div>
 
+                  {/* Sugestão contextual de Cupom para Clientes Inativas */}
+                  {statusInfo.status === 'inativa' && cupomInativa && (
+                    <div className="mt-3 p-2.5 rounded-2xl bg-purple-50 border border-purple-200/80 flex items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-purple-900 truncate">
+                        <Sparkles className="h-3.5 w-3.5 text-purple-600 shrink-0" />
+                        <span>
+                          Sugestão: Envie o cupom <strong>{cupomInativa.codigo}</strong>
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigator.clipboard.writeText(cupomInativa.codigo)
+                          alert(`Código "${cupomInativa.codigo}" copiado!`)
+                        }}
+                        className="px-2 py-0.5 rounded-lg bg-white border border-purple-200 text-purple-700 font-bold text-[10px] hover:bg-purple-100 transition cursor-pointer shrink-0"
+                      >
+                        Copiar
+                      </button>
+                    </div>
+                  )}
+
                   <div className="mt-4 pt-3 border-t border-gray-100 grid grid-cols-2 gap-2 text-xs">
                     <div>
                       <span className="text-gray-400 block text-[10px] uppercase font-bold">Total</span>
@@ -469,6 +553,8 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
             )
           })}
         </div>
+      )}
+      </>
       )}
 
       {/* Modal Legenda de Classificação (Item 7 + Prompt 60) */}
@@ -648,6 +734,35 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* Sugestão Contextual de Cupom para Cliente Inativa (Prompt 62) */}
+              {getClientStatus(selectedClient.agendamentos).status === 'inativa' && cupomInativa && (
+                <div className="p-3.5 rounded-2xl bg-purple-50 border border-purple-200 flex items-start justify-between gap-3">
+                  <div className="space-y-1 text-xs">
+                    <div className="flex items-center gap-1.5 font-bold text-purple-950">
+                      <Sparkles className="h-4 w-4 text-purple-600 shrink-0" />
+                      <span>Sugestão de Reativação</span>
+                    </div>
+                    <p className="text-[11px] text-purple-900 font-medium leading-relaxed">
+                      Esta cliente está inativa há mais de 60 dias. Envie o cupom <strong>{cupomInativa.codigo}</strong> (
+                      {cupomInativa.tipo_desconto === 'percentual'
+                        ? `${cupomInativa.valor}% OFF`
+                        : `R$ ${Number(cupomInativa.valor).toFixed(2)} OFF`}
+                      ) para trazê-la de volta ao seu estúdio.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(cupomInativa.codigo)
+                      alert(`Código "${cupomInativa.codigo}" copiado para a área de transferência!`)
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-[#4A3F5C] text-white font-bold text-xs hover:bg-[#3d334d] transition cursor-pointer shrink-0"
+                  >
+                    Copiar
+                  </button>
                 </div>
               )}
 
