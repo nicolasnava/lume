@@ -329,9 +329,11 @@ export default function SubscriptionSection({ initialData }: SubscriptionSection
                 ? '🎉 Você atingiu o desconto máximo de 30%!'
                 : `${indicadasAtivas} de 3 indicações ativas para o desconto máximo`}
             </span>
-            <span className="font-bold text-emerald-600 font-mono">
-              {descontoPct}% de desconto aplicado
-            </span>
+            {descontoPct > 0 && (
+              <span className="font-bold text-emerald-600 font-mono">
+                {descontoPct}% de desconto aplicado
+              </span>
+            )}
           </div>
 
           <div className="h-3 w-full rounded-full bg-gray-100 p-0.5 overflow-hidden">
@@ -386,15 +388,6 @@ export default function SubscriptionSection({ initialData }: SubscriptionSection
                   <span>Copiar Link</span>
                 </>
               )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowReferralStoriesModal(true)}
-              className="px-4 py-3 rounded-2xl bg-gradient-to-r from-[#4A3F5C] to-purple-900 hover:opacity-95 text-white text-xs font-bold transition shrink-0 flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
-            >
-              <Instagram className="h-4 w-4 text-pink-300" />
-              <span>Divulgar nos Stories</span>
             </button>
           </div>
         </div>
@@ -516,6 +509,9 @@ export default function SubscriptionSection({ initialData }: SubscriptionSection
                                 day: '2-digit',
                                 month: 'short',
                                 year: 'numeric',
+                              })} às ${new Date(fatura.data_pagamento).toLocaleTimeString('pt-BR', {
+                                hour: '2-digit',
+                                minute: '2-digit',
                               })}`
                             : 'Pago'}{' '}
                           • R$ {fatura.valor.toFixed(2)}
@@ -723,12 +719,17 @@ export default function SubscriptionSection({ initialData }: SubscriptionSection
 
               {selectedInvoiceDetail.data_pagamento && (
                 <div className="flex items-center justify-between py-1 border-b border-gray-50 text-xs">
-                  <span className="text-gray-500">Data do Pagamento</span>
+                  <span className="text-gray-500">Data e Hora do Pagamento</span>
                   <span className="font-semibold text-emerald-700">
                     {new Date(selectedInvoiceDetail.data_pagamento).toLocaleDateString('pt-BR', {
                       day: '2-digit',
                       month: 'long',
                       year: 'numeric',
+                    })}{' '}
+                    às{' '}
+                    {new Date(selectedInvoiceDetail.data_pagamento).toLocaleTimeString('pt-BR', {
+                      hour: '2-digit',
+                      minute: '2-digit',
                     })}
                   </span>
                 </div>

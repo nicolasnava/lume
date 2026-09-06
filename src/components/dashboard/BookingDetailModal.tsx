@@ -61,15 +61,13 @@ interface BookingDetailModalProps {
 }
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  pix: 'Pix',
-  dinheiro: 'Dinheiro',
-  cartao: 'Cartão',
-  cartao_credito: 'Cartão',
-  cartao_debito: 'Cartão',
-  outro: 'Outro',
+  pix: 'PIX',
+  dinheiro: 'DINHEIRO',
+  cartao: 'CARTÃO',
+  cartao_credito: 'CARTÃO DE CRÉDITO',
+  cartao_debito: 'CARTÃO DE DÉBITO',
+  outro: 'OUTRO',
 }
-
-
 
 export default function BookingDetailModal({
   booking,
@@ -77,6 +75,7 @@ export default function BookingDetailModal({
   onRefresh,
 }: BookingDetailModalProps) {
   const [canceling, setCanceling] = useState(false)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [completing, setCompleting] = useState(false)
   const [markingNoShow, setMarkingNoShow] = useState(false)
 
@@ -133,9 +132,7 @@ export default function BookingDetailModal({
       )}`
     : null
 
-  const handleCancel = async () => {
-    if (!confirm('Tem certeza de que deseja cancelar este agendamento?')) return
-
+  const handleConfirmCancel = async () => {
     setCanceling(true)
     setToast(null)
 
@@ -144,6 +141,7 @@ export default function BookingDetailModal({
 
     if (!res.success) {
       setToast({ show: true, message: res.message || 'Erro ao cancelar o agendamento.', type: 'error' })
+      setShowCancelConfirm(false)
     } else {
       setToast({ show: true, message: 'Agendamento cancelado com sucesso!', type: 'success' })
       setTimeout(() => {
@@ -465,55 +463,90 @@ export default function BookingDetailModal({
             </div>
           </form>
         ) : (
-          /* Ações do Modal */
-          booking.status !== 'cancelado' && (
+          /* Ações do Modal: Apenas para agendamentos CONFIRMADOS (não concluídos, nem cancelados) */
+          booking.status === 'confirmado' && (
             <div className="space-y-3 pt-4 border-t border-gray-100">
-              {/* Botão de Destaque: Marcar como Concluído */}
-              {booking.status === 'confirmado' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setValorCobrado(
-                        booking.servicos?.preco ? String(booking.servicos.preco) : '0'
-                      )
-                      setShowCompleteForm(true)
-                    }}
-                    className="w-full rounded-xl bg-emerald-600 py-3 text-xs font-bold text-white hover:bg-emerald-700 transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Marcar como Concluído</span>
-                  </button>
+              {/* Botões de Ação Principal: Concluir Atendimento / Faltou */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setValorCobrado(
+                      booking.servicos?.preco ? String(booking.servicos.preco) : '0'
+                    )
+                    setShowCompleteForm(true)
+                  }}
+                  className="w-full rounded-xl bg-emerald-600 py-3 text-xs font-bold text-white hover:bg-emerald-700 transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  <span>Concluir Atendimento</span>
+                </button>
 
+                <button
+                  type="button"
+                  onClick={handleMarkNoShow}
+                  disabled={markingNoShow}
+                  className="w-full rounded-xl border border-amber-300 bg-amber-50 py-3 text-xs font-bold text-amber-800 hover:bg-amber-100 transition flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  {markingNoShow ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Ban className="h-4 w-4 text-amber-600" />
+                      <span>Faltou (No-Show)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Botão e Confirmação de Cancelamento Personalizado (Item 3) */}
+              {showCancelConfirm ? (
+                <div className="rounded-2xl bg-rose-50/90 border border-rose-200 p-3.5 space-y-2.5 animate-in fade-in duration-200">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-xs font-bold text-rose-900">Confirmar cancelamento deste agendamento?</h4>
+                      <p className="text-[11px] text-rose-700 leading-relaxed mt-0.5">
+                        O horário será liberado na sua agenda e o status será alterado para cancelado.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowCancelConfirm(false)}
+                      disabled={canceling}
+                      className="w-full py-2 px-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs font-bold text-gray-700 transition cursor-pointer"
+                    >
+                      Voltar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmCancel}
+                      disabled={canceling}
+                      className="w-full py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      {canceling ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <XCircle className="h-3.5 w-3.5" />
+                      )}
+                      <span>Sim, Cancelar</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="pt-1">
                   <button
                     type="button"
-                    onClick={handleMarkNoShow}
-                    disabled={markingNoShow}
-                    className="w-full rounded-xl border border-amber-300 bg-amber-50 py-3 text-xs font-bold text-amber-800 hover:bg-amber-100 transition flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                    onClick={() => setShowCancelConfirm(true)}
+                    className="w-full rounded-xl border border-rose-200 bg-rose-50/60 py-2.5 text-xs font-bold text-rose-600 hover:bg-rose-100 transition flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    {markingNoShow ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Ban className="h-4 w-4 text-amber-600" />
-                        <span>Faltou (No-Show)</span>
-                      </>
-                    )}
+                    <XCircle className="h-4 w-4 text-rose-500" />
+                    <span>Cancelar Agendamento</span>
                   </button>
                 </div>
               )}
-
-              {/* Botão Cancelar (Profissional pode apenas cancelar, remarcação futura será da cliente) */}
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  disabled={canceling}
-                  className="w-full rounded-xl border border-red-200 bg-red-50 py-2.5 text-xs font-bold text-red-600 hover:bg-red-100 transition disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  {canceling ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Cancelar Agendamento'}
-                </button>
-              </div>
             </div>
           )
         )}

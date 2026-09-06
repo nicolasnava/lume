@@ -29,6 +29,8 @@ import {
   Sparkles,
   Tag,
   Check,
+  Package,
+  Layers,
 } from 'lucide-react'
 import {
   ComboItem,
@@ -203,7 +205,7 @@ export default function ServicesManager({ initialServices, initialCombos, profis
       setComboFotoUrl(publicUrlData.publicUrl)
       setToast({
         show: true,
-        message: 'Foto do combo carregada!',
+        message: 'Foto do pacote carregada!',
         type: 'success',
       })
     } catch (err: unknown) {
@@ -219,7 +221,7 @@ export default function ServicesManager({ initialServices, initialCombos, profis
     if (comboServicoIds.length < 2) {
       setToast({
         show: true,
-        message: 'Selecione ao menos 2 serviços para compor o combo.',
+        message: 'Selecione ao menos 2 serviços para compor o pacote.',
         type: 'error',
       })
       return
@@ -229,7 +231,7 @@ export default function ServicesManager({ initialServices, initialCombos, profis
     if (!precoNumVal || precoNumVal <= 0) {
       setToast({
         show: true,
-        message: 'Informe um preço válido para o combo.',
+        message: 'Informe um preço válido para o pacote.',
         type: 'error',
       })
       return
@@ -248,7 +250,7 @@ export default function ServicesManager({ initialServices, initialCombos, profis
         })
 
         if (!res.success) {
-          setToast({ show: true, message: res.message || 'Erro ao atualizar combo.', type: 'error' })
+          setToast({ show: true, message: res.message || 'Erro ao atualizar pacote.', type: 'error' })
           return
         }
 
@@ -279,7 +281,7 @@ export default function ServicesManager({ initialServices, initialCombos, profis
               : c
           )
         )
-        setToast({ show: true, message: 'Combo atualizado com sucesso!', type: 'success' })
+        setToast({ show: true, message: 'Pacote atualizado com sucesso!', type: 'success' })
       } else {
         const res = await createComboAction({
           nome: comboNome,
@@ -290,18 +292,18 @@ export default function ServicesManager({ initialServices, initialCombos, profis
         })
 
         if (!res.success) {
-          setToast({ show: true, message: res.message || 'Erro ao cadastrar combo.', type: 'error' })
+          setToast({ show: true, message: res.message || 'Erro ao cadastrar pacote.', type: 'error' })
           return
         }
 
         const reloaded = await getCombosProfissionalAction(profissionalId)
         setCombos(reloaded)
-        setToast({ show: true, message: 'Combo cadastrado com sucesso!', type: 'success' })
+        setToast({ show: true, message: 'Pacote cadastrado com sucesso!', type: 'success' })
       }
 
       setShowComboModal(false)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao salvar combo.'
+      const msg = err instanceof Error ? err.message : 'Erro ao salvar pacote.'
       setToast({ show: true, message: msg, type: 'error' })
     } finally {
       setComboSaving(false)
@@ -318,24 +320,24 @@ export default function ServicesManager({ initialServices, initialCombos, profis
     } else {
       setToast({
         show: true,
-        message: newAtivo ? 'Combo ativado!' : 'Combo pausado.',
+        message: newAtivo ? 'Pacote ativado!' : 'Pacote pausado.',
         type: 'info',
       })
     }
   }
 
   const handleDeleteCombo = async (comboId: string) => {
-    if (!confirm('Deseja realmente excluir este combo? As clientes não poderão mais agendá-lo.')) {
+    if (!confirm('Deseja realmente excluir este pacote? As clientes não poderão mais agendá-lo.')) {
       return
     }
     setDeletingComboId(comboId)
     const res = await deleteComboAction(comboId)
     setDeletingComboId(null)
     if (!res.success) {
-      setToast({ show: true, message: res.message || 'Erro ao excluir combo.', type: 'error' })
+      setToast({ show: true, message: res.message || 'Erro ao excluir pacote.', type: 'error' })
     } else {
       setCombos((prev) => prev.filter((c) => c.id !== comboId))
-      setToast({ show: true, message: 'Combo excluído com sucesso!', type: 'success' })
+      setToast({ show: true, message: 'Pacote excluído com sucesso!', type: 'success' })
     }
   }
 
@@ -593,31 +595,38 @@ export default function ServicesManager({ initialServices, initialCombos, profis
 
   return (
     <div className="space-y-6">
-      {/* Seletor de Abas: Serviços Individuais vs Combos */}
-      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-gray-100/80 border border-gray-200/80 max-w-md">
+      {/* Seletor de Abas com Animação Suave: Serviços vs Pacotes (Itens 6, 7, 8 e 9) */}
+      <div className="relative flex items-center p-1 rounded-2xl bg-gray-100/90 border border-gray-200/80 max-w-md">
+        <div
+          className="absolute top-1 bottom-1 rounded-xl bg-white shadow-xs transition-all duration-300 ease-out pointer-events-none"
+          style={{
+            left: activeTab === 'servicos' ? '4px' : 'calc(50% + 2px)',
+            width: 'calc(50% - 6px)',
+          }}
+        />
         <button
           type="button"
           onClick={() => setActiveTab('servicos')}
-          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+          className={`relative z-10 flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-colors duration-200 flex items-center justify-center gap-2 cursor-pointer ${
             activeTab === 'servicos'
-              ? 'bg-white text-[#4A3F5C] shadow-2xs'
+              ? 'text-[#4A3F5C]'
               : 'text-gray-500 hover:text-gray-700'
           }`}
         >
           <Scissors className="h-4 w-4 text-[#8675A9]" />
-          <span>Serviços Individuais ({services.length})</span>
+          <span>Serviços ({services.length})</span>
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('combos')}
-          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+          className={`relative z-10 flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-colors duration-200 flex items-center justify-center gap-2 cursor-pointer ${
             activeTab === 'combos'
-              ? 'bg-white text-[#4A3F5C] shadow-2xs'
+              ? 'text-[#4A3F5C]'
               : 'text-gray-500 hover:text-gray-700'
           }`}
         >
-          <Sparkles className="h-4 w-4 text-[#8675A9]" />
-          <span>Combos ({combos.length})</span>
+          <Package className="h-4 w-4 text-[#8675A9]" />
+          <span>Pacotes ({combos.length})</span>
         </button>
       </div>
 
@@ -793,17 +802,17 @@ export default function ServicesManager({ initialServices, initialCombos, profis
         </>
       ) : (
         <>
-          {/* Aba de Combos: Header e Botão */}
+          {/* Aba de Pacotes: Header e Botão */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="rounded-3xl bg-white p-5 border border-gray-200/80 shadow-2xs flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-50 text-[#4A3F5C] border border-[#B8A9D9]/30">
-                  <Sparkles className="h-5 w-5 text-[#B8A9D9]" />
+                  <Package className="h-5 w-5 text-[#B8A9D9]" />
                 </div>
                 <div>
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Total de Combos Cadastrados</span>
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Total de Pacotes Cadastrados</span>
                   <strong className="text-xl font-bold text-[#4A3F5C]">
-                    {combos.length} {combos.length === 1 ? 'combo' : 'combos'}
+                    {combos.length} {combos.length === 1 ? 'pacote' : 'pacotes'}
                   </strong>
                 </div>
               </div>
@@ -815,17 +824,17 @@ export default function ServicesManager({ initialServices, initialCombos, profis
               className="w-full py-3.5 rounded-2xl bg-[#4A3F5C] text-xs font-semibold text-white shadow-xs hover:bg-[#393047] transition cursor-pointer flex items-center justify-center gap-2"
             >
               <Plus className="h-4 w-4 text-[#B8A9D9]" />
-              <span>Criar Novo Combo</span>
+              <span>Criar Novo Pacote</span>
             </button>
           </div>
 
-          {/* Lista de Combos */}
+          {/* Lista de Pacotes (Inspirada no modelo de assinatura / barbearia) */}
           {combos.length === 0 ? (
             <div className="rounded-2xl bg-white p-12 text-center border border-gray-100 shadow-xs space-y-3">
-              <Sparkles className="mx-auto h-8 w-8 text-[#B8A9D9]" />
-              <h3 className="text-sm font-bold text-[#4A3F5C]">Nenhum combo cadastrado</h3>
+              <Package className="mx-auto h-8 w-8 text-[#B8A9D9]" />
+              <h3 className="text-sm font-bold text-[#4A3F5C]">Nenhum pacote cadastrado</h3>
               <p className="text-xs text-gray-500 max-w-sm mx-auto">
-                Agrupe 2 ou mais serviços em um pacote com preço promocional para incentivar agendamentos completos.
+                Agrupe serviços ou crie pacotes de assinatura (ex: Cílios + Manutenção) com valor especial para fidelizar suas clientes.
               </p>
               <button
                 type="button"
@@ -833,7 +842,7 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                 className="mt-2 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-100 text-[#4A3F5C] text-xs font-bold hover:bg-purple-200 transition cursor-pointer"
               >
                 <Plus className="h-4 w-4" />
-                <span>Criar Primeiro Combo</span>
+                <span>Criar Primeiro Pacote</span>
               </button>
             </div>
           ) : (
@@ -844,140 +853,138 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                 return (
                   <div
                     key={combo.id}
-                    className={`rounded-3xl bg-white p-4 shadow-xs border transition flex flex-col justify-between h-full space-y-4 ${
-                      isAtivo ? 'border-gray-200/80 hover:border-[#B8A9D9]' : 'border-gray-200 opacity-60 bg-gray-50/50'
+                    className={`relative rounded-3xl p-5 shadow-md border transition-all duration-300 flex flex-col justify-between overflow-hidden ${
+                      isAtivo
+                        ? 'bg-[#18141F] border-amber-500/25 hover:border-amber-400/50 text-white'
+                        : 'bg-[#18141F]/70 border-gray-700 opacity-60 text-gray-300'
                     }`}
                   >
-                    <div className="space-y-3 flex-1 flex flex-col justify-between">
-                      <div>
-                        {/* Foto Banner do Combo */}
-                        <div className="relative h-40 w-full shrink-0 rounded-2xl overflow-hidden border border-gray-100 bg-purple-50/60 mb-3 shadow-2xs">
-                          {combo.foto_url ? (
-                            <Image src={combo.foto_url} alt={combo.nome} fill className="object-cover" unoptimized />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-[#B8A9D9]">
-                              <Sparkles className="h-10 w-10 opacity-70" />
-                            </div>
-                          )}
+                    {/* Brilho sutil no fundo */}
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
 
-                          {!isAtivo ? (
-                            <div className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-900/80 text-white backdrop-blur-xs">
+                    <div className="space-y-4 relative z-10 flex-1">
+                      {/* Foto Opcional do Pacote */}
+                      {combo.foto_url && (
+                        <div className="relative h-36 w-full rounded-2xl overflow-hidden border border-white/10 mb-2 shadow-inner">
+                          <Image src={combo.foto_url} alt={combo.nome} fill className="object-cover" unoptimized />
+                          {!isAtivo && (
+                            <div className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-black/80 text-white backdrop-blur-xs">
                               Pausado
                             </div>
-                          ) : (
-                            <div className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-900/80 text-white backdrop-blur-xs flex items-center gap-1">
-                              <Tag className="h-3 w-3 text-pink-300" />
-                              <span>Combo Especial</span>
-                            </div>
                           )}
                         </div>
+                      )}
 
-                        {/* Nome do Combo */}
-                        <h3 className="font-bold text-base text-[#4A3F5C] leading-snug line-clamp-1">
-                          {combo.nome}
-                        </h3>
-
-                        {/* Descrição */}
-                        <div className="min-h-[2rem] flex items-center mt-1">
-                          {combo.descricao ? (
-                            <p className="text-xs text-[#4A3F5C]/75 leading-relaxed line-clamp-2">
-                              {combo.descricao}
-                            </p>
-                          ) : (
-                            <p className="text-xs text-transparent select-none">—</p>
-                          )}
-                        </div>
-
-                        {/* Serviços Inclusos (Tags) */}
-                        <div className="mt-2 space-y-1.5 pt-2 border-t border-gray-100">
-                          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">
-                            Serviços inclusos ({combo.servicos.length}):
+                      {/* Cabeçalho do Card: Badge + Preço */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-2 flex-1">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold tracking-wider bg-amber-500/15 border border-amber-500/30 text-amber-300 uppercase">
+                            <Package className="h-3 w-3 text-amber-300" />
+                            <span>ASSINATURA / PACOTE</span>
                           </span>
-                          <div className="flex flex-wrap gap-1">
-                            {combo.servicos.map((s) => (
-                              <span
-                                key={s.id}
-                                className="text-[11px] font-semibold bg-purple-50 text-[#4A3F5C] border border-[#B8A9D9]/30 px-2 py-0.5 rounded-lg truncate max-w-full"
-                              >
-                                {s.nome}
-                              </span>
-                            ))}
-                          </div>
+
+                          <h3 className="font-bold text-base sm:text-lg text-white leading-snug tracking-tight">
+                            {combo.nome}
+                          </h3>
+
+                          <p className="text-xs text-gray-300 leading-relaxed line-clamp-2">
+                            {combo.descricao || 'Pacote especial com serviços combinados'}
+                          </p>
                         </div>
 
-                        {/* Duração e Preço */}
-                        <div className="flex items-center justify-between text-xs font-semibold pt-3 border-t border-gray-100 mt-3">
-                          <div className="flex items-center gap-1.5 text-[#4A3F5C]/80 bg-gray-50 px-2.5 py-1 rounded-xl border border-gray-200/60">
-                            <Clock className="h-3.5 w-3.5 text-[#B8A9D9]" />
-                            <span>{combo.duracaoTotalMinutos} min</span>
-                          </div>
-
-                          <div className="flex flex-col items-end">
-                            {combo.precoOriginalTotal > combo.preco_combo && (
-                              <span className="text-[11px] text-gray-400 line-through">
-                                R$ {combo.precoOriginalTotal.toFixed(2)}
-                              </span>
-                            )}
-                            <span className="font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-xl border border-emerald-100">
-                              R$ {combo.preco_combo.toFixed(2)}
+                        <div className="text-right shrink-0">
+                          {combo.precoOriginalTotal > combo.preco_combo && (
+                            <span className="text-[11px] text-gray-400 line-through block">
+                              R$ {combo.precoOriginalTotal.toFixed(2)}
                             </span>
+                          )}
+                          <div className="text-xl font-black text-amber-400 tracking-tight">
+                            R$ {combo.preco_combo.toFixed(2)}
                           </div>
+                          <span className="text-[10px] font-medium text-gray-400 block uppercase tracking-wider">
+                            por pacote
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Usos / Serviços Inclusos (ex: 2x usos por mês / serviços no pacote) */}
+                      <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
+                        <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-200/95 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-xl">
+                          <Layers className="h-3.5 w-3.5 text-amber-400" />
+                          <span>{combo.servicos.length}x serviços inclusos</span>
                         </div>
 
-                        {/* Economia */}
-                        {combo.descontoEconomia > 0 && (
-                          <div className="mt-2 flex items-center justify-center p-1.5 rounded-xl bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-200/60">
-                            <span>Economia de R$ {combo.descontoEconomia.toFixed(2)}</span>
-                          </div>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                          <Clock className="h-3.5 w-3.5 text-gray-400" />
+                          <span>{combo.duracaoTotalMinutos} min total</span>
+                        </div>
+                      </div>
+
+                      {/* Lista de Serviços */}
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {combo.servicos.map((s) => (
+                          <span
+                            key={s.id}
+                            className="text-[10px] font-semibold bg-white/5 border border-white/10 text-gray-200 px-2 py-0.5 rounded-lg"
+                          >
+                            {s.nome}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Economia */}
+                      {combo.descontoEconomia > 0 && (
+                        <div className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-300 text-[11px] font-semibold border border-emerald-500/20 text-center">
+                          Economia de R$ {combo.descontoEconomia.toFixed(2)} para sua cliente
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Ações do Pacote */}
+                    <div className="flex items-center gap-2 pt-4 border-t border-white/10 mt-4 relative z-10">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleComboStatus(combo.id, combo.ativo)}
+                        className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                          isAtivo
+                            ? 'border-white/20 bg-white/10 hover:bg-white/20 text-white'
+                            : 'border-emerald-500/40 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300'
+                        }`}
+                      >
+                        <Power className="h-3.5 w-3.5" />
+                        <span>{isAtivo ? 'Pausar' : 'Ativar'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => openEditComboModal(combo)}
+                        className="p-2 rounded-xl border border-white/20 bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+                        title="Editar pacote"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={deletingComboId === combo.id}
+                        onClick={() => handleDeleteCombo(combo.id)}
+                        className="p-2 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 transition cursor-pointer disabled:opacity-50"
+                        title="Excluir pacote"
+                      >
+                        {deletingComboId === combo.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
                         )}
-                      </div>
-
-                      {/* Ações do Combo */}
-                      <div className="flex items-center gap-2 pt-3 border-t border-gray-100 mt-2">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleComboStatus(combo.id, combo.ativo)}
-                          className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${
-                            isAtivo
-                              ? 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
-                              : 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700'
-                          }`}
-                        >
-                          <Power className="h-3.5 w-3.5" />
-                          <span>{isAtivo ? 'Pausar' : 'Ativar'}</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => openEditComboModal(combo)}
-                          className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-[#4A3F5C] transition cursor-pointer shadow-2xs"
-                          title="Editar combo"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={deletingComboId === combo.id}
-                          onClick={() => handleDeleteCombo(combo.id)}
-                          className="p-2 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 transition cursor-pointer shadow-2xs disabled:opacity-50"
-                          title="Excluir combo"
-                        >
-                          {deletingComboId === combo.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                      </div>
+                      </button>
                     </div>
                   </div>
                 )
               })}
-            </div>
-          )}
-        </>
-      )}
+              </div>
+            )}
+          </>
+        )}
 
       {/* Modal de Criação / Edição de Serviço (Item 10a: Responsivo para mobile) */}
       {showModal && (
@@ -1197,7 +1204,7 @@ export default function ServicesManager({ initialServices, initialCombos, profis
           <div className="w-full max-w-lg rounded-3xl bg-white p-4 sm:p-6 shadow-2xl space-y-5 relative max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <h3 className="text-lg sm:text-xl font-bold text-[#4A3F5C]">
-                {editingCombo ? 'Editar Combo Promocional' : 'Novo Combo Promocional'}
+                {editingCombo ? 'Editar Pacote' : 'Novo Pacote'}
               </h3>
               <button
                 type="button"
@@ -1211,14 +1218,14 @@ export default function ServicesManager({ initialServices, initialCombos, profis
             <form onSubmit={handleComboSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80 mb-1">
-                  Nome do Combo *
+                  Nome do Pacote *
                 </label>
                 <input
                   type="text"
                   required
                   value={comboNome}
                   onChange={(e) => setComboNome(e.target.value)}
-                  placeholder="Ex: Combo Cílios + Sobrancelha Perfeita"
+                  placeholder="Ex: Pacote Cílios + Manutenção"
                   className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 px-4 text-sm text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-none"
                 />
               </div>
@@ -1237,19 +1244,19 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                   maxLength={60}
                   value={comboDescricao}
                   onChange={(e) => setComboDescricao(e.target.value)}
-                  placeholder="Ex: Pacote completo para realçar o olhar"
+                  placeholder="Ex: Alongamento de cílios + 1 manutenção no mês"
                   className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 px-4 text-sm text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-none"
                 />
               </div>
 
-              {/* Upload de Foto do Combo */}
+              {/* Upload de Foto do Pacote */}
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80 mb-1">
-                  Foto do Combo (Opcional)
+                  Foto do Pacote (Opcional)
                 </label>
                 {comboFotoUrl ? (
                   <div className="relative h-32 w-full rounded-2xl overflow-hidden border border-gray-200 bg-gray-50">
-                    <Image src={comboFotoUrl} alt="Foto Combo" fill className="object-cover" unoptimized />
+                    <Image src={comboFotoUrl} alt="Foto Pacote" fill className="object-cover" unoptimized />
                     <button
                       type="button"
                       onClick={() => setComboFotoUrl('')}
@@ -1262,7 +1269,7 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                   <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 hover:border-[#B8A9D9] rounded-2xl p-4 bg-gray-50/50 cursor-pointer transition">
                     <UploadCloud className="h-6 w-6 text-[#B8A9D9] mb-1" />
                     <span className="text-xs font-semibold text-[#4A3F5C]">
-                      {comboUploading ? 'Enviando foto...' : 'Clique para adicionar foto do combo'}
+                      {comboUploading ? 'Enviando foto...' : 'Clique para adicionar foto do pacote'}
                     </span>
                     <input
                       type="file"
@@ -1277,15 +1284,15 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                 )}
               </div>
 
-              {/* Seleção de Serviços que Compõem o Combo */}
+              {/* Seleção de Serviços que Compõem o Pacote */}
               <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80">
-                  Serviços Inclusos no Combo (Selecione ao menos 2) *
+                  Serviços Inclusos no Pacote (Selecione ao menos 2) *
                 </label>
 
                 {services.length < 2 ? (
                   <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
-                    Você precisa ter ao menos 2 serviços cadastrados para criar um combo.
+                    Você precisa ter ao menos 2 serviços cadastrados para criar um pacote.
                   </div>
                 ) : (
                   <div className="max-h-48 overflow-y-auto space-y-1.5 border border-gray-200 rounded-2xl p-2 bg-gray-50/50">
@@ -1335,10 +1342,10 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                 </div>
               )}
 
-              {/* Preço do Combo */}
+              {/* Preço do Pacote */}
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80 mb-1">
-                  Preço Especial do Combo (R$) *
+                  Preço Especial do Pacote (R$) *
                 </label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
@@ -1362,7 +1369,7 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                 )}
                 {comboPrecoNum > comboPrecoOriginalSoma && comboPrecoOriginalSoma > 0 && (
                   <p className="text-xs text-amber-700 font-semibold mt-1">
-                    ⚠️ Atenção: O preço do combo está maior que a soma dos serviços avulsos.
+                    ⚠️ Atenção: O preço do pacote está maior que a soma dos serviços avulsos.
                   </p>
                 )}
               </div>
@@ -1380,7 +1387,7 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                   disabled={comboSaving || comboUploading || comboServicoIds.length < 2}
                   className="rounded-xl bg-[#4A3F5C] px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-[#393047] transition disabled:opacity-50 flex items-center gap-2 cursor-pointer"
                 >
-                  {comboSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar Combo'}
+                  {comboSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar Pacote'}
                 </button>
               </div>
             </form>

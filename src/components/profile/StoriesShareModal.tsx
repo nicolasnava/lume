@@ -383,7 +383,6 @@ export default function StoriesShareModal({
           title: `Agende com ${nomeProfissional}`,
           text: `Agende seu horário comigo pelo Lumê! Link: ${url}`,
         })
-        setShareFeedback('Pronto! Escolha o Instagram Stories no menu de compartilhamento.')
         return
       }
 

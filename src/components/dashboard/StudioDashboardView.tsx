@@ -429,20 +429,6 @@ function CreateStudioSection({ defaultSlug }: { defaultSlug: string }) {
                   </div>
                 </div>
               </div>
-
-              {/* Botão de destaque coletivo com cor primária */}
-              <div className="pt-1 flex justify-center sm:justify-start">
-                <div
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold shadow-2xs"
-                  style={{
-                    backgroundColor: corPrimaria,
-                    color: getContrastingTextColor(corPrimaria),
-                  }}
-                >
-                  <Users className="h-3.5 w-3.5" />
-                  <span>Qualquer profissional disponível</span>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -675,32 +661,91 @@ function OwnerStudioSection({
   const [isUploadingEdit, setIsUploadingEdit] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [showStudioSlugModal, setShowStudioSlugModal] = useState(false)
+  const [expandedMemberIds, setExpandedMemberIds] = useState<string[]>([])
+
+  const toggleExpandMember = (id: string) => {
+    setExpandedMemberIds((prev) =>
+      prev.includes(id) ? prev.filter((mId) => mId !== id) : [...prev, id]
+    )
+  }
+
+  // Auto-salvar alterações da vitrine (fotos e cores)
+  const handleAutoSaveVitrine = async (updatedFields: {
+    cor_primaria?: string
+    cor_secundaria?: string
+    fotos_espaco?: string[]
+  }) => {
+    try {
+      await atualizarEstudio({
+        id: estudio.id,
+        nome,
+        slug,
+        bio,
+        foto_capa_url: fotoCapaUrl,
+        cor_primaria: updatedFields.cor_primaria ?? corPrimaria,
+        cor_secundaria: updatedFields.cor_secundaria ?? corSecundaria,
+        fotos_espaco: updatedFields.fotos_espaco ?? fotosEspaco,
+      })
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 3000)
+      router.refresh()
+    } catch (err) {
+      console.error('Erro no auto-save da vitrine:', err)
+    }
+  }
 
   const handleUploadFotoEspaco = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (fotosEspaco.length >= 6) {
-      alert('Você pode adicionar no máximo 6 fotos do seu espaço.')
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    const remainingSlots = 6 - fotosEspaco.length
+    if (remainingSlots <= 0) {
+      alert('Você já atingiu o limite de 6 fotos do seu espaço.')
       return
     }
+
+    const filesToUpload = Array.from(files).slice(0, remainingSlots)
     setIsUploadingEspaco(true)
     try {
       const supabase = createClient()
-      const ext = file.name.split('.').pop()
-      const fileName = `espaco-${Date.now()}.${ext}`
-      await supabase.storage.from('avatars').upload(fileName, file, { upsert: true })
-      const { data } = supabase.storage.from('avatars').getPublicUrl(fileName)
-      setFotosEspaco((prev) => [...prev, data.publicUrl])
+      const newUrls: string[] = []
+
+      for (let i = 0; i < filesToUpload.length; i++) {
+        const file = filesToUpload[i]
+        const ext = file.name.split('.').pop() || 'jpg'
+        const fileName = `espaco-${Date.now()}-${i}.${ext}`
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, file, { upsert: true })
+
+        if (!uploadError) {
+          const { data } = supabase.storage.from('avatars').getPublicUrl(fileName)
+          if (data?.publicUrl) {
+            newUrls.push(data.publicUrl)
+          }
+        } else {
+          console.error('Erro no upload de foto do espaço:', uploadError)
+        }
+      }
+
+      if (newUrls.length > 0) {
+        const updatedFotos = [...fotosEspaco, ...newUrls]
+        setFotosEspaco(updatedFotos)
+        await handleAutoSaveVitrine({ fotos_espaco: updatedFotos })
+      }
     } catch (err: unknown) {
       console.error('Erro ao enviar foto do espaço:', err)
       alert('Erro ao enviar foto do espaço.')
     } finally {
       setIsUploadingEspaco(false)
+      e.target.value = ''
     }
   }
 
-  const handleRemoveFotoEspaco = (indexToRemove: number) => {
-    setFotosEspaco((prev) => prev.filter((_, idx) => idx !== indexToRemove))
+  const handleRemoveFotoEspaco = async (indexToRemove: number) => {
+    const updatedFotos = fotosEspaco.filter((_, idx) => idx !== indexToRemove)
+    setFotosEspaco(updatedFotos)
+    await handleAutoSaveVitrine({ fotos_espaco: updatedFotos })
   }
 
   // Toggle de atendimento
@@ -1167,27 +1212,47 @@ function OwnerStudioSection({
                       )}
                     </div>
 
-                    <div>
+                    <div className="min-w-0 max-w-[200px] sm:max-w-xs md:max-w-md">
                       <div className="flex items-center gap-1.5">
-                        <h3 className="text-sm font-bold text-gray-900">{membro.nome}</h3>
+                        <h3
+                          className={`text-sm font-bold text-gray-900 ${
+                            expandedMemberIds.includes(membro.id) ? '' : 'truncate'
+                          }`}
+                        >
+                          {membro.nome}
+                        </h3>
                         {membro.isOwner ? (
-                          <span title="Dona / Administradora do Studio" className="inline-flex items-center text-amber-500">
+                          <span title="Dona / Administradora do Studio" className="inline-flex items-center text-amber-500 shrink-0">
                             <Crown className="h-4 w-4 fill-amber-400/25" />
                           </span>
                         ) : (
-                          <span title="Membro da Equipe" className="inline-flex items-center text-gray-400">
+                          <span title="Membro da Equipe" className="inline-flex items-center text-gray-400 shrink-0">
                             <User className="h-4 w-4" />
                           </span>
                         )}
                       </div>
                       {(() => {
                         const categorias = parseCategorias(membro.categoria)
+                        const catLabel =
+                          categorias.length > 0
+                            ? categorias.map((c) => getCategoryLabel(c, true)).join(' • ')
+                            : 'Profissional de beleza'
+                        const isExpanded = expandedMemberIds.includes(membro.id)
                         return (
-                          <p className="text-xs text-gray-500">
-                            {categorias.length > 0
-                              ? categorias.map((c) => getCategoryLabel(c, true)).join(' • ')
-                              : 'Profissional de beleza'}
-                          </p>
+                          <div>
+                            <p className={`text-xs text-gray-500 ${isExpanded ? '' : 'truncate'}`}>
+                              {catLabel}
+                            </p>
+                            {(catLabel.length > 25 || membro.nome.length > 22) && (
+                              <button
+                                type="button"
+                                onClick={() => toggleExpandMember(membro.id)}
+                                className="text-[11px] font-bold text-[#8675A9] hover:text-[#4A3F5C] transition cursor-pointer mt-0.5"
+                              >
+                                {isExpanded ? 'Ver menos' : 'Ver mais'}
+                              </button>
+                            )}
+                          </div>
                         )
                       })()}
                     </div>
@@ -1318,10 +1383,11 @@ function OwnerStudioSection({
                             <button
                               type="button"
                               onClick={() => handleCancelInvite(convite.id)}
-                              className="p-1 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50/80 hover:bg-rose-100 text-[11px] font-bold text-rose-700 transition cursor-pointer shadow-2xs"
                               title="Cancelar convite"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-3 w-3 text-rose-600" />
+                              <span>Cancelar</span>
                             </button>
                           </div>
                         </div>
@@ -1592,7 +1658,10 @@ function OwnerStudioSection({
                         <button
                           key={hex}
                           type="button"
-                          onClick={() => setCorPrimaria(hex)}
+                          onClick={() => {
+                            setCorPrimaria(hex)
+                            handleAutoSaveVitrine({ cor_primaria: hex })
+                          }}
                           className={`h-6 w-6 rounded-full border transition-transform cursor-pointer ${
                             corPrimaria.toLowerCase() === hex.toLowerCase()
                               ? 'scale-110 ring-2 ring-[#4A3F5C]'
@@ -1614,13 +1683,19 @@ function OwnerStudioSection({
                       <input
                         type="color"
                         value={corSecundaria}
-                        onChange={(e) => setCorSecundaria(e.target.value)}
+                        onChange={(e) => {
+                          setCorSecundaria(e.target.value)
+                        }}
+                        onBlur={() => handleAutoSaveVitrine({ cor_secundaria: corSecundaria })}
                         className="h-10 w-12 cursor-pointer rounded-lg border border-gray-200 p-1"
                       />
                       <input
                         type="text"
                         value={corSecundaria}
-                        onChange={(e) => setCorSecundaria(e.target.value)}
+                        onChange={(e) => {
+                          setCorSecundaria(e.target.value)
+                        }}
+                        onBlur={() => handleAutoSaveVitrine({ cor_secundaria: corSecundaria })}
                         className="w-28 rounded-xl border border-gray-200 bg-gray-50/50 p-2 text-xs font-mono text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-hidden font-bold"
                       />
                     </div>
@@ -1629,7 +1704,10 @@ function OwnerStudioSection({
                         <button
                           key={hex}
                           type="button"
-                          onClick={() => setCorSecundaria(hex)}
+                          onClick={() => {
+                            setCorSecundaria(hex)
+                            handleAutoSaveVitrine({ cor_secundaria: hex })
+                          }}
                           className={`h-6 w-6 rounded-full border transition-transform cursor-pointer ${
                             corSecundaria.toLowerCase() === hex.toLowerCase()
                               ? 'scale-110 ring-2 ring-[#4A3F5C]'
@@ -1643,11 +1721,10 @@ function OwnerStudioSection({
                   </div>
                 </div>
 
-                {/* Prévia da Vitrine do Studio em Tempo Real */}
+                {/* Prévia da Vitrine do Studio */}
                 <div className="space-y-2 pt-3 border-t border-gray-100">
-                  <div className="flex items-center justify-between">
+                  <div>
                     <label className="text-xs font-bold text-gray-700 block">Prévia da Vitrine do Studio</label>
-                    <span className="text-[11px] text-gray-400 font-medium">Atualização em tempo real</span>
                   </div>
 
                   <div
@@ -1724,19 +1801,6 @@ function OwnerStudioSection({
                         </div>
                       </div>
                     </div>
-
-                    <div className="pt-1 flex justify-center sm:justify-start">
-                      <div
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold shadow-2xs"
-                        style={{
-                          backgroundColor: corPrimaria,
-                          color: getContrastingTextColor(corPrimaria),
-                        }}
-                      >
-                        <Users className="h-3.5 w-3.5" />
-                        <span>Qualquer profissional disponível</span>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -1794,6 +1858,7 @@ function OwnerStudioSection({
                       <input
                         type="file"
                         accept="image/*"
+                        multiple
                         disabled={isUploadingEspaco}
                         onChange={handleUploadFotoEspaco}
                         className="hidden"
@@ -1803,25 +1868,19 @@ function OwnerStudioSection({
                 </div>
               </div>
 
-              {/* Rodapé com botão Salvar */}
-              <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
+              {/* Indicador de Salvamento Automático da Vitrine */}
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
                 {saveSuccess ? (
-                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 animate-in fade-in">
+                  <span className="inline-flex items-center gap-1.5 font-bold text-emerald-700 animate-in fade-in">
                     <Check className="h-4 w-4" />
-                    <span>Informações da vitrine salvas com sucesso!</span>
+                    <span>Alterações da vitrine salvas automaticamente!</span>
                   </span>
                 ) : (
-                  <span />
+                  <span className="text-[11px] text-gray-400 font-medium flex items-center gap-1">
+                    <Sparkles className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                    <span>Fotos e cores são salvas automaticamente</span>
+                  </span>
                 )}
-
-                <button
-                  type="submit"
-                  disabled={isSavingEdit}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#4A3F5C] hover:bg-[#3d334d] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-xs"
-                >
-                  {isSavingEdit && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  <span>Salvar Alterações da Vitrine</span>
-                </button>
               </div>
             </form>
           </div>

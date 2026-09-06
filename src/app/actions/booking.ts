@@ -402,6 +402,14 @@ export async function cancelBookingAction(agendamentoId: string): Promise<{ succ
       return { success: false, message: 'Agendamento não encontrado.' }
     }
 
+    if (agendamento.status === 'cancelado') {
+      return { success: false, message: 'Este agendamento já se encontra cancelado.' }
+    }
+
+    if (agendamento.status === 'concluido') {
+      return { success: false, message: 'Agendamentos já concluídos não podem ser cancelados.' }
+    }
+
     // 2. Atualizar status para cancelado no banco de dados
     const { error: updateError } = await supabase
       .from('agendamentos')
@@ -774,6 +782,10 @@ export async function cancelClientBookingAction(params: {
 
     if (agendamento.status === 'cancelado') {
       return { success: false, message: 'Este agendamento já se encontra cancelado.' }
+    }
+
+    if (agendamento.status === 'concluido') {
+      return { success: false, message: 'Este agendamento já foi concluído e não pode ser cancelado.' }
     }
 
     // 2. Verificar antecedência mínima de 4 horas

@@ -29,6 +29,19 @@ import {
   ClientReliabilityTier,
 } from '@/lib/utils/reliability'
 
+function formatPaymentMethod(method: string | null | undefined): string {
+  if (!method) return ''
+  const map: Record<string, string> = {
+    cartao_credito: 'CARTÃO DE CRÉDITO',
+    cartao_debito: 'CARTÃO DE DÉBITO',
+    pix: 'PIX',
+    dinheiro: 'DINHEIRO',
+    outro: 'OUTRO',
+  }
+  const clean = method.toLowerCase().trim()
+  return map[clean] || method.replace(/_/g, ' ').toUpperCase()
+}
+
 export interface ClientData {
   id: string
   nome: string
@@ -619,9 +632,6 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
                       <span className="font-bold text-sm">
                         Confiabilidade: {selectedReliability.label}
                       </span>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white/70 border border-current/20">
-                        Últimos 6 meses
-                      </span>
                     </div>
                     <p className="text-[11px] font-medium leading-relaxed opacity-90">
                       {selectedReliability.reason}
@@ -887,7 +897,7 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
                 <div className="flex items-center justify-between py-1 border-b border-gray-50">
                   <span className="text-gray-500">Forma de Pagamento:</span>
                   <span className="font-bold uppercase text-gray-800">
-                    {selectedHistoryBooking.forma_pagamento}
+                    {formatPaymentMethod(selectedHistoryBooking.forma_pagamento)}
                   </span>
                 </div>
               )}

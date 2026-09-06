@@ -59,6 +59,13 @@ function capitalizeName(name: string | null | undefined): string {
     .join(' ')
 }
 
+function formatShortClientName(name: string | null | undefined): string {
+  if (!name) return ''
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  if (words.length <= 2) return capitalizeName(name)
+  return capitalizeName(words.slice(0, 2).join(' '))
+}
+
 function getWhatsAppUrl(
   phone: string | null | undefined,
   clientName: string,
@@ -122,7 +129,7 @@ function TimelineBookingCard({
         {/* Nome da Cliente + Separador + Valor (Substitui o badge de "Próximo") */}
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
           <span className="text-xs sm:text-sm font-bold text-[#4A3F5C] truncate capitalize tracking-tight">
-            {capitalizeName(booking.clienteNome)}
+            {formatShortClientName(booking.clienteNome)}
           </span>
           {booking.servicoPreco !== null && booking.servicoPreco !== undefined && (
             <>
