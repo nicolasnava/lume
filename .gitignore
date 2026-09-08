@@ -40,11 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# ide / local scratch & internal docs
+# ide / local scratch & logs
 .gemini/
-.agents/
 /scratch/
-PENDENCIAS.md
-important.md
 *.log
+
 

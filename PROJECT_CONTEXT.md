@@ -228,3 +228,13 @@ Ao iniciar qualquer tarefa neste projeto:
 3. **Preserve a harmonia visual:** Utilize a paleta institucional (`#B8A9D9`, `#FAF7F5`, `#4A3F5C`), bordas suaves (`rounded-2xl`) e evite quebras de layout ou barras de rolagem desnecessárias no desktop.
 4. **Valide a tipagem:** Sempre rode `npx tsc --noEmit` após modificações em componentes ou Server Actions.
 5. **Mantenha este documento atualizado:** Se adicionar novas tabelas, rotas ou módulos críticos, atualize este arquivo para preservar a memória do projeto nos próximos chats.
+
+---
+
+## 9. Checklist Pré-Lançamento Oficial (Infraestrutura & Segurança)
+
+Itens intencionalmente simplificados durante os testes locais e que devem ser reativados antes da divulgação pública ampla:
+1. **Reativar "Confirm email" no Supabase Auth:** Ativar em `Authentication > Providers > Email Auth` para que novos cadastros exijam verificação de e-mail antes do primeiro login (o código em `signUpAction` já está 100% pronto para lidar com isso).
+2. **Configurar SMTP Customizado:** Configurar serviço de e-mail transacional (ex: Resend, Postmark ou SendGrid) no Supabase para evitar limitações de envio da camada gratuita.
+3. **Rate Limiting em Borda (WAF):** Ativar regras de proteção de borda (Cloudflare / Vercel Firewall) para rotas críticas (`/api/auth/*`, `/login`, `/cadastro`).
+
