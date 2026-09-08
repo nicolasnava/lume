@@ -73,7 +73,7 @@ export async function getProfissionalServicesAndClientsAction() {
 
     const { data: servicos } = await adminSupabase
       .from('servicos')
-      .select('id, nome, preco, duracao_minutos')
+      .select('id, nome, preco, duracao_minutos, foto_url')
       .eq('profissional_id', user.id)
       .eq('ativo', true)
       .order('nome', { ascending: true })
@@ -87,7 +87,7 @@ export async function getProfissionalServicesAndClientsAction() {
     return {
       success: true,
       profissionalId: user.id,
-      services: (servicos || []) as { id: string; nome: string; preco: number; duracao_minutos: number }[],
+      services: (servicos || []) as { id: string; nome: string; preco: number; duracao_minutos: number; foto_url: string | null }[],
       clients: (clientes || []) as { id: string; nome: string; telefone: string }[],
     }
   } catch (error) {
@@ -383,7 +383,7 @@ export async function createBookingAction(formData: {
       const dataFormatada = dataInicioObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
       const horaFormatada = dataInicioObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false })
       sendPushToProfissional(profissional_id, {
-        title: '📅 Novo Agendamento Recebido!',
+        title: 'Novo Agendamento Recebido!',
         body: `${cliente_nome} agendou ${nomesCombo} para ${dataFormatada} às ${horaFormatada}.`,
         url: '/dashboard/agenda',
         tag: `booking-new-${novoAgendamento.id}`,
@@ -856,7 +856,7 @@ export async function cancelClientBookingAction(params: {
       const horaFormatada = inicioObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false })
       const nomeCliente = clienteObj?.nome || 'Uma cliente'
       sendPushToProfissional(agendamento.profissional_id, {
-        title: '❌ Agendamento Cancelado',
+        title: 'Agendamento Cancelado',
         body: `${nomeCliente} cancelou o agendamento de ${dataFormatada} às ${horaFormatada}.`,
         url: '/dashboard/agenda',
         tag: `booking-cancel-${agendamentoId}`,
@@ -1055,7 +1055,7 @@ export async function rescheduleClientBookingAction(params: {
       const nomeCliente = clienteObj?.nome || 'Uma cliente'
 
       sendPushToProfissional(agendamento.profissional_id, {
-        title: '🔄 Agendamento Remarcado!',
+        title: 'Agendamento Remarcado!',
         body: `${nomeCliente} remarcou o atendimento para ${dataFormatada} às ${horaFormatada}.`,
         url: '/dashboard/agenda',
         tag: `booking-reschedule-${agendamentoId}`,

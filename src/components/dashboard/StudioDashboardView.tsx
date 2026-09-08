@@ -127,15 +127,18 @@ function CreateStudioSection({ defaultSlug }: { defaultSlug: string }) {
     setErrorMessage(null)
     try {
       const supabase = createClient()
-      const ext = file.name.split('.').pop()
-      const fileName = `estudio-capa-${Date.now()}.${ext}`
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Usuário não autenticado.')
+
+      const ext = file.name.split('.').pop() || 'jpg'
+      const filePath = `${user.id}/estudio-capa-${Date.now()}.${ext}`
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file, {
         upsert: true,
       })
 
       if (uploadError) throw uploadError
 
-      const { data } = supabase.storage.from('avatars').getPublicUrl(fileName)
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
       setFotoCapaUrl(data.publicUrl)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro ao enviar foto.'
@@ -669,11 +672,12 @@ function OwnerStudioSection({
     )
   }
 
-  // Auto-salvar alterações da vitrine (fotos e cores)
+  // Auto-salvar alterações da vitrine (fotos, capa e cores)
   const handleAutoSaveVitrine = async (updatedFields: {
     cor_primaria?: string
     cor_secundaria?: string
     fotos_espaco?: string[]
+    foto_capa_url?: string | null
   }) => {
     try {
       await atualizarEstudio({
@@ -681,7 +685,7 @@ function OwnerStudioSection({
         nome,
         slug,
         bio,
-        foto_capa_url: fotoCapaUrl,
+        foto_capa_url: updatedFields.foto_capa_url !== undefined ? updatedFields.foto_capa_url : fotoCapaUrl,
         cor_primaria: updatedFields.cor_primaria ?? corPrimaria,
         cor_secundaria: updatedFields.cor_secundaria ?? corSecundaria,
         fotos_espaco: updatedFields.fotos_espaco ?? fotosEspaco,
@@ -708,18 +712,21 @@ function OwnerStudioSection({
     setIsUploadingEspaco(true)
     try {
       const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Usuário não autenticado.')
+
       const newUrls: string[] = []
 
       for (let i = 0; i < filesToUpload.length; i++) {
         const file = filesToUpload[i]
         const ext = file.name.split('.').pop() || 'jpg'
-        const fileName = `espaco-${Date.now()}-${i}.${ext}`
+        const filePath = `${user.id}/espaco-${Date.now()}-${i}.${ext}`
         const { error: uploadError } = await supabase.storage
           .from('avatars')
-          .upload(fileName, file, { upsert: true })
+          .upload(filePath, file, { upsert: true })
 
         if (!uploadError) {
-          const { data } = supabase.storage.from('avatars').getPublicUrl(fileName)
+          const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
           if (data?.publicUrl) {
             newUrls.push(data.publicUrl)
           }
@@ -1597,15 +1604,19 @@ function OwnerStudioSection({
                           setIsUploadingEdit(true)
                           try {
                             const supabase = createClient()
-                            const ext = file.name.split('.').pop()
-                            const fileName = `estudio-capa-${Date.now()}.${ext}`
+                            const { data: { user } } = await supabase.auth.getUser()
+                            if (!user) throw new Error('Usuário não autenticado.')
+
+                            const ext = file.name.split('.').pop() || 'jpg'
+                            const filePath = `${user.id}/estudio-capa-${Date.now()}.${ext}`
                             await supabase.storage
                               .from('avatars')
-                              .upload(fileName, file, { upsert: true })
+                              .upload(filePath, file, { upsert: true })
                             const { data } = supabase.storage
                               .from('avatars')
-                              .getPublicUrl(fileName)
+                              .getPublicUrl(filePath)
                             setFotoCapaUrl(data.publicUrl)
+                            await handleAutoSaveVitrine({ foto_capa_url: data.publicUrl })
                           } finally {
                             setIsUploadingEdit(false)
                           }
@@ -1616,7 +1627,10 @@ function OwnerStudioSection({
                     {fotoCapaUrl && (
                       <button
                         type="button"
-                        onClick={() => setFotoCapaUrl('')}
+                        onClick={async () => {
+                          setFotoCapaUrl('')
+                          await handleAutoSaveVitrine({ foto_capa_url: null })
+                        }}
                         className="text-xs text-rose-600 hover:underline font-semibold cursor-pointer"
                       >
                         Remover capa

@@ -81,7 +81,7 @@ export async function resetAndSeedDemoAccountAction(profissionalId: string): Pro
       .update({
         nome: 'Camila Alcantara Beauty',
         bio: 'Especialista em Lash Design, Extensão de Cílios e Sobrancelhas de Alto Padrão. Mais de 5 anos transformando olhares com biossegurança, precisão e carinho.',
-        tagline: 'Realçando o que há de mais deslumbrante no seu olhar ✨',
+        tagline: 'Realçando o que há de mais deslumbrante no seu olhar',
         categoria: ['Lash Designer', 'Designer de Sobrancelhas'],
         modalidade_atendimento: ['no_local', 'a_domicilio'],
         formas_pagamento_aceitas: ['pix', 'cartao', 'dinheiro'],

@@ -326,7 +326,7 @@ export default function SubscriptionSection({ initialData }: SubscriptionSection
           <div className="flex items-center justify-between text-xs">
             <span className="font-bold text-[#4A3F5C]">
               {indicadasAtivas >= 3
-                ? '🎉 Você atingiu o desconto máximo de 30%!'
+                ? 'Você atingiu o desconto máximo de 30%!'
                 : `${indicadasAtivas} de 3 indicações ativas para o desconto máximo`}
             </span>
           </div>

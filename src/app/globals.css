@@ -129,3 +129,43 @@ html.dark .shadow-md,
 html.dark .shadow-sm {
   box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5) !important;
 }
+
+/* ==========================================================================
+   Barra de Rolagem Personalizada (Scrollbar) - Estética Lumê
+   ========================================================================== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D9D2CB;
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #B8A9D9;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #D9D2CB transparent;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: #3B334D;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #8675A9;
+}
+
+html.dark * {
+  scrollbar-color: #3B334D transparent;
+}

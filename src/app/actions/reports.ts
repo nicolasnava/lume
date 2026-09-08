@@ -113,18 +113,55 @@ export async function getRelatoriosEMetasAction(): Promise<RelatoriosEMetasRespo
     ).toISOString()
 
     // 1. Buscar Meta do Mês Atual
-    const { data: metaAtualRaw } = await (admin.from('metas_mensais') as any)
-      .select('*')
-      .eq('profissional_id', user.id)
-      .eq('mes_referencia', mesAtualStr)
-      .maybeSingle()
+    let valorMetaAtual: number | null = null
+    let tipoMetaAtual: 'faturamento' | 'atendimentos' | 'novos_clientes' | 'ocupacao' = 'faturamento'
+
+    try {
+      const { data: metaAtualRaw } = await (admin.from('metas_mensais') as any)
+        .select('*')
+        .eq('profissional_id', user.id)
+        .eq('mes_referencia', mesAtualStr)
+        .maybeSingle()
+
+      if (metaAtualRaw?.valor_meta) {
+        valorMetaAtual = Number(metaAtualRaw.valor_meta)
+        tipoMetaAtual = metaAtualRaw.tipo_meta || 'faturamento'
+      }
+    } catch {
+      // Tabela pode ainda não ter sido migrada no banco
+    }
+
+    // Fallback resiliente para user_metadata
+    if (valorMetaAtual === null) {
+      const userMetaObj = user.user_metadata?.metas_mensais?.[mesAtualStr]
+      if (userMetaObj?.valor_meta) {
+        valorMetaAtual = Number(userMetaObj.valor_meta)
+        tipoMetaAtual = userMetaObj.tipo_meta || 'faturamento'
+      }
+    }
 
     // 2. Buscar Meta do Mês Anterior (para sugestão)
-    const { data: metaAnteriorRaw } = await (admin.from('metas_mensais') as any)
-      .select('valor_meta')
-      .eq('profissional_id', user.id)
-      .eq('mes_referencia', mesAnteriorStr)
-      .maybeSingle()
+    let metaAnteriorSugerida: number | null = null
+    try {
+      const { data: metaAnteriorRaw } = await (admin.from('metas_mensais') as any)
+        .select('valor_meta')
+        .eq('profissional_id', user.id)
+        .eq('mes_referencia', mesAnteriorStr)
+        .maybeSingle()
+
+      if (metaAnteriorRaw?.valor_meta) {
+        metaAnteriorSugerida = Number(metaAnteriorRaw.valor_meta)
+      }
+    } catch {
+      // Ignora erro
+    }
+
+    if (metaAnteriorSugerida === null) {
+      const userMetaAntObj = user.user_metadata?.metas_mensais?.[mesAnteriorStr]
+      if (userMetaAntObj?.valor_meta) {
+        metaAnteriorSugerida = Number(userMetaAntObj.valor_meta)
+      }
+    }
 
     // 3. Buscar Agendamentos Concluídos do Mês Atual
     const { data: agendamentosMesAtual } = await admin
@@ -180,7 +217,7 @@ export async function getRelatoriosEMetasAction(): Promise<RelatoriosEMetasRespo
     }
 
     // 5. Cálculos da Meta
-    const valorMeta = metaAtualRaw?.valor_meta ? Number(metaAtualRaw.valor_meta) : 0
+    const valorMeta = valorMetaAtual || 0
     const metaDefinida = valorMeta > 0
     const progressoPct = metaDefinida ? Math.min(100, Math.round((faturamentoAtual / valorMeta) * 100)) : 0
     const faltam = metaDefinida ? Math.max(0, valorMeta - faturamentoAtual) : 0
@@ -198,46 +235,53 @@ export async function getRelatoriosEMetasAction(): Promise<RelatoriosEMetasRespo
       }
     }
 
-    // 6. Destaque Narrativo Inteligente
+    // 6. Destaque Narrativo Inteligente (Sem emojis)
     let destaqueNarrativo = ''
     if (statusMeta === 'batida') {
-      destaqueNarrativo = '🎉 Incrível! Você atingiu 100% da sua meta antes do final do mês!'
+      destaqueNarrativo = 'Incrível! Você atingiu 100% da sua meta antes do final do mês!'
     } else if (comparativoMesAnteriorPct !== null && comparativoMesAnteriorPct >= 15) {
-      destaqueNarrativo = `🚀 Excelente ritmo! Você está faturando ${comparativoMesAnteriorPct}% a mais que no mesmo período do mês passado.`
+      destaqueNarrativo = `Excelente ritmo! Você está faturando ${comparativoMesAnteriorPct}% a mais que no mesmo período do mês passado.`
     } else if (comparativoMesAnteriorPct !== null && comparativoMesAnteriorPct <= -15) {
-      destaqueNarrativo = `📉 Faturamento ${Math.abs(comparativoMesAnteriorPct)}% abaixo do mês anterior. Sugestão: Crie um cupom exclusivo para reativar clientes inativas!`
+      destaqueNarrativo = `Faturamento ${Math.abs(comparativoMesAnteriorPct)}% abaixo do mês anterior. Sugestão: Crie um cupom exclusivo para reativar clientes inativas!`
     } else if (metaDefinida && progressoPct >= 70) {
-      destaqueNarrativo = `💪 Reta final! Você já conquistou ${progressoPct}% da sua meta. Faltam apenas R$ ${faltam.toFixed(2)}.`
+      destaqueNarrativo = `Reta final! Você já conquistou ${progressoPct}% da sua meta. Faltam apenas R$ ${faltam.toFixed(2)}.`
     } else if (metaDefinida) {
-      destaqueNarrativo = `🎯 Mantenha o foco: você precisa de uma média de R$ ${ritmoDiario}/dia nos próximos ${diasRestantes} dias para bater sua meta.`
+      destaqueNarrativo = `Mantenha o foco: você precisa de uma média de R$ ${ritmoDiario}/dia nos próximos ${diasRestantes} dias para bater sua meta.`
     } else {
       destaqueNarrativo = 'Defina uma meta mensal para acompanhar seu ritmo de faturamento em tempo real.'
     }
 
     // 7. Histórico de Meses Fechados
-    const { data: fechadosRaw } = await (admin.from('relatorios_mensais_fechados') as any)
-      .select('*')
-      .eq('profissional_id', user.id)
-      .order('mes_referencia', { ascending: false })
-      .limit(12)
+    let historicoMesesFechados: RelatorioMesFechadoData[] = []
+    try {
+      const { data: fechadosRaw } = await (admin.from('relatorios_mensais_fechados') as any)
+        .select('*')
+        .eq('profissional_id', user.id)
+        .order('mes_referencia', { ascending: false })
+        .limit(12)
 
-    const historicoMesesFechados: RelatorioMesFechadoData[] = (fechadosRaw || []).map((f: any) => {
-      const parts = f.mes_referencia.split('-')
-      const d = new Date(Number(parts[0]), Number(parts[1]) - 1, 1)
-      return {
-        id: f.id,
-        mesReferencia: f.mes_referencia,
-        nomeMes: formatNomeMes(d),
-        faturamentoTotal: Number(f.faturamento_total),
-        atendimentosConcluidos: f.atendimentos_concluidos,
-        servicoMaisVendidoNome: f.servico_mais_vendido_nome,
-        metaValor: f.meta_valor ? Number(f.meta_valor) : null,
-        metaBatida: f.meta_batida,
-        comparativoMesAnteriorPct: f.comparativo_mes_anterior_pct ? Number(f.comparativo_mes_anterior_pct) : null,
-        destaqueNarrativo: f.destaque_narrativo,
-        congeladoEm: f.congelado_em,
+      if (fechadosRaw) {
+        historicoMesesFechados = fechadosRaw.map((f: any) => {
+          const parts = f.mes_referencia.split('-')
+          const d = new Date(Number(parts[0]), Number(parts[1]) - 1, 1)
+          return {
+            id: f.id,
+            mesReferencia: f.mes_referencia,
+            nomeMes: formatNomeMes(d),
+            faturamentoTotal: Number(f.faturamento_total),
+            atendimentosConcluidos: f.atendimentos_concluidos,
+            servicoMaisVendidoNome: f.servico_mais_vendido_nome,
+            metaValor: f.meta_valor ? Number(f.meta_valor) : null,
+            metaBatida: f.meta_batida,
+            comparativoMesAnteriorPct: f.comparativo_mes_anterior_pct ? Number(f.comparativo_mes_anterior_pct) : null,
+            destaqueNarrativo: f.destaque_narrativo,
+            congeladoEm: f.congelado_em,
+          }
+        })
       }
-    })
+    } catch {
+      // Ignora erro de tabela não existente
+    }
 
     return {
       success: true,
@@ -255,14 +299,14 @@ export async function getRelatoriosEMetasAction(): Promise<RelatoriosEMetasRespo
         meta: {
           definida: metaDefinida,
           valor: valorMeta,
-          tipo: metaAtualRaw?.tipo_meta || 'faturamento',
+          tipo: tipoMetaAtual,
           progressoPct,
           faltam,
           ritmoDiarioNecessario: ritmoDiario,
           status: statusMeta,
         },
         destaqueNarrativo,
-        metaMesAnteriorSugerida: metaAnteriorRaw?.valor_meta ? Number(metaAnteriorRaw.valor_meta) : null,
+        metaMesAnteriorSugerida: metaAnteriorSugerida,
       },
       historicoMesesFechados,
     }
@@ -297,20 +341,47 @@ export async function salvarMetaMensalAction(params: {
     const admin = createAdminClient()
     const tipoMeta = params.tipoMeta || 'faturamento'
 
-    const { error } = await (admin.from('metas_mensais') as any).upsert(
-      {
-        profissional_id: user.id,
-        mes_referencia: params.mesReferencia,
-        tipo_meta: tipoMeta,
-        valor_meta: params.valorMeta,
-      },
-      { onConflict: 'profissional_id,mes_referencia,tipo_meta' }
-    )
-
-    if (error) {
-      console.error('Erro ao salvar meta mensal:', error)
-      return { success: false, message: 'Erro ao salvar meta no banco de dados.' }
+    // 1. Tentar salvar na tabela metas_mensais caso exista
+    try {
+      await (admin.from('metas_mensais') as any).upsert(
+        {
+          profissional_id: user.id,
+          mes_referencia: params.mesReferencia,
+          tipo_meta: tipoMeta,
+          valor_meta: params.valorMeta,
+        },
+        { onConflict: 'profissional_id,mes_referencia,tipo_meta' }
+      )
+    } catch (tableErr) {
+      console.warn('[salvarMetaMensalAction] Aviso: tabela metas_mensais não disponível:', tableErr)
     }
+
+    // 2. Persistência garantida em user_metadata (funciona 100% das vezes)
+    const currentMetaMap = (user.user_metadata?.metas_mensais as Record<string, any>) || {}
+    const updatedMetaMap = {
+      ...currentMetaMap,
+      [params.mesReferencia]: {
+        valor_meta: params.valorMeta,
+        tipo_meta: tipoMeta,
+        updated_at: new Date().toISOString(),
+      },
+    }
+
+    const { error: metaUpdateError } = await admin.auth.admin.updateUserById(user.id, {
+      user_metadata: {
+        ...user.user_metadata,
+        metas_mensais: updatedMetaMap,
+      },
+    })
+
+    if (metaUpdateError) {
+      console.error('[salvarMetaMensalAction] Erro ao salvar meta nos metadados:', metaUpdateError)
+      return { success: false, message: 'Não foi possível salvar a meta no momento.' }
+    }
+
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath('/dashboard/relatorios')
+    revalidatePath('/dashboard')
 
     return { success: true, message: 'Meta definida com sucesso!' }
   } catch (err: unknown) {

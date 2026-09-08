@@ -422,81 +422,85 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      {/* Nome da cliente com Ícones de Classificação */}
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <h3 className="text-base font-bold text-[#4A3F5C]">{client.nome}</h3>
-                        {/* Dimensão 1: Valor e Recorrência (VIP / Inativa) */}
-                        {statusInfo.status === 'vip' && (
-                          <span title="Cliente VIP (3+ agendamentos nos últimos 90 dias)">
-                            <Crown className="h-4 w-4 text-amber-500 fill-amber-400 shrink-0" />
-                          </span>
-                        )}
-                        {statusInfo.status === 'inativa' && (
-                          <span title="Cliente Inativa (Sem agendamento há mais de 60 dias)">
-                            <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0" />
-                          </span>
-                        )}
-
-                        {/* Dimensão 2: Confiabilidade de Comparecimento (Prompt 60) */}
-                        {reliabilityInfo.tier === 'confiavel' && (
-                          <span
-                            title={`Confiabilidade: Confiável (${reliabilityInfo.reason})`}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shrink-0"
-                          >
-                            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                            <span>Confiável</span>
-                          </span>
-                        )}
-                        {reliabilityInfo.tier === 'atencao' && (
-                          <span
-                            title={`Confiabilidade: Atenção (${reliabilityInfo.reason})`}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 shrink-0"
-                          >
-                            <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-                            <span>Atenção</span>
-                          </span>
-                        )}
-                        {reliabilityInfo.tier === 'risco_falta' && (
-                          <span
-                            title={`Confiabilidade: Risco de Falta (${reliabilityInfo.reason})`}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200/80 shrink-0"
-                          >
-                            <ShieldAlert className="h-3.5 w-3.5 text-rose-600" />
-                            <span>Risco de Falta</span>
-                          </span>
-                        )}
-                        {reliabilityInfo.tier === 'sem_historico' && (
-                          <span
-                            title={`Confiabilidade: Sem histórico suficiente (${reliabilityInfo.reason})`}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-50 text-gray-500 border border-gray-200/80 shrink-0"
-                          >
-                            <HelpCircle className="h-3 w-3 text-gray-400" />
-                            <span>Sem histórico</span>
-                          </span>
-                        )}
-                      </div>
+                    {/* Nome da cliente e Telefone */}
+                    <div className="min-w-0 flex-1 pr-1">
+                      <h3 className="text-base font-bold text-[#4A3F5C] truncate tracking-tight">{client.nome}</h3>
                       <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-1">
-                        <Phone className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                        <Phone className="h-3.5 w-3.5 text-[#B8A9D9] shrink-0" />
                         <span>{formatPhoneNumber(client.telefone) || 'Sem telefone'}</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {statusInfo.status === 'inativa' && whatsappUrl && (
-                        <a
-                          href={whatsappUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-xs hover:bg-emerald-700 transition cursor-pointer"
-                          title="Enviar mensagem de reativação no WhatsApp"
+                    {/* Extremidade direita bem na ponta: Ícone do outro score antes, seguido do badge de confiabilidade */}
+                    <div className="flex items-center gap-1.5 shrink-0 self-start">
+                      {/* Dimensão 1: Ícone do outro score (VIP ou Inativa) antes do badge, sem card de fundo */}
+                      {statusInfo.status === 'vip' && (
+                        <span title="Cliente VIP (3+ agendamentos nos últimos 90 dias)" className="inline-flex shrink-0">
+                          <Crown className="h-4 w-4 text-amber-500 fill-amber-400" />
+                        </span>
+                      )}
+                      {statusInfo.status === 'inativa' && (
+                        <span title="Cliente Inativa (Sem agendamento há mais de 60 dias)" className="inline-flex shrink-0">
+                          <AlertTriangle className="h-4 w-4 text-rose-500" />
+                        </span>
+                      )}
+
+                      {/* Dimensão 2: Badge de Confiabilidade / Excelente na extremidade direita bem na ponta */}
+                      {reliabilityInfo.tier === 'confiavel' && (
+                        <span
+                          title={`Confiabilidade: Confiável (${reliabilityInfo.reason})`}
+                          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shrink-0 shadow-2xs"
                         >
-                          <MessageCircle className="h-3.5 w-3.5" />
-                          <span>Reativar</span>
-                        </a>
+                          <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                          <span>Confiável</span>
+                        </span>
+                      )}
+                      {reliabilityInfo.tier === 'atencao' && (
+                        <span
+                          title={`Confiabilidade: Atenção (${reliabilityInfo.reason})`}
+                          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200/80 shrink-0 shadow-2xs"
+                        >
+                          <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                          <span>Atenção</span>
+                        </span>
+                      )}
+                      {reliabilityInfo.tier === 'risco_falta' && (
+                        <span
+                          title={`Confiabilidade: Risco de Falta (${reliabilityInfo.reason})`}
+                          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200/80 shrink-0 shadow-2xs"
+                        >
+                          <ShieldAlert className="h-3.5 w-3.5 text-rose-600" />
+                          <span>Risco</span>
+                        </span>
+                      )}
+                      {reliabilityInfo.tier === 'sem_historico' && (
+                        <span
+                          title={`Confiabilidade: Sem histórico suficiente (${reliabilityInfo.reason})`}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-50 text-gray-500 border border-gray-200/80 shrink-0 shadow-2xs"
+                        >
+                          <HelpCircle className="h-3 w-3 text-gray-400" />
+                          <span>Novo</span>
+                        </span>
                       )}
                     </div>
                   </div>
+
+                  {/* Botão de Reativar para Cliente Inativa */}
+                  {statusInfo.status === 'inativa' && whatsappUrl && !cupomInativa && (
+                    <div className="mt-3 flex items-center justify-between p-2.5 rounded-2xl bg-rose-50/70 border border-rose-200/70">
+                      <span className="text-[11px] font-semibold text-rose-800">Sem visitas há 60+ dias</span>
+                      <a
+                        href={whatsappUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-2xs hover:bg-emerald-700 transition cursor-pointer"
+                        title="Enviar mensagem de reativação no WhatsApp"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" />
+                        <span>Reativar</span>
+                      </a>
+                    </div>
+                  )}
 
                   {/* Sugestão contextual de Cupom para Clientes Inativas */}
                   {statusInfo.status === 'inativa' && cupomInativa && (
@@ -713,7 +717,7 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
                     {selectedReliability.tier === 'risco_falta' && <ShieldAlert className="h-5 w-5 text-rose-600" />}
                     {selectedReliability.tier === 'sem_historico' && <HelpCircle className="h-5 w-5 text-gray-400" />}
                   </div>
-                  <div className="space-y-1 text-xs">
+                  <div className="space-y-2 text-xs flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-sm">
                         Confiabilidade: {selectedReliability.label}
@@ -722,17 +726,39 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
                     <p className="text-[11px] font-medium leading-relaxed opacity-90">
                       {selectedReliability.reason}
                     </p>
-                    {selectedReliability.metrics.totalUltimos6Meses > 0 && (
-                      <div className="flex items-center gap-3 text-[10px] font-semibold opacity-75 pt-1">
-                        <span>{selectedReliability.metrics.concluidos} concluído(s)</span>
-                        <span>•</span>
-                        <span>{selectedReliability.metrics.noShow} falta(s)</span>
-                        <span>•</span>
-                        <span>
-                          {selectedReliability.metrics.canceladosAntecedencia + selectedReliability.metrics.canceladosUltimaHora} cancelamento(s)
+
+                    {/* Mini-Cards Estéticos de Insights (Concluídos, Cancelados, No-Show) - Cores Verde, Amarelo e Vermelho com tipografia padrão */}
+                    <div className="grid grid-cols-3 gap-2 pt-1 w-full">
+                      {/* Mini Card 1: Concluídos (Verde) */}
+                      <div className="rounded-xl bg-emerald-50/70 p-2 sm:p-2.5 border border-emerald-200/80 shadow-2xs text-center flex flex-col items-center justify-center">
+                        <span className="text-base sm:text-lg font-bold text-emerald-700 leading-none">
+                          {selectedReliability.metrics.concluidos}
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] font-bold text-emerald-800/80 uppercase tracking-tight mt-1 leading-none">
+                          Concluídos
                         </span>
                       </div>
-                    )}
+
+                      {/* Mini Card 2: Cancelados (Amarelo) */}
+                      <div className="rounded-xl bg-amber-50/70 p-2 sm:p-2.5 border border-amber-200/80 shadow-2xs text-center flex flex-col items-center justify-center">
+                        <span className="text-base sm:text-lg font-bold text-amber-700 leading-none">
+                          {selectedReliability.metrics.canceladosAntecedencia + selectedReliability.metrics.canceladosUltimaHora}
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] font-bold text-amber-800/80 uppercase tracking-tight mt-1 leading-none">
+                          Cancelados
+                        </span>
+                      </div>
+
+                      {/* Mini Card 3: No-show / Faltas (Vermelho) */}
+                      <div className="rounded-xl bg-rose-50/70 p-2 sm:p-2.5 border border-rose-200/80 shadow-2xs text-center flex flex-col items-center justify-center">
+                        <span className="text-base sm:text-lg font-bold text-rose-700 leading-none">
+                          {selectedReliability.metrics.noShow}
+                        </span>
+                        <span className="text-[9px] sm:text-[10px] font-bold text-rose-800/80 uppercase tracking-tight mt-1 leading-none">
+                          No-show
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

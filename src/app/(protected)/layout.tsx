@@ -71,8 +71,9 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
       <div className="flex-1 flex flex-col md:flex-row">
         {/* Sidebar Desktop */}
         <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-white border-r border-gray-200 p-4 justify-between z-30 overflow-y-auto">
-          <div className="space-y-6">
-            <div className="flex items-center gap-2 px-2">
+          <div className="space-y-4">
+            {/* Logo */}
+            <div className="flex items-center px-1">
               <Image
                 src="/assets/lume_logo.webp"
                 alt="Lumê"
@@ -87,7 +88,7 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
             {profissional && (
               <div
                 id="tour-public-link-desktop"
-                className="rounded-xl p-3 shadow-2xs border transition-all duration-300"
+                className="rounded-2xl p-3.5 shadow-2xs border transition-all duration-300"
                 style={{
                   backgroundColor: corPrimaria,
                   borderColor: getLightTint(corPrimaria, 40),
@@ -116,8 +117,8 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
           </div>
 
           {/* Rodapé da Sidebar - Usuário & Logout */}
-          <div className="border-t border-gray-100 pt-4 space-y-3">
-            <div className="flex items-center gap-3 px-2">
+          <div className="border-t border-gray-100 pt-3.5 mt-4">
+            <div className="flex items-center gap-3 px-1">
               <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-[#B8A9D9]/40 bg-gray-100">
                 {profissional?.foto_url ? (
                   <Image
@@ -128,13 +129,13 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-[#4A3F5C]/50">
-                    <UserIcon className="h-4 w-4" />
+                    <UserIcon className="h-4.5 w-4.5" />
                   </div>
                 )}
               </div>
               <div className="flex-1 overflow-hidden">
-                <p className="text-xs font-bold text-[#4A3F5C] truncate">{profissional?.nome}</p>
-                <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
+                <p className="text-xs sm:text-[13px] font-bold text-[#4A3F5C] truncate">{profissional?.nome}</p>
+                <p className="text-[11px] text-gray-400 truncate">{user.email}</p>
               </div>
             </div>
           </div>

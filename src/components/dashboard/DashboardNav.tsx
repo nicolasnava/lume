@@ -319,15 +319,15 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
 
   // Visualização Desktop Sidebar
   return (
-    <nav className="space-y-1.5">
-      {/* Sino de Novidades e Feedback no Topo do Menu Desktop */}
-      <div className="flex items-center justify-between pb-2 border-b border-gray-100 mb-2">
+    <div className="space-y-3.5">
+      {/* Novidades e Feedback (Sem linha divisória, exatamente igual à foto) */}
+      <div className="flex items-center justify-between px-1">
         <button
           onClick={() => {
             setHasUnreadNovidades(false)
             setIsNovidadesOpen(true)
           }}
-          className="relative inline-flex items-center gap-2 text-xs font-bold text-gray-600 hover:text-purple-700 transition cursor-pointer"
+          className="relative inline-flex items-center gap-2 text-xs font-bold text-[#4A3F5C] hover:text-purple-700 transition cursor-pointer"
           title="Ver novidades e atualizações"
         >
           <div className="relative">
@@ -341,59 +341,62 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
 
         <button
           onClick={() => setIsFeedbackOpen(true)}
-          className="text-[11px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2.5 py-1 rounded-lg transition cursor-pointer"
+          className="text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200/80 px-3 py-1 rounded-xl transition cursor-pointer"
         >
           Feedback
         </button>
       </div>
 
-      {NAV_ITEMS.map((item) => {
-        const isActive =
-          pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
-        const Icon = item.icon
-        const itemId =
-          item.href === '/dashboard/geral'
-            ? 'tour-nav-inicio'
-            : item.href === '/dashboard/agenda'
-            ? 'tour-nav-agenda'
-            : item.href === '/dashboard/financeiro'
-            ? 'tour-nav-financeiro'
-            : item.href === '/dashboard/relatorios'
-            ? 'tour-nav-relatorios'
-            : item.href === '/dashboard/clientes'
-            ? 'tour-nav-clientes'
-            : item.href === '/dashboard/avaliacoes'
-            ? 'tour-nav-avaliacoes'
-            : item.href === '/dashboard/servicos'
-            ? 'tour-nav-servicos'
-            : item.href === '/dashboard/disponibilidade'
-            ? 'tour-nav-disponibilidade'
-            : item.href === '/dashboard/studio' || item.href === '/dashboard/estudio'
-            ? 'tour-nav-estudio'
-            : item.href === '/perfil'
-            ? 'tour-nav-perfil'
-            : undefined
+      {/* Lista dos 10 Itens de Navegação com espaçamento e cantos arredondados idênticos à foto */}
+      <nav className="space-y-1">
+        {NAV_ITEMS.map((item) => {
+          const isActive =
+            pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
+          const Icon = item.icon
+          const itemId =
+            item.href === '/dashboard/geral'
+              ? 'tour-nav-inicio'
+              : item.href === '/dashboard/agenda'
+              ? 'tour-nav-agenda'
+              : item.href === '/dashboard/financeiro'
+              ? 'tour-nav-financeiro'
+              : item.href === '/dashboard/relatorios'
+              ? 'tour-nav-relatorios'
+              : item.href === '/dashboard/clientes'
+              ? 'tour-nav-clientes'
+              : item.href === '/dashboard/avaliacoes'
+              ? 'tour-nav-avaliacoes'
+              : item.href === '/dashboard/servicos'
+              ? 'tour-nav-servicos'
+              : item.href === '/dashboard/disponibilidade'
+              ? 'tour-nav-disponibilidade'
+              : item.href === '/dashboard/studio' || item.href === '/dashboard/estudio'
+              ? 'tour-nav-estudio'
+              : item.href === '/perfil'
+              ? 'tour-nav-perfil'
+              : undefined
 
-        return (
-          <Link
-            id={itemId}
-            key={item.href}
-            href={item.href}
-            prefetch={true}
-            className={`flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition cursor-pointer ${
-              isActive
-                ? 'bg-[#B8A9D9]/25 text-[#4A3F5C] shadow-xs font-bold'
-                : 'text-gray-600 hover:bg-gray-100 hover:text-[#4A3F5C]'
-            }`}
-          >
-            <Icon className={`h-4 w-4 ${isActive ? 'text-[#4A3F5C]' : 'text-gray-400'}`} />
-            <span>{item.name}</span>
-          </Link>
-        )
-      })}
+          return (
+            <Link
+              id={itemId}
+              key={item.href}
+              href={item.href}
+              prefetch={true}
+              className={`flex items-center gap-3.5 rounded-2xl px-3.5 py-2.5 text-xs sm:text-[13px] transition cursor-pointer ${
+                isActive
+                  ? 'bg-[#B8A9D9]/25 text-[#4A3F5C] font-bold shadow-2xs'
+                  : 'text-gray-600 font-semibold hover:bg-gray-100/80 hover:text-[#4A3F5C]'
+              }`}
+            >
+              <Icon className={`h-4.5 w-4.5 ${isActive ? 'text-[#4A3F5C]' : 'text-gray-400'}`} />
+              <span>{item.name}</span>
+            </Link>
+          )
+        })}
+      </nav>
 
       <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
       <NovidadesModal isOpen={isNovidadesOpen} onClose={() => setIsNovidadesOpen(false)} />
-    </nav>
+    </div>
   )
 }

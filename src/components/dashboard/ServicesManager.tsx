@@ -1363,12 +1363,12 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                 </div>
                 {comboEconomiaCalculada > 0 && comboPrecoNum > 0 && (
                   <p className="text-xs text-emerald-700 font-semibold mt-1">
-                    ✨ Desconto de R$ {comboEconomiaCalculada.toFixed(2)} para suas clientes!
+                    Desconto de R$ {comboEconomiaCalculada.toFixed(2)} para suas clientes!
                   </p>
                 )}
                 {comboPrecoNum > comboPrecoOriginalSoma && comboPrecoOriginalSoma > 0 && (
                   <p className="text-xs text-amber-700 font-semibold mt-1">
-                    ⚠️ Atenção: O preço do pacote está maior que a soma dos serviços avulsos.
+                    Atenção: O preço do pacote está maior que a soma dos serviços avulsos.
                   </p>
                 )}
               </div>

@@ -248,19 +248,19 @@ export async function applySubscriptionCoupon(codigo: string) {
     const baseDate = prof?.trial_ends_at ? new Date(prof.trial_ends_at) : new Date()
     const novaData = new Date(baseDate.getTime() + cupom.dias_trial_extra * 24 * 60 * 60 * 1000)
     updates.trial_ends_at = novaData.toISOString()
-    mensagemSucesso = `🎉 Parabéns! Você ganhou +${cupom.dias_trial_extra} dias de teste gratuito!`
+    mensagemSucesso = `Parabéns! Você ganhou +${cupom.dias_trial_extra} dias de teste gratuito!`
   }
 
   if (cupom.desconto_pct && cupom.desconto_pct > 0) {
     const valorAtual = Number(prof?.valor_mensalidade || 69.90)
     const novoValor = Math.max(0, valorAtual * (1 - cupom.desconto_pct / 100))
     updates.valor_mensalidade = Math.round(novoValor * 100) / 100
-    mensagemSucesso = `🎉 Cupom de ${cupom.desconto_pct}% de desconto aplicado nas suas próximas mensalidades!`
+    mensagemSucesso = `Cupom de ${cupom.desconto_pct}% de desconto aplicado nas suas próximas mensalidades!`
   } else if (cupom.desconto_valor && cupom.desconto_valor > 0) {
     const valorAtual = Number(prof?.valor_mensalidade || 69.90)
     const novoValor = Math.max(0, valorAtual - Number(cupom.desconto_valor))
     updates.valor_mensalidade = Math.round(novoValor * 100) / 100
-    mensagemSucesso = `🎉 Desconto de R$ ${Number(cupom.desconto_valor).toFixed(2)} aplicado na sua mensalidade!`
+    mensagemSucesso = `Desconto de R$ ${Number(cupom.desconto_valor).toFixed(2)} aplicado na sua mensalidade!`
   }
 
   if (Object.keys(updates).length > 0) {

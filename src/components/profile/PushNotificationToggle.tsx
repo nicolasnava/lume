@@ -165,7 +165,7 @@ export default function PushNotificationToggle() {
       if (res.success) {
         setStatusMsg({
           type: 'success',
-          text: '🔔 Notificação de teste enviada! Verifique a central de notificações do seu dispositivo.',
+          text: 'Notificação de teste enviada! Verifique a central de notificações do seu dispositivo.',
         })
       } else {
         setStatusMsg({

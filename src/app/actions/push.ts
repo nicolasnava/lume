@@ -115,7 +115,7 @@ export async function testPushNotificationAction(): Promise<{
     }
 
     const result = await sendPushToProfissional(user.id, {
-      title: '🎉 Notificações Push Ativas!',
+      title: 'Notificações Push Ativas!',
       body: 'O Lumê agora notificará você em tempo real sobre novos agendamentos, cancelamentos e remarcações.',
       url: '/dashboard/agenda',
       tag: 'test-push',

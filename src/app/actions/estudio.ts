@@ -288,7 +288,7 @@ export async function atualizarEstudio(dados: {
   nome: string
   slug: string
   bio?: string
-  foto_capa_url?: string
+  foto_capa_url?: string | null
   cor_primaria?: string
   cor_secundaria?: string
   fotos_espaco?: string[]

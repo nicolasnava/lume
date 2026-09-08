@@ -114,10 +114,6 @@ export default function RelatoriosViewClient({
       {/* Cabeçalho da Página */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 border border-purple-200/60 text-[#4A3F5C] text-xs font-bold mb-1">
-            <Calendar className="h-3.5 w-3.5 text-[#8675A9]" />
-            <span className="capitalize">{mesAtual.nomeMes}</span>
-          </div>
           <h1 className="text-2xl sm:text-3xl font-black text-[#4A3F5C] tracking-tight">
             Relatórios & Metas
           </h1>
@@ -125,33 +121,15 @@ export default function RelatoriosViewClient({
             Acompanhe seu faturamento ao vivo, ritmo diário necessário e histórico consolidado.
           </p>
         </div>
-
-        <button
-          type="button"
-          onClick={() => setIsModalMetaOpen(true)}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#4A3F5C] hover:bg-[#393047] text-white text-xs font-bold transition shadow-xs cursor-pointer self-start sm:self-auto"
-        >
-          {mesAtual.meta.definida ? (
-            <>
-              <Pencil className="h-3.5 w-3.5 text-[#B8A9D9]" />
-              <span>Ajustar Meta</span>
-            </>
-          ) : (
-            <>
-              <Plus className="h-3.5 w-3.5 text-[#B8A9D9]" />
-              <span>Definir Meta do Mês</span>
-            </>
-          )}
-        </button>
       </div>
 
       {/* SEÇÃO 1: Meta e Progresso do Mês Atual (Ao Vivo) */}
-      <div className="rounded-3xl bg-white p-6 sm:p-7 border border-gray-200/80 shadow-xs space-y-5 relative overflow-hidden">
+      <div className="rounded-3xl bg-white p-6 sm:p-7 border border-gray-200/80 shadow-2xs space-y-5 relative overflow-hidden">
         {isMetaBatida && (
           <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center justify-between gap-3 animate-in fade-in">
             <div className="flex items-center gap-2.5">
               <Trophy className="h-5 w-5 text-emerald-600 shrink-0 animate-bounce" />
-              <span>🎉 Parabéns! Você bateu a sua meta deste mês! Excelente trabalho.</span>
+              <span>Parabéns! Você bateu a sua meta deste mês! Excelente trabalho.</span>
             </div>
             <span className="px-2.5 py-0.5 rounded-full bg-emerald-200 text-emerald-800 text-[10px] font-black uppercase">
               100% Batida
@@ -159,58 +137,62 @@ export default function RelatoriosViewClient({
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-2xl bg-purple-50 border border-[#B8A9D9]/30 text-[#4A3F5C] flex items-center justify-center shadow-2xs">
-              <Target className="h-6 w-6 text-[#8675A9]" />
-            </div>
-            <div>
-              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">
-                Meta Mensal de Faturamento
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-xl sm:text-2xl font-black text-[#4A3F5C]">
-                  {mesAtual.meta.definida
-                    ? `R$ ${mesAtual.meta.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                    : 'Nenhuma meta definida'}
-                </span>
-                {mesAtual.meta.definida && (
-                  <span
-                    className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
-                      mesAtual.meta.status === 'batida'
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : mesAtual.meta.status === 'no_caminho'
-                        ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                        : 'bg-amber-50 text-amber-700 border border-amber-200'
-                    }`}
-                  >
-                    {mesAtual.meta.status === 'batida'
-                      ? 'Meta Batida'
-                      : mesAtual.meta.status === 'no_caminho'
-                      ? 'No Caminho Certo'
-                      : 'Atenção Necessária'}
-                  </span>
-                )}
-              </div>
-            </div>
+        {/* Header do Card de Metas: Título maior, mês embaixo, e ícone na extremidade direita */}
+        <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-3.5">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-[#4A3F5C] tracking-tight">
+              Meta Mensal de Faturamento
+            </h2>
+            <p className="text-xs text-gray-500 font-medium capitalize mt-0.5">
+              {mesAtual.nomeMes}
+            </p>
           </div>
 
-          <div className="text-left sm:text-right">
-            <span className="text-[11px] font-bold text-gray-400 block">Faturamento Realizado</span>
-            <span className="text-lg sm:text-xl font-bold text-emerald-700 font-mono">
-              R$ {mesAtual.faturamentoAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </span>
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#B8A9D9]/20 text-[#4A3F5C] shrink-0">
+            <Target className="h-5 w-5 text-[#8675A9]" />
           </div>
         </div>
 
         {mesAtual.meta.definida ? (
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs font-bold text-[#4A3F5C]">
-                <span>Progresso até agora</span>
-                <span className="font-mono text-purple-800">{mesAtual.meta.progressoPct}%</span>
+          <div className="space-y-4">
+            {/* Linha de Valores Principais com Hierarquia Clara e Lápis na frente da Meta */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-baseline">
+              <div>
+                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                  Meta Estipulada
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-3xl sm:text-4xl font-black text-[#4A3F5C] tracking-tight">
+                    R$ {mesAtual.meta.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsModalMetaOpen(true)}
+                    className="p-1.5 rounded-xl text-gray-400 hover:text-[#4A3F5C] hover:bg-gray-100 transition cursor-pointer"
+                    title="Ajustar Meta Mensal"
+                  >
+                    <Pencil className="h-4 w-4 text-[#8675A9]" />
+                  </button>
+                </div>
               </div>
-              <div className="h-3 w-full rounded-full bg-gray-100 p-0.5 overflow-hidden">
+
+              <div className="sm:text-right">
+                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                  Faturamento Realizado
+                </span>
+                <span className="text-2xl sm:text-3xl font-bold text-emerald-700 tracking-tight">
+                  R$ {mesAtual.faturamentoAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+
+            {/* Barra de Progresso */}
+            <div className="space-y-2 pt-1">
+              <div className="flex justify-between items-center text-xs font-bold">
+                <span className="text-gray-500">Progresso até agora</span>
+                <span className="text-[#4A3F5C] font-black">{mesAtual.meta.progressoPct}%</span>
+              </div>
+              <div className="h-2.5 w-full rounded-full bg-gray-100 overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${
                     isMetaBatida
@@ -222,27 +204,27 @@ export default function RelatoriosViewClient({
               </div>
             </div>
 
-            {/* Ritmo Necessário */}
-            <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2.5">
+            {/* Resumo de Ritmo e Dias Restantes */}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-gray-50/80 border border-gray-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5 text-gray-600">
                 <Flame className="h-4 w-4 text-amber-500 shrink-0" />
-                <span className="text-gray-700 font-medium">
+                <span>
                   {isMetaBatida ? (
                     'Meta conquistada! O faturamento adicional agora é pura bonificação.'
                   ) : (
                     <>
-                      Faltam <strong>R$ {mesAtual.meta.faltam.toFixed(2)}</strong> e{' '}
-                      <strong>{mesAtual.diasRestantes} dias</strong> restantes no mês.
+                      Faltam <strong className="text-[#4A3F5C]">R$ {mesAtual.meta.faltam.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> e{' '}
+                      <strong className="text-[#4A3F5C]">{mesAtual.diasRestantes} dias</strong> restantes no mês.
                     </>
                   )}
                 </span>
               </div>
 
               {!isMetaBatida && mesAtual.meta.ritmoDiarioNecessario > 0 && (
-                <div className="shrink-0 bg-white px-3 py-1.5 rounded-xl border border-gray-200 font-semibold text-[#4A3F5C] shadow-2xs">
-                  Ritmo necessário:{' '}
-                  <strong className="text-emerald-700 font-mono font-bold">
-                    R$ {mesAtual.meta.ritmoDiarioNecessario}/dia
+                <div className="shrink-0 inline-flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-gray-200/80 font-semibold text-gray-700 shadow-2xs">
+                  <span>Ritmo diário:</span>
+                  <strong className="text-emerald-700 font-bold">
+                    R$ {mesAtual.meta.ritmoDiarioNecessario.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/dia
                   </strong>
                 </div>
               )}
@@ -286,8 +268,8 @@ export default function RelatoriosViewClient({
       <div className="space-y-4">
         {/* Destaque Narrativo Automático */}
         {mesAtual.destaqueNarrativo && (
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50/80 via-white to-purple-50/50 border border-[#B8A9D9]/40 shadow-2xs flex items-center gap-3">
-            <Sparkles className="h-5 w-5 text-[#8675A9] shrink-0" />
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50/70 via-white to-purple-50/40 border border-gray-200/80 shadow-2xs flex items-center gap-3">
+            <TrendingUp className="h-5 w-5 text-[#8675A9] shrink-0" />
             <p className="text-xs font-semibold text-[#4A3F5C] leading-relaxed">
               {mesAtual.destaqueNarrativo}
             </p>
@@ -297,21 +279,21 @@ export default function RelatoriosViewClient({
         {/* Grade de Métricas ao Vivo */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Card 1: Faturamento & Comparativo Proporcional */}
-          <div className="rounded-3xl bg-white p-5 border border-gray-200/80 shadow-xs space-y-2 flex flex-col justify-between">
+          <div className="rounded-3xl bg-white p-5 border border-gray-200/80 shadow-2xs space-y-3 flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
                 Faturamento Atual
               </span>
-              <div className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
-                <DollarSign className="h-4 w-4" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+                <DollarSign className="h-5 w-5" />
               </div>
             </div>
 
             <div>
-              <span className="text-2xl font-black text-[#4A3F5C] font-mono">
+              <span className="text-3xl font-black text-[#4A3F5C] tracking-tight">
                 R$ {mesAtual.faturamentoAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </span>
-              <div className="flex items-center gap-1.5 mt-1">
+              <div className="flex items-center gap-1.5 mt-1.5">
                 {mesAtual.comparativoMesAnteriorPct !== null ? (
                   mesAtual.comparativoMesAnteriorPct >= 0 ? (
                     <span className="inline-flex items-center text-xs font-bold text-emerald-700">
@@ -333,45 +315,45 @@ export default function RelatoriosViewClient({
           </div>
 
           {/* Card 2: Atendimentos Concluídos */}
-          <div className="rounded-3xl bg-white p-5 border border-gray-200/80 shadow-xs space-y-2 flex flex-col justify-between">
+          <div className="rounded-3xl bg-white p-5 border border-gray-200/80 shadow-2xs space-y-3 flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
                 Atendimentos Concluídos
               </span>
-              <div className="h-8 w-8 rounded-xl bg-purple-50 text-[#4A3F5C] flex items-center justify-center">
-                <CheckCircle2 className="h-4 w-4 text-[#8675A9]" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#B8A9D9]/25 text-[#4A3F5C]">
+                <CheckCircle2 className="h-5 w-5 text-[#8675A9]" />
               </div>
             </div>
 
             <div>
-              <span className="text-2xl font-black text-[#4A3F5C]">
+              <span className="text-3xl font-black text-[#4A3F5C] tracking-tight">
                 {mesAtual.atendimentosConcluidos}{' '}
-                <span className="text-xs font-semibold text-gray-400">
+                <span className="text-sm font-bold text-gray-400">
                   {mesAtual.atendimentosConcluidos === 1 ? 'cliente atendida' : 'clientes atendidas'}
                 </span>
               </span>
-              <p className="text-[11px] text-gray-400 mt-1">
+              <p className="text-[11px] text-gray-400 mt-1.5">
                 Dia {mesAtual.diaAtualDoMes} de {mesAtual.diasNoMes} dias
               </p>
             </div>
           </div>
 
           {/* Card 3: Serviço Campeão de Vendas */}
-          <div className="rounded-3xl bg-white p-5 border border-gray-200/80 shadow-xs space-y-2 flex flex-col justify-between sm:col-span-2 lg:col-span-1">
+          <div className="rounded-3xl bg-white p-5 border border-gray-200/80 shadow-2xs space-y-3 flex flex-col justify-between sm:col-span-2 lg:col-span-1">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
                 Serviço Mais Vendido
               </span>
-              <div className="h-8 w-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
-                <Scissors className="h-4 w-4" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
+                <Scissors className="h-5 w-5" />
               </div>
             </div>
 
             <div>
-              <span className="text-base font-bold text-[#4A3F5C] line-clamp-1 block">
+              <span className="text-lg sm:text-xl font-bold text-[#4A3F5C] line-clamp-1 block">
                 {mesAtual.servicoMaisVendido?.nome || 'Nenhum serviço realizado ainda'}
               </span>
-              <p className="text-[11px] text-gray-400 mt-1">
+              <p className="text-[11px] text-gray-400 mt-1.5">
                 {mesAtual.servicoMaisVendido
                   ? `${mesAtual.servicoMaisVendido.quantidade} ${
                       mesAtual.servicoMaisVendido.quantidade === 1 ? 'agendamento' : 'agendamentos'
@@ -384,7 +366,7 @@ export default function RelatoriosViewClient({
       </div>
 
       {/* SEÇÃO 3: Histórico de Meses Anteriores (Fechados) */}
-      <div className="rounded-3xl bg-white p-6 sm:p-7 border border-gray-200/80 shadow-xs space-y-5">
+      <div className="rounded-3xl bg-white p-6 sm:p-7 border border-gray-200/80 shadow-2xs space-y-5">
         <div>
           <h2 className="text-base font-bold text-[#4A3F5C] flex items-center gap-2">
             <Clock className="h-4 w-4 text-[#8675A9]" />
@@ -415,12 +397,12 @@ export default function RelatoriosViewClient({
                     className="flex items-center justify-between gap-3 cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-xl bg-purple-50 text-[#4A3F5C] flex items-center justify-center font-bold text-xs shrink-0">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#B8A9D9]/20 text-[#4A3F5C] font-bold text-xs shrink-0">
                         {item.mesReferencia.split('-')[1]}
                       </div>
                       <div>
                         <h4 className="text-sm font-bold text-[#4A3F5C] capitalize">{item.nomeMes}</h4>
-                        <span className="text-xs font-mono font-bold text-emerald-700 block">
+                        <span className="text-xs font-bold text-emerald-700 block">
                           R$ {item.faturamentoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </span>
                       </div>
@@ -435,13 +417,13 @@ export default function RelatoriosViewClient({
                               : 'bg-gray-100 text-gray-600'
                           }`}
                         >
-                          {item.metaBatida ? 'Meta Batida 🎉' : 'Meta Não Batida'}
+                          {item.metaBatida ? 'Meta Batida' : 'Meta Não Batida'}
                         </span>
                       )}
 
                       <button
                         type="button"
-                        className="p-1 rounded-lg text-gray-400 hover:text-gray-600 transition"
+                        className="p-1 rounded-lg text-gray-400 hover:text-gray-600 transition cursor-pointer"
                       >
                         {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </button>
@@ -466,7 +448,7 @@ export default function RelatoriosViewClient({
 
                       <div className="bg-gray-50 p-3 rounded-xl">
                         <span className="text-gray-400 block text-[10px] uppercase font-bold">Meta Definida</span>
-                        <strong className="text-sm font-bold text-[#4A3F5C] font-mono">
+                        <strong className="text-sm font-bold text-[#4A3F5C]">
                           {item.metaValor
                             ? `R$ ${item.metaValor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
                             : 'Sem meta'}
@@ -475,7 +457,7 @@ export default function RelatoriosViewClient({
 
                       {item.destaqueNarrativo && (
                         <div className="sm:col-span-3 p-2.5 rounded-xl bg-purple-50/60 border border-purple-200/60 text-[11px] text-[#4A3F5C] font-semibold">
-                          💡 {item.destaqueNarrativo}
+                          {item.destaqueNarrativo}
                         </div>
                       )}
                     </div>

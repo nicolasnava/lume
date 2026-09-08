@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import { createAdminClient } from '@/lib/supabase/admin'
 import AvaliacaoFormClient from '@/components/reviews/AvaliacaoFormClient'
+import { Clock } from 'lucide-react'
 
 interface PageProps {
   params: Promise<{
@@ -124,7 +125,7 @@ export default async function AvaliarPage({ params }: PageProps) {
         {isExpirado && !avaliacaoExistente ? (
           <div className="rounded-2xl bg-white p-6 border border-amber-200 shadow-xs text-center space-y-3">
             <div className="mx-auto w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
-              <span className="text-xl">⏱️</span>
+              <Clock className="h-6 w-6 text-amber-600" />
             </div>
             <h3 className="text-sm font-bold text-slate-800">Prazo de avaliação expirado</h3>
             <p className="text-xs text-slate-500 leading-relaxed">
