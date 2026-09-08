@@ -44,6 +44,8 @@ A estética do Lumê é sofisticada, limpa e acolhedora, transmitindo elegância
    - O menu lateral no desktop foi padronizado para caber 100% no viewport sem barra de rolagem (scroll vertical).
    - O espaçamento entre itens de navegação é de `space-y-1` (4px), com `rounded-2xl` nos botões de link e padding confortável `px-3.5 py-2.5`.
 
+> 🎨 **Guia Visual Completo:** Para especificações completas de componentes, grids de KPIs, tipografia, modais e classes do Tailwind CSS, consulte o [DESIGN_SYSTEM.md](file:///c:/Users/user/Documents/Projetos/lume/DESIGN_SYSTEM.md).
+
 ---
 
 ## 3. Stack Tecnológica
