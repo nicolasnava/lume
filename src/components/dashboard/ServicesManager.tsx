@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -31,6 +31,7 @@ import {
   Check,
   Package,
   Layers,
+  ChevronDown,
 } from 'lucide-react'
 import {
   ComboItem,
@@ -75,6 +76,7 @@ export default function ServicesManager({ initialServices, initialCombos, profis
   const [activeTab, setActiveTab] = useState<'servicos' | 'combos'>('servicos')
   const [services, setServices] = useState<ServiceRow[]>(initialServices)
   const [combos, setCombos] = useState<ComboItem[]>(initialCombos || [])
+  const [expandedComboId, setExpandedComboId] = useState<string | null>(null)
 
   const [showModal, setShowModal] = useState(false)
   const [editingService, setEditingService] = useState<ServiceRow | null>(null)
@@ -105,7 +107,53 @@ export default function ServicesManager({ initialServices, initialCombos, profis
   const [comboServicoIds, setComboServicoIds] = useState<string[]>([])
   const [comboSaving, setComboSaving] = useState(false)
   const [comboUploading, setComboUploading] = useState(false)
+  const [isComboDragging, setIsComboDragging] = useState(false)
   const [deletingComboId, setDeletingComboId] = useState<string | null>(null)
+
+  // Seleção de serviços do combo (Simples ou Múltipla com Dropdown Rico idêntico ao agendamento)
+  const [isComboMultiSelect, setIsComboMultiSelect] = useState(false)
+  const [isComboServiceDropdownOpen, setIsComboServiceDropdownOpen] = useState(false)
+  const comboServiceDropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        comboServiceDropdownRef.current &&
+        !comboServiceDropdownRef.current.contains(e.target as Node)
+      ) {
+        setIsComboServiceDropdownOpen(false)
+      }
+    }
+    if (isComboServiceDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isComboServiceDropdownOpen])
+
+  const handleComboDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsComboDragging(true)
+  }
+
+  const handleComboDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsComboDragging(false)
+  }
+
+  const handleComboDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsComboDragging(false)
+    const files = e.dataTransfer.files
+    if (files && files.length > 0) {
+      handleComboPhotoUpload(files[0])
+    }
+  }
+
+  const handleRemoveComboPhoto = () => {
+    setComboFotoUrl('')
+  }
 
   // Toast State
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' | 'info' } | null>(null)
@@ -116,7 +164,9 @@ export default function ServicesManager({ initialServices, initialCombos, profis
     setComboDescricao('')
     setComboPreco('')
     setComboFotoUrl('')
-    setComboServicoIds([])
+    setComboServicoIds(services.length > 0 ? [services[0].id] : [])
+    setIsComboMultiSelect(false)
+    setIsComboServiceDropdownOpen(false)
     setShowComboModal(true)
   }
 
@@ -127,6 +177,8 @@ export default function ServicesManager({ initialServices, initialCombos, profis
     setComboPreco(String(c.preco_combo))
     setComboFotoUrl(c.foto_url || '')
     setComboServicoIds(c.servicos.map((s) => s.id))
+    setIsComboMultiSelect(c.servicos.length > 1)
+    setIsComboServiceDropdownOpen(false)
     setShowComboModal(true)
   }
 
@@ -218,10 +270,10 @@ export default function ServicesManager({ initialServices, initialCombos, profis
 
   const handleComboSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (comboServicoIds.length < 2) {
+    if (comboServicoIds.length < 1) {
       setToast({
         show: true,
-        message: 'Selecione ao menos 2 serviços para compor o pacote.',
+        message: 'Selecione ao menos 1 serviço para compor o pacote.',
         type: 'error',
       })
       return
@@ -853,128 +905,166 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                 return (
                   <div
                     key={combo.id}
-                    className={`rounded-3xl bg-white p-5 shadow-xs border transition flex flex-col justify-between h-full space-y-4 ${
+                    className={`rounded-3xl bg-white p-4 shadow-xs border transition flex flex-col justify-between h-full space-y-4 ${
                       isAtivo
                         ? 'border-gray-200/80 hover:border-[#B8A9D9]'
                         : 'border-gray-200 opacity-60 bg-gray-50/50'
                     }`}
                   >
-                    <div className="space-y-3.5 flex-1 flex flex-col justify-between">
+                    <div className="space-y-3 flex-1 flex flex-col justify-between">
                       <div>
-                        {/* Foto Opcional do Pacote */}
-                        {combo.foto_url && (
-                          <div className="relative h-40 w-full shrink-0 rounded-2xl overflow-hidden border border-gray-100 bg-purple-50/60 mb-3 shadow-2xs">
-                            <Image src={combo.foto_url} alt={combo.nome} fill className="object-cover" unoptimized />
-                            {!isAtivo && (
-                              <div className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-900/80 text-white backdrop-blur-xs">
-                                Pausado
-                              </div>
-                            )}
-                          </div>
-                        )}
+                        {/* Foto Banner Ampliada do Pacote (Igual ao Serviço) */}
+                        <div className="relative h-40 w-full shrink-0 rounded-2xl overflow-hidden border border-gray-100 bg-purple-50/60 mb-3 shadow-2xs">
+                          {combo.foto_url ? (
+                            <Image
+                              src={combo.foto_url}
+                              alt={combo.nome}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-[#B8A9D9]">
+                              <Package className="h-10 w-10 opacity-70" />
+                            </div>
+                          )}
 
-                        {/* Cabeçalho do Card: Badge + Preço */}
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="space-y-1.5 flex-1">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider bg-purple-50 border border-[#B8A9D9]/40 text-[#4A3F5C] uppercase">
-                              <Package className="h-3 w-3 text-[#8675A9]" />
-                              <span>Pacote de Assinatura</span>
-                            </span>
+                          {!isAtivo && (
+                            <div className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-900/80 text-white backdrop-blur-xs">
+                              Desativado
+                            </div>
+                          )}
+                        </div>
 
-                            <h3 className="font-bold text-base sm:text-lg text-[#4A3F5C] leading-snug tracking-tight">
-                              {combo.nome}
-                            </h3>
+                        {/* Nome do Pacote */}
+                        <h3 className="font-bold text-base text-[#4A3F5C] leading-snug line-clamp-1">
+                          {combo.nome}
+                        </h3>
 
+                        {/* Descrição */}
+                        <div className="min-h-[2.25rem] flex items-center mt-1">
+                          {combo.descricao ? (
                             <p className="text-xs text-[#4A3F5C]/75 leading-relaxed line-clamp-2">
-                              {combo.descricao || 'Pacote especial com serviços combinados'}
+                              {combo.descricao}
                             </p>
-                          </div>
+                          ) : (
+                            <p className="text-xs text-transparent select-none">—</p>
+                          )}
+                        </div>
 
-                          <div className="text-right shrink-0">
+                        {/* Duração e Preço (Padronizado como no card de serviços) */}
+                        <div className="flex items-center justify-between text-xs font-semibold pt-2 border-t border-gray-100 mt-2">
+                          <div className="flex items-center gap-1.5 text-[#4A3F5C]/80 bg-gray-50 px-2.5 py-1 rounded-xl border border-gray-200/60">
+                            <Clock className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                            <span>{combo.duracaoTotalMinutos} min total</span>
+                          </div>
+                          <div className="flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-100">
                             {combo.precoOriginalTotal > combo.preco_combo && (
-                              <span className="text-[11px] text-gray-400 line-through block">
+                              <span className="text-[10px] text-gray-400 line-through mr-1 font-normal">
                                 R$ {combo.precoOriginalTotal.toFixed(2)}
                               </span>
                             )}
-                            <div className="text-xl font-black text-emerald-700 tracking-tight font-mono">
-                              R$ {combo.preco_combo.toFixed(2)}
+                            <span>R$ {combo.preco_combo.toFixed(2)}</span>
+                          </div>
+                        </div>
+
+                        {/* Botão Acordeon de Serviços Inclusos */}
+                        <div className="pt-2 border-t border-gray-100 mt-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedComboId(expandedComboId === combo.id ? null : combo.id)
+                            }
+                            className="w-full flex items-center justify-between py-1.5 px-2.5 rounded-xl bg-[#FAF7F5] border border-purple-100/70 text-xs font-bold text-[#4A3F5C] hover:bg-purple-50/60 transition cursor-pointer"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <Layers className="h-3.5 w-3.5 text-[#8675A9]" />
+                              <span>{combo.servicos.length} serviços inclusos</span>
+                            </span>
+                            <ChevronDown
+                              className={`h-3.5 w-3.5 text-gray-400 transition-transform duration-200 ${
+                                expandedComboId === combo.id ? 'rotate-180 text-[#8675A9]' : ''
+                              }`}
+                            />
+                          </button>
+
+                          {/* Lista aberta dos serviços com foto na esquerda */}
+                          {expandedComboId === combo.id && (
+                            <div className="space-y-1.5 pt-2 animate-in fade-in duration-200">
+                              {combo.servicos.map((s) => (
+                                <div
+                                  key={s.id}
+                                  className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-gray-100 shadow-2xs"
+                                >
+                                  <div className="relative h-9 w-9 rounded-lg bg-gray-50 border border-gray-200/80 overflow-hidden shrink-0 flex items-center justify-center">
+                                    {s.foto_url ? (
+                                      <Image
+                                        src={s.foto_url}
+                                        alt={s.nome}
+                                        fill
+                                        className="object-cover"
+                                        unoptimized
+                                      />
+                                    ) : (
+                                      <Scissors className="h-3.5 w-3.5 text-[#8675A9]" />
+                                    )}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-xs font-bold text-[#4A3F5C] truncate">{s.nome}</p>
+                                    <p className="text-[10px] text-gray-500 font-medium">
+                                      <span className="text-emerald-700 font-bold">
+                                        R$ {Number(s.preco).toFixed(2)}
+                                      </span>
+                                      <span className="mx-1">•</span>
+                                      <span>{s.duracao_minutos} min</span>
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                            <span className="text-[10px] font-semibold text-gray-400 block uppercase tracking-wider">
-                              por pacote
-                            </span>
-                          </div>
+                          )}
                         </div>
-
-                        {/* Usos / Serviços Inclusos */}
-                        <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2 mt-2">
-                          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#4A3F5C] bg-purple-50/80 border border-[#B8A9D9]/40 px-3 py-1 rounded-xl">
-                            <Layers className="h-3.5 w-3.5 text-[#8675A9]" />
-                            <span>{combo.servicos.length}x serviços inclusos</span>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500">
-                            <Clock className="h-3.5 w-3.5 text-gray-400" />
-                            <span>{combo.duracaoTotalMinutos} min total</span>
-                          </div>
-                        </div>
-
-                        {/* Lista de Serviços */}
-                        <div className="flex flex-wrap gap-1 pt-2">
-                          {combo.servicos.map((s) => (
-                            <span
-                              key={s.id}
-                              className="text-[11px] font-semibold bg-purple-50 text-[#4A3F5C] border border-[#B8A9D9]/30 px-2 py-0.5 rounded-lg truncate max-w-full"
-                            >
-                              {s.nome}
-                            </span>
-                          ))}
-                        </div>
-
-                        {/* Economia */}
-                        {combo.descontoEconomia > 0 && (
-                          <div className="mt-2.5 p-1.5 rounded-xl bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-200/60 text-center">
-                            Economia de R$ {combo.descontoEconomia.toFixed(2)} para sua cliente
-                          </div>
-                        )}
                       </div>
 
-                      {/* Ações do Pacote */}
-                      <div className="flex items-center gap-2 pt-3 border-t border-gray-100 mt-2">
+                      {/* Ações do Pacote (Idênticas às de serviços) */}
+                      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                         <button
                           type="button"
-                          onClick={() => handleToggleComboStatus(combo.id, combo.ativo)}
-                          className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${
+                          onClick={() => handleToggleComboStatus(combo.id, isAtivo)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
                             isAtivo
-                              ? 'border-gray-200 bg-white hover:bg-gray-50 text-gray-700'
-                              : 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700'
+                              ? 'border-gray-200 text-gray-600 hover:bg-gray-100'
+                              : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                           }`}
+                          title={isAtivo ? 'Desativar pacote' : 'Ativar pacote'}
                         >
                           <Power className="h-3.5 w-3.5" />
-                          <span>{isAtivo ? 'Pausar' : 'Ativar'}</span>
+                          <span>{isAtivo ? 'Desativar' : 'Ativar'}</span>
                         </button>
 
-                        <button
-                          type="button"
-                          onClick={() => openEditComboModal(combo)}
-                          className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-[#4A3F5C] transition cursor-pointer shadow-2xs"
-                          title="Editar pacote"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={deletingComboId === combo.id}
-                          onClick={() => handleDeleteCombo(combo.id)}
-                          className="p-2 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 transition cursor-pointer shadow-2xs disabled:opacity-50"
-                          title="Excluir pacote"
-                        >
-                          {deletingComboId === combo.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-3.5 w-3.5" />
-                          )}
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => openEditComboModal(combo)}
+                            className="p-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-[#4A3F5C] transition cursor-pointer"
+                            title="Editar pacote"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={deletingComboId === combo.id}
+                            onClick={() => handleDeleteCombo(combo.id)}
+                            className="p-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 transition cursor-pointer disabled:opacity-50"
+                            title="Excluir pacote"
+                          >
+                            {deletingComboId === combo.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1248,108 +1338,339 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                 />
               </div>
 
-              {/* Upload de Foto do Pacote */}
+              {/* Upload de Foto do Pacote (Inspirado no Criar Serviço) */}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80 mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80 mb-2">
                   Foto do Pacote (Opcional)
                 </label>
-                {comboFotoUrl ? (
-                  <div className="relative h-32 w-full rounded-2xl overflow-hidden border border-gray-200 bg-gray-50">
-                    <Image src={comboFotoUrl} alt="Foto Pacote" fill className="object-cover" unoptimized />
+
+                {comboUploading ? (
+                  <div className="flex flex-col items-center justify-center p-6 rounded-2xl border-2 border-dashed border-[#B8A9D9] bg-purple-50/40 text-center space-y-2">
+                    <Loader2 className="h-7 w-7 animate-spin text-[#4A3F5C]" />
+                    <p className="text-xs font-semibold text-[#4A3F5C]">Enviando foto para o Storage...</p>
+                    <p className="text-[11px] text-gray-500">Aguarde a conclusão do upload antes de salvar.</p>
+                  </div>
+                ) : comboFotoUrl ? (
+                  <div className="relative rounded-2xl border border-gray-200 p-3 bg-gray-50/50 flex items-center gap-4">
+                    <div className="relative h-20 w-20 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 shadow-2xs">
+                      <Image
+                        src={comboFotoUrl}
+                        alt={comboNome || 'Preview do pacote'}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <p className="text-xs text-emerald-700 font-semibold flex items-center gap-1.5">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                        <span>Imagem enviada com sucesso</span>
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <label className="cursor-pointer inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-gray-300 bg-white text-xs font-semibold text-[#4A3F5C] hover:bg-gray-100 transition shadow-2xs">
+                          <Camera className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                          <span>Trocar</span>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) handleComboPhotoUpload(file)
+                            }}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleRemoveComboPhoto}
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-xs font-semibold text-red-600 hover:bg-red-100 transition cursor-pointer"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          <span>Remover</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onDragOver={handleComboDragOver}
+                    onDragLeave={handleComboDragLeave}
+                    onDrop={handleComboDrop}
+                    className={`relative rounded-2xl border-2 border-dashed p-6 text-center transition cursor-pointer ${
+                      isComboDragging
+                        ? 'border-[#4A3F5C] bg-[#B8A9D9]/20 scale-[0.99]'
+                        : 'border-gray-200 bg-gray-50/50 hover:border-[#B8A9D9] hover:bg-purple-50/30'
+                    }`}
+                  >
+                    <label className="cursor-pointer block space-y-2">
+                      <UploadCloud className="mx-auto h-8 w-8 text-[#B8A9D9]" />
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold text-[#4A3F5C]">
+                          Arraste e solte uma imagem aqui, ou{' '}
+                          <span className="text-purple-600 underline">clique para selecionar</span>
+                        </p>
+                        <p className="text-[11px] text-gray-500">
+                          Formatos aceitos: JPG, PNG, WebP ou GIF (máx. 5MB). Dimensão recomendada: 600x600px.
+                        </p>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) handleComboPhotoUpload(file)
+                        }}
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Seção de Serviço com Botão 'Selecionar vários' no mesmo horizonte e Dropdown Rico com Fotos */}
+              <div className="space-y-1.5" ref={comboServiceDropdownRef}>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-[#4A3F5C]/80 uppercase tracking-wider flex items-center gap-1.5">
+                    <Scissors className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                    <span>{isComboMultiSelect ? 'Serviços Inclusos' : 'Serviço Incluso'} *</span>
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !isComboMultiSelect
+                      setIsComboMultiSelect(next)
+                      if (next) {
+                        if (comboServicoIds.length === 0 && services.length > 0) {
+                          setComboServicoIds([services[0].id])
+                        }
+                      } else {
+                        if (comboServicoIds.length > 0) {
+                          setComboServicoIds([comboServicoIds[0]])
+                        }
+                      }
+                    }}
+                    className={`text-[11px] font-bold px-2.5 py-1 rounded-xl border transition cursor-pointer flex items-center gap-1.5 ${
+                      isComboMultiSelect
+                        ? 'bg-[#B8A9D9]/25 border-[#B8A9D9] text-[#4A3F5C]'
+                        : 'bg-[#FAF7F5] border-gray-200/80 text-gray-600 hover:bg-gray-100 hover:text-[#4A3F5C]'
+                    }`}
+                  >
+                    <span>Selecionar vários</span>
+                    {isComboMultiSelect && comboServicoIds.length > 1 && (
+                      <span className="h-4 w-4 rounded-full bg-[#4A3F5C] text-white text-[10px] flex items-center justify-center font-bold">
+                        {comboServicoIds.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                {services.length === 0 ? (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 font-semibold">
+                    Nenhum serviço ativo cadastrado. Cadastre um serviço para compor o pacote.
+                  </div>
+                ) : (
+                  <div className="relative">
+                    {/* Botão Trigger do Dropdown */}
                     <button
                       type="button"
-                      onClick={() => setComboFotoUrl('')}
-                      className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1.5 hover:bg-black/80 transition cursor-pointer"
+                      onClick={() => setIsComboServiceDropdownOpen(!isComboServiceDropdownOpen)}
+                      className={`w-full rounded-2xl border bg-[#FAF7F5] p-2.5 sm:p-3 text-left transition flex items-center justify-between gap-3 cursor-pointer shadow-2xs ${
+                        isComboServiceDropdownOpen
+                          ? 'border-[#B8A9D9] ring-2 ring-[#B8A9D9]/20'
+                          : 'border-gray-200/80 hover:border-[#B8A9D9] hover:bg-white'
+                      }`}
                     >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 hover:border-[#B8A9D9] rounded-2xl p-4 bg-gray-50/50 cursor-pointer transition">
-                    <UploadCloud className="h-6 w-6 text-[#B8A9D9] mb-1" />
-                    <span className="text-xs font-semibold text-[#4A3F5C]">
-                      {comboUploading ? 'Enviando foto...' : 'Clique para adicionar foto do pacote'}
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) handleComboPhotoUpload(file)
-                      }}
-                    />
-                  </label>
-                )}
-              </div>
-
-              {/* Seleção de Serviços que Compõem o Pacote */}
-              <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80">
-                  Serviços Inclusos no Pacote (Selecione ao menos 2) *
-                </label>
-
-                {services.length < 2 ? (
-                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
-                    Você precisa ter ao menos 2 serviços cadastrados para criar um pacote.
-                  </div>
-                ) : (
-                  <div className="max-h-48 overflow-y-auto space-y-1.5 border border-gray-200 rounded-2xl p-2 bg-gray-50/50">
-                    {services.map((s) => {
-                      const isSelected = comboServicoIds.includes(s.id)
-                      return (
-                        <div
-                          key={s.id}
-                          onClick={() => toggleComboServico(s.id)}
-                          className={`flex items-center justify-between p-2.5 rounded-xl border transition cursor-pointer ${
-                            isSelected
-                              ? 'bg-purple-50/80 border-[#B8A9D9] text-[#4A3F5C]'
-                              : 'bg-white border-gray-200/80 text-gray-700 hover:bg-gray-50'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div
-                              className={`h-5 w-5 rounded-md border flex items-center justify-center shrink-0 ${
-                                isSelected ? 'bg-[#4A3F5C] border-[#4A3F5C] text-white' : 'border-gray-300 bg-white'
-                              }`}
-                            >
-                              {isSelected && <Check className="h-3.5 w-3.5" />}
+                      {isComboMultiSelect ? (
+                        comboServicoIds.length === 0 ? (
+                          <span className="text-xs text-gray-400 font-medium">Selecione um ou mais serviços...</span>
+                        ) : (
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="flex -space-x-2 overflow-hidden shrink-0">
+                              {selectedServicosForCombo.slice(0, 3).map((s) => (
+                                <div
+                                  key={s.id}
+                                  className="relative h-9 w-9 rounded-xl border-2 border-white bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs"
+                                >
+                                  {s.foto_url ? (
+                                    <Image src={s.foto_url} alt={s.nome} fill className="object-cover" unoptimized />
+                                  ) : (
+                                    <Scissors className="h-4 w-4 text-[#8675A9]" />
+                                  )}
+                                </div>
+                              ))}
                             </div>
-                            <span className="text-xs font-bold leading-tight line-clamp-1">{s.nome}</span>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-bold text-[#4A3F5C] truncate">
+                                {comboServicoIds.length === 1
+                                  ? selectedServicosForCombo[0]?.nome
+                                  : `${comboServicoIds.length} serviços selecionados`}
+                              </p>
+                              <p className="text-[11px] text-gray-500 font-medium mt-0.5">
+                                Total individual: <strong className="text-emerald-700 font-bold">R$ {comboPrecoOriginalSoma.toFixed(2)}</strong> • {comboDuracaoCalculada} min
+                              </p>
+                            </div>
                           </div>
-                          <div className="text-right shrink-0 text-[11px] font-semibold text-gray-500">
-                            <span>{s.duracao_minutos} min • R$ {Number(s.preco).toFixed(2)}</span>
-                          </div>
+                        )
+                      ) : (
+                        (() => {
+                          const current = selectedServicosForCombo[0]
+                          if (!current) return <span className="text-xs text-gray-400 font-medium">Selecione um serviço...</span>
+                          return (
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <div className="relative h-10 w-10 rounded-xl bg-white border border-[#B8A9D9]/30 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs">
+                                {current.foto_url ? (
+                                  <Image src={current.foto_url} alt={current.nome} fill className="object-cover" unoptimized />
+                                ) : (
+                                  <Scissors className="h-5 w-5 text-[#8675A9]" />
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-bold text-[#4A3F5C] truncate">{current.nome}</p>
+                                <p className="text-[11px] text-gray-500 font-medium mt-0.5">
+                                  <span className="text-emerald-700 font-bold">R$ {Number(current.preco).toFixed(2)}</span>
+                                  <span className="mx-1.5">•</span>
+                                  <span>{current.duracao_minutos} min</span>
+                                </p>
+                              </div>
+                            </div>
+                          )
+                        })()
+                      )}
+
+                      <ChevronDown
+                        className={`h-4 w-4 text-gray-400 transition-transform duration-200 shrink-0 ${
+                          isComboServiceDropdownOpen ? 'rotate-180 text-[#8675A9]' : ''
+                        }`}
+                      />
+                    </button>
+
+                    {/* Dropdown com Foto na Esquerda, Nome à Direita, Valor e Tempo */}
+                    {isComboServiceDropdownOpen && (
+                      <div className="absolute left-0 right-0 top-full mt-2 z-40 max-h-72 overflow-y-auto rounded-3xl bg-white border border-gray-200 shadow-2xl p-2 space-y-1.5 animate-in fade-in duration-150">
+                        <div className="px-2 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center justify-between border-b border-gray-100 pb-1.5">
+                          <span>{isComboMultiSelect ? 'Marque os serviços desejados' : 'Selecione o serviço'}</span>
+                          {isComboMultiSelect && (
+                            <span className="text-[#8675A9] font-bold">
+                              {comboServicoIds.length} selecionado(s)
+                            </span>
+                          )}
                         </div>
-                      )
-                    })}
+
+                        <div className="space-y-1 pt-1">
+                          {services.map((s) => {
+                            const isSelected = comboServicoIds.includes(s.id)
+
+                            return (
+                              <div
+                                key={s.id}
+                                onClick={() => {
+                                  if (isComboMultiSelect) {
+                                    if (comboServicoIds.includes(s.id)) {
+                                      if (comboServicoIds.length > 1) {
+                                        setComboServicoIds(comboServicoIds.filter((id) => id !== s.id))
+                                      }
+                                    } else {
+                                      setComboServicoIds([...comboServicoIds, s.id])
+                                    }
+                                  } else {
+                                    setComboServicoIds([s.id])
+                                    setIsComboServiceDropdownOpen(false)
+                                  }
+                                }}
+                                className={`flex items-center justify-between p-2.5 rounded-2xl transition cursor-pointer border ${
+                                  isSelected
+                                    ? 'bg-purple-50/80 border-[#B8A9D9] shadow-2xs'
+                                    : 'bg-white border-transparent hover:bg-gray-50 hover:border-gray-200/70'
+                                }`}
+                              >
+                                {/* Foto na Esquerda */}
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                  <div className="relative h-12 w-12 rounded-xl bg-gray-100 border border-gray-200/80 overflow-hidden shrink-0 flex items-center justify-center">
+                                    {s.foto_url ? (
+                                      <Image src={s.foto_url} alt={s.nome} fill className="object-cover" unoptimized />
+                                    ) : (
+                                      <Scissors className="h-5 w-5 text-[#8675A9]" />
+                                    )}
+                                  </div>
+
+                                  {/* Nome à Direita, Valor e Tempo */}
+                                  <div className="min-w-0 flex-1">
+                                    <p className={`text-xs sm:text-sm font-bold truncate ${isSelected ? 'text-[#4A3F5C]' : 'text-gray-800'}`}>
+                                      {s.nome}
+                                    </p>
+                                    <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-500 font-semibold">
+                                      <span className="text-emerald-700 font-bold">R$ {Number(s.preco).toFixed(2)}</span>
+                                      <span>•</span>
+                                      <span className="flex items-center gap-1 text-[11px] text-gray-400">
+                                        <Clock className="h-3 w-3" />
+                                        {s.duracao_minutos} min
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Indicador de Seleção à Direita */}
+                                <div className="shrink-0 pl-2">
+                                  {isComboMultiSelect ? (
+                                    <div
+                                      className={`h-5 w-5 rounded-lg border flex items-center justify-center transition ${
+                                        isSelected
+                                          ? 'bg-[#4A3F5C] border-[#4A3F5C] text-white'
+                                          : 'border-gray-300 bg-white'
+                                      }`}
+                                    >
+                                      {isSelected && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+                                    </div>
+                                  ) : (
+                                    isSelected && (
+                                      <div className="h-6 w-6 rounded-full bg-[#4A3F5C] text-white flex items-center justify-center">
+                                        <Check className="h-3.5 w-3.5 stroke-[3]" />
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+
+                        {isComboMultiSelect && (
+                          <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between px-1">
+                            <div className="text-[11px] font-semibold text-gray-600">
+                              Total individual: <strong className="text-emerald-700 font-bold">R$ {comboPrecoOriginalSoma.toFixed(2)}</strong> ({comboDuracaoCalculada} min)
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setIsComboServiceDropdownOpen(false)}
+                              className="px-4 py-1.5 rounded-xl bg-[#4A3F5C] text-white text-xs font-bold hover:bg-[#3d334d] transition cursor-pointer"
+                            >
+                              Concluir
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
 
-              {/* Cálculo em tempo real: Duração e Preço Sugerido */}
-              {comboServicoIds.length > 0 && (
-                <div className="p-3.5 rounded-2xl bg-purple-50/60 border border-purple-200/80 space-y-2 text-xs">
-                  <div className="flex justify-between font-semibold text-[#4A3F5C]">
-                    <span>Duração combinada total:</span>
-                    <strong className="font-bold">{comboDuracaoCalculada} min</strong>
-                  </div>
-                  <div className="flex justify-between font-semibold text-[#4A3F5C]">
-                    <span>Soma dos preços avulsos:</span>
-                    <strong className="font-bold font-mono">R$ {comboPrecoOriginalSoma.toFixed(2)}</strong>
+              {/* Duração e Preço em 2 Colunas (Inspirado no Criar Serviço) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80 mb-1">
+                    Duração Total
+                  </label>
+                  <div className="w-full rounded-xl border border-gray-200 bg-gray-100/70 py-3 px-4 text-sm font-bold text-[#4A3F5C] flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-[#B8A9D9]" />
+                    <span>{comboDuracaoCalculada} min</span>
                   </div>
                 </div>
-              )}
 
-              {/* Preço do Pacote */}
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80 mb-1">
-                  Preço Especial do Pacote (R$) *
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
-                    R$
-                  </span>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80 mb-1">
+                    Preço do Pacote (R$) *
+                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -1358,19 +1679,9 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                     value={comboPreco}
                     onChange={(e) => setComboPreco(e.target.value)}
                     placeholder={comboPrecoOriginalSoma > 0 ? String(Math.round(comboPrecoOriginalSoma * 0.8)) : '150.00'}
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 pl-10 pr-4 text-sm font-bold text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-none"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 px-4 text-sm font-bold text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-none"
                   />
                 </div>
-                {comboEconomiaCalculada > 0 && comboPrecoNum > 0 && (
-                  <p className="text-xs text-emerald-700 font-semibold mt-1">
-                    Desconto de R$ {comboEconomiaCalculada.toFixed(2)} para suas clientes!
-                  </p>
-                )}
-                {comboPrecoNum > comboPrecoOriginalSoma && comboPrecoOriginalSoma > 0 && (
-                  <p className="text-xs text-amber-700 font-semibold mt-1">
-                    Atenção: O preço do pacote está maior que a soma dos serviços avulsos.
-                  </p>
-                )}
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
@@ -1383,7 +1694,7 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                 </button>
                 <button
                   type="submit"
-                  disabled={comboSaving || comboUploading || comboServicoIds.length < 2}
+                  disabled={comboSaving || comboUploading || comboServicoIds.length < 1}
                   className="rounded-xl bg-[#4A3F5C] px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-[#393047] transition disabled:opacity-50 flex items-center gap-2 cursor-pointer"
                 >
                   {comboSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar Pacote'}

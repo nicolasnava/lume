@@ -69,18 +69,18 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
   return (
     <div className="min-h-screen bg-[#FAF7F5] flex flex-col justify-between selection:bg-[#B8A9D9]/30">
       <div className="flex-1 flex flex-col md:flex-row">
-        {/* Sidebar Desktop */}
-        <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-white border-r border-gray-200 p-4 justify-between z-30 overflow-y-auto">
-          <div className="space-y-4">
+        {/* Sidebar Desktop (Sem scrollbar) */}
+        <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-white border-r border-gray-200 px-3.5 py-3 justify-between z-30 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="space-y-2.5">
             {/* Logo */}
             <div className="flex items-center px-1">
               <Image
                 src="/assets/lume_logo.webp"
                 alt="Lumê"
-                width={120}
-                height={36}
+                width={112}
+                height={32}
                 priority
-                className="h-auto w-auto max-h-9 object-contain"
+                className="h-auto w-auto max-h-8 object-contain"
               />
             </div>
 
@@ -88,14 +88,14 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
             {profissional && (
               <div
                 id="tour-public-link-desktop"
-                className="rounded-2xl p-3.5 shadow-2xs border transition-all duration-300"
+                className="rounded-2xl p-2.5 shadow-2xs border transition-all duration-300"
                 style={{
                   backgroundColor: corPrimaria,
                   borderColor: getLightTint(corPrimaria, 40),
                 }}
               >
                 <span
-                  className="text-[10px] font-bold uppercase tracking-wider block mb-1 opacity-80"
+                  className="text-[9px] font-bold uppercase tracking-wider block mb-0.5 opacity-80"
                   style={{ color: textColor }}
                 >
                   Sua Página Pública
@@ -117,9 +117,9 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
           </div>
 
           {/* Rodapé da Sidebar - Usuário & Logout */}
-          <div className="border-t border-gray-100 pt-3.5 mt-4">
-            <div className="flex items-center gap-3 px-1">
-              <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-[#B8A9D9]/40 bg-gray-100">
+          <div className="border-t border-gray-100 pt-2.5 mt-2">
+            <div className="flex items-center gap-2.5 px-1">
+              <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-[#B8A9D9]/40 bg-gray-100">
                 {profissional?.foto_url ? (
                   <Image
                     src={profissional.foto_url}
@@ -129,13 +129,13 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-[#4A3F5C]/50">
-                    <UserIcon className="h-4.5 w-4.5" />
+                    <UserIcon className="h-4 w-4" />
                   </div>
                 )}
               </div>
               <div className="flex-1 overflow-hidden">
-                <p className="text-xs sm:text-[13px] font-bold text-[#4A3F5C] truncate">{profissional?.nome}</p>
-                <p className="text-[11px] text-gray-400 truncate">{user.email}</p>
+                <p className="text-xs font-bold text-[#4A3F5C] truncate">{profissional?.nome}</p>
+                <p className="text-[10px] text-gray-400 truncate">{user.email}</p>
               </div>
             </div>
           </div>

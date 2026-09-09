@@ -64,10 +64,10 @@ export default function PushNotificationToggle() {
     setStatusMsg(null)
 
     try {
-      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-      if (!vapidPublicKey) {
-        throw new Error('Chave VAPID pública não configurada nas variáveis de ambiente.')
-      }
+      const DEFAULT_VAPID_PUBLIC =
+        'BFgvxWm6W2GeFpPByZi-vuBvdreMBENs100PEaQhhHpf8aAw7PK25fej67_3XrRlZJ8eYg0Pm-5hrQHVoOMIpOk'
+      const vapidPublicKey =
+        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || DEFAULT_VAPID_PUBLIC
 
       // Solicitar permissão do navegador
       const perm = await Notification.requestPermission()

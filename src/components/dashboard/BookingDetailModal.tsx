@@ -52,6 +52,18 @@ export interface BookingDetail {
     preco: number
     ativo?: boolean | null
   } | null
+  agendamento_servicos?: {
+    id: string
+    preco_no_momento: number
+    duracao_no_momento_minutos: number
+    servicos?: {
+      id?: string
+      nome: string
+      duracao_minutos: number
+      preco: number
+      ativo?: boolean | null
+    } | null
+  }[] | null
 }
 
 interface BookingDetailModalProps {
@@ -81,12 +93,29 @@ export default function BookingDetailModal({
 
   const [showCompleteForm, setShowCompleteForm] = useState(false)
 
+  const hasMultipleServices = !!(booking?.agendamento_servicos && booking.agendamento_servicos.length > 1)
+  const servicoNome = booking?.agendamento_servicos && booking.agendamento_servicos.length > 0
+    ? booking.agendamento_servicos.map((as) => as.servicos?.nome || 'Serviço').filter(Boolean).join(' + ')
+    : (booking?.servicos?.nome || 'Serviço')
+
+  const totalAgendamentoServicosValor = booking?.agendamento_servicos && booking.agendamento_servicos.length > 0
+    ? booking.agendamento_servicos.reduce((acc, as) => acc + Number(as.preco_no_momento || as.servicos?.preco || 0), 0)
+    : (booking?.servicos?.preco ? Number(booking.servicos.preco) : 0)
+
+  const totalDuracaoMinutos = booking?.agendamento_servicos && booking.agendamento_servicos.length > 0
+    ? booking.agendamento_servicos.reduce((acc, as) => acc + (as.duracao_no_momento_minutos || as.servicos?.duracao_minutos || 0), 0)
+    : (booking?.servicos?.duracao_minutos || 0)
+
   // Form de Pagamento ao Concluir
   const [formaPagamento, setFormaPagamento] = useState<
     'pix' | 'dinheiro' | 'cartao' | 'outro'
   >('pix')
   const [valorCobrado, setValorCobrado] = useState(
-    booking?.servicos?.preco ? String(booking.servicos.preco) : '0'
+    booking?.valor_cobrado !== null && booking?.valor_cobrado !== undefined
+      ? String(booking.valor_cobrado)
+      : totalAgendamentoServicosValor > 0
+      ? String(totalAgendamentoServicosValor)
+      : '0'
   )
   const [pago, setPago] = useState(true)
   const [observacaoPagamento, setObservacaoPagamento] = useState('')
@@ -118,9 +147,8 @@ export default function BookingDetailModal({
 
   const clienteNome = booking.clientes?.nome || 'Cliente sem nome'
   const clienteTelefone = booking.clientes?.telefone || ''
-  const servicoNome = booking.servicos?.nome || 'Serviço'
-  const servicoPreco = booking.servicos?.preco ? `R$ ${booking.servicos.preco.toFixed(2)}` : 'R$ 0,00'
-  const servicoDuracao = booking.servicos?.duracao_minutos ? `${booking.servicos.duracao_minutos} min` : ''
+  const servicoPreco = `R$ ${totalAgendamentoServicosValor.toFixed(2)}`
+  const servicoDuracao = totalDuracaoMinutos ? `${totalDuracaoMinutos} min` : ''
 
   // Link direto para o WhatsApp Web
   const cleanPhone = clienteTelefone.replace(/\D/g, '')
@@ -207,7 +235,11 @@ export default function BookingDetailModal({
               Detalhes do Agendamento
             </span>
             <div className="flex items-center gap-2 flex-wrap mt-0.5">
-              <h3 className="text-xl font-bold text-[#4A3F5C]">{servicoNome}</h3>
+              <h3 className="text-xl font-bold text-[#4A3F5C]">
+                {hasMultipleServices
+                  ? `${booking.agendamento_servicos?.length || 0} Serviços Agendados`
+                  : servicoNome}
+              </h3>
               {booking.servicos?.ativo === false && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                   <AlertTriangle className="h-3 w-3 text-amber-600" />
@@ -341,25 +373,77 @@ export default function BookingDetailModal({
           </span>
         </div>
 
-        {/* 4. Serviço e Valor Total (Texto do serviço acima, linha divisória e valor total com ícone) */}
-        <div className="pt-3 border-t border-gray-100 space-y-2.5">
-          <div className="flex items-start gap-3 text-sm text-[#4A3F5C]">
-            <Scissors className="h-4 w-4 text-[#B8A9D9] shrink-0 mt-0.5" />
-            <span className="font-bold text-[#4A3F5C] leading-snug">
-              {servicoNome}
-            </span>
-          </div>
-
-          <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between text-sm text-[#4A3F5C]">
-            <div className="flex items-center gap-3">
-              <DollarSign className="h-4 w-4 text-[#B8A9D9] shrink-0" />
-              <span className="text-gray-500 font-medium text-xs">Valor Total</span>
+        {/* 4. Card de Serviços Selecionados e Valor Total */}
+        {hasMultipleServices && booking.agendamento_servicos && booking.agendamento_servicos.length > 0 ? (
+          <div className="rounded-2xl bg-[#FAF7F5] p-4 border border-purple-200/70 space-y-3">
+            <div className="flex items-center justify-between border-b border-purple-100/80 pb-2.5">
+              <span className="flex items-center gap-2 text-xs font-bold text-[#4A3F5C]">
+                <Scissors className="h-4 w-4 text-[#B8A9D9]" />
+                <span>Serviços Inclusos ({booking.agendamento_servicos.length})</span>
+              </span>
+              <span className="text-xs font-semibold text-gray-400 whitespace-nowrap">
+                {totalDuracaoMinutos} min total
+              </span>
             </div>
-            <span className="font-extrabold text-base sm:text-lg text-emerald-700">
-              {servicoPreco}
-            </span>
+
+            <div className="space-y-2.5 py-0.5">
+              {booking.agendamento_servicos.map((as, idx) => (
+                <div
+                  key={as.id || idx}
+                  className="flex items-start justify-between gap-3 pt-2.5 first:pt-0 border-t first:border-0 border-purple-100/60"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm font-semibold text-[#4A3F5C] leading-snug">
+                      {as.servicos?.nome || 'Serviço'}
+                    </p>
+                    <span className="inline-block text-[11px] text-gray-400 font-medium mt-0.5 whitespace-nowrap">
+                      {as.duracao_no_momento_minutos || as.servicos?.duracao_minutos || 0} min
+                    </span>
+                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-emerald-700 shrink-0 whitespace-nowrap pt-0.5">
+                    R$ {Number(as.preco_no_momento || as.servicos?.preco || 0).toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-3 border-t border-purple-200/80 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-[#B8A9D9] shrink-0" />
+                <span className="text-xs font-bold text-[#4A3F5C]/80">Valor Total</span>
+              </div>
+              <span className="font-extrabold text-lg text-emerald-700">
+                {servicoPreco}
+              </span>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="rounded-2xl bg-[#FAF7F5] p-4 border border-purple-200/70 space-y-3">
+            <div className="flex items-start gap-3">
+              <Scissors className="h-4 w-4 text-[#B8A9D9] shrink-0 mt-0.5" />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-xs sm:text-sm text-[#4A3F5C] leading-snug">
+                  {servicoNome}
+                </p>
+                {servicoDuracao && (
+                  <span className="inline-block text-[11px] text-gray-400 font-medium mt-0.5 whitespace-nowrap">
+                    {servicoDuracao}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-purple-200/80 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-[#B8A9D9] shrink-0" />
+                <span className="text-xs font-bold text-[#4A3F5C]/80">Valor Total</span>
+              </div>
+              <span className="font-extrabold text-lg text-emerald-700">
+                {servicoPreco}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Formulário de Conclusão e Registro de Pagamento */}
         {showCompleteForm ? (
@@ -472,7 +556,13 @@ export default function BookingDetailModal({
                   type="button"
                   onClick={() => {
                     setValorCobrado(
-                      booking.servicos?.preco ? String(booking.servicos.preco) : '0'
+                      booking.valor_cobrado !== null && booking.valor_cobrado !== undefined
+                        ? String(booking.valor_cobrado)
+                        : totalAgendamentoServicosValor > 0
+                        ? String(totalAgendamentoServicosValor)
+                        : booking.servicos?.preco
+                        ? String(booking.servicos.preco)
+                        : '0'
                     )
                     setShowCompleteForm(true)
                   }}
@@ -498,6 +588,9 @@ export default function BookingDetailModal({
                   )}
                 </button>
               </div>
+
+              {/* Linha ultra fina divisória */}
+              <div className="border-t border-gray-100 my-1" />
 
               {/* Botão e Confirmação de Cancelamento Personalizado (Item 3) */}
               {showCancelConfirm ? (

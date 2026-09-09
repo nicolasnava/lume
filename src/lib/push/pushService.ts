@@ -1,8 +1,12 @@
 import webpush from 'web-push'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY
+const DEFAULT_VAPID_PUBLIC =
+  'BFgvxWm6W2GeFpPByZi-vuBvdreMBENs100PEaQhhHpf8aAw7PK25fej67_3XrRlZJ8eYg0Pm-5hrQHVoOMIpOk'
+const DEFAULT_VAPID_PRIVATE = 'ED8OJvoyc2N1Zb9klO5N1rlTUJkE5wYK3SMwGVNCpf4'
+
+const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || DEFAULT_VAPID_PUBLIC
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || DEFAULT_VAPID_PRIVATE
 const vapidSubject = process.env.VAPID_SUBJECT || 'mailto:suporte@lume.com.br'
 
 if (vapidPublicKey && vapidPrivateKey) {

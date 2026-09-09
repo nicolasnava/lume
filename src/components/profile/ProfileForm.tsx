@@ -40,9 +40,10 @@ import {
   Instagram,
 } from 'lucide-react'
 
-import PaymentIcon from '@/components/common/PaymentIcon'
-import QrCodeModal from '@/components/profile/QrCodeModal'
 import StoriesShareModal from '@/components/profile/StoriesShareModal'
+import QrCodeModal from '@/components/profile/QrCodeModal'
+import PaymentIcon from '@/components/common/PaymentIcon'
+import CustomColorPickerModal from '@/components/ui/CustomColorPickerModal'
 import PushNotificationToggle from '@/components/profile/PushNotificationToggle'
 import { obterDadosEstudioUsuario } from '@/app/actions/estudio'
 
@@ -141,6 +142,7 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
 
   const [corPrimaria, setCorPrimaria] = useState(initialData.cor_primaria || '#B8A9D9')
   const [corSecundaria, setCorSecundaria] = useState(initialData.cor_secundaria || '#FAF7F5')
+  const [colorModalTarget, setColorModalTarget] = useState<'primaria' | 'secundaria' | null>(null)
   const [fotoUrl, setFotoUrl] = useState(initialData.foto_url || '')
   const [fotoCapaUrl, setFotoCapaUrl] = useState(initialData.foto_capa_url || '')
 
@@ -1107,14 +1109,12 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
                 </label>
 
                 <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={corPrimaria}
-                    onChange={(e) => {
-                      setCorPrimaria(e.target.value)
-                      executeSave({ cor_primaria: e.target.value })
-                    }}
-                    className="h-10 w-12 cursor-pointer rounded-lg border border-gray-200 p-1"
+                  <button
+                    type="button"
+                    onClick={() => setColorModalTarget('primaria')}
+                    className="h-10 w-10 rounded-full border-2 border-white shadow-md ring-2 ring-gray-200 cursor-pointer shrink-0 transition-transform duration-150 hover:scale-110 active:scale-95"
+                    style={{ backgroundColor: corPrimaria }}
+                    title="Clique para escolher a cor primária"
                   />
                   <input
                     type="text"
@@ -1123,8 +1123,17 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
                       setCorPrimaria(e.target.value)
                       executeSave({ cor_primaria: e.target.value })
                     }}
-                    className="w-28 rounded-xl border border-gray-200 bg-gray-50/50 p-2 text-xs font-mono text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-none font-bold"
+                    placeholder="#B8A9D9"
+                    maxLength={7}
+                    className="w-28 rounded-xl border border-gray-200 bg-gray-50/50 p-2 text-xs font-mono text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-hidden font-bold uppercase"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setColorModalTarget('primaria')}
+                    className="text-xs font-bold text-[#4A3F5C] hover:underline cursor-pointer sm:hidden"
+                  >
+                    Mudar cor
+                  </button>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5 pt-1">
@@ -1159,14 +1168,12 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
                 </label>
 
                 <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={corSecundaria}
-                    onChange={(e) => {
-                      setCorSecundaria(e.target.value)
-                      executeSave({ cor_secundaria: e.target.value })
-                    }}
-                    className="h-10 w-12 cursor-pointer rounded-lg border border-gray-200 p-1"
+                  <button
+                    type="button"
+                    onClick={() => setColorModalTarget('secundaria')}
+                    className="h-10 w-10 rounded-full border-2 border-white shadow-md ring-2 ring-gray-200 cursor-pointer shrink-0 transition-transform duration-150 hover:scale-110 active:scale-95"
+                    style={{ backgroundColor: corSecundaria }}
+                    title="Clique para escolher a cor secundária"
                   />
                   <input
                     type="text"
@@ -1175,8 +1182,17 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
                       setCorSecundaria(e.target.value)
                       executeSave({ cor_secundaria: e.target.value })
                     }}
-                    className="w-28 rounded-xl border border-gray-200 bg-gray-50/50 p-2 text-xs font-mono text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-none font-bold"
+                    placeholder="#FAF7F5"
+                    maxLength={7}
+                    className="w-28 rounded-xl border border-gray-200 bg-gray-50/50 p-2 text-xs font-mono text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-hidden font-bold uppercase"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setColorModalTarget('secundaria')}
+                    className="text-xs font-bold text-[#4A3F5C] hover:underline cursor-pointer sm:hidden"
+                  >
+                    Mudar cor
+                  </button>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5 pt-1">
@@ -1485,6 +1501,27 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
         tagline={tagline}
         corPrimaria={corPrimaria}
         corSecundaria={corSecundaria}
+      />
+
+      {/* Modal Customizado de Cores da Vitrine (Cores em Círculo) */}
+      <CustomColorPickerModal
+        isOpen={colorModalTarget !== null}
+        onClose={() => setColorModalTarget(null)}
+        currentColor={colorModalTarget === 'primaria' ? corPrimaria : corSecundaria}
+        title={
+          colorModalTarget === 'primaria'
+            ? 'Cor Primária de Destaque'
+            : 'Cor Secundária de Fundo'
+        }
+        onSelectColor={(hex) => {
+          if (colorModalTarget === 'primaria') {
+            setCorPrimaria(hex)
+            executeSave({ cor_primaria: hex })
+          } else if (colorModalTarget === 'secundaria') {
+            setCorSecundaria(hex)
+            executeSave({ cor_secundaria: hex })
+          }
+        }}
       />
     </div>
   )

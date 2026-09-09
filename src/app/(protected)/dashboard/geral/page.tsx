@@ -53,7 +53,7 @@ export default async function DashboardGeralPage() {
   // Buscar agendamentos do dia e semana com detalhes de cliente e serviço
   const { data: agendamentosData } = await adminSupabase
     .from('agendamentos')
-    .select('id, profissional_id, cliente_id, servico_id, data_hora_inicio, data_hora_fim, valor_cobrado, pago, forma_pagamento, forma_pagamento_preferida, observacao_pagamento, status, google_event_id, clientes(nome, telefone), servicos(nome, duracao_minutos, preco, ativo)')
+    .select('id, profissional_id, cliente_id, servico_id, data_hora_inicio, data_hora_fim, valor_cobrado, pago, forma_pagamento, forma_pagamento_preferida, observacao_pagamento, status, google_event_id, clientes(nome, telefone), servicos(nome, duracao_minutos, preco, ativo), agendamento_servicos(id, preco_no_momento, duracao_no_momento_minutos, servicos(id, nome, preco, duracao_minutos, ativo))')
     .eq('profissional_id', user.id)
     .neq('status', 'cancelado')
     .order('data_hora_inicio', { ascending: true })
@@ -84,10 +84,23 @@ export default async function DashboardGeralPage() {
     const clienteObj = b.clientes as any
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const servicoObj = b.servicos as any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const agServicos = (b as any).agendamento_servicos as any[] | undefined
+    const hasMultiple = agServicos && agServicos.length > 0
+
+    const resolvedServicoNome = hasMultiple
+      ? agServicos.map((as) => as.servicos?.nome).filter(Boolean).join(' + ')
+      : (servicoObj?.nome || 'Serviço')
+
+    const totalDuracao = hasMultiple
+      ? agServicos.reduce((acc, as) => acc + (as.duracao_no_momento_minutos || as.servicos?.duracao_minutos || 0), 0)
+      : (servicoObj?.duracao_minutos ?? null)
 
     const precoFinal =
       b.valor_cobrado !== null && b.valor_cobrado !== undefined
         ? Number(b.valor_cobrado)
+        : hasMultiple
+        ? agServicos.reduce((acc, as) => acc + Number(as.preco_no_momento || as.servicos?.preco || 0), 0)
         : servicoObj?.preco !== undefined
         ? Number(servicoObj.preco)
         : null
@@ -98,8 +111,8 @@ export default async function DashboardGeralPage() {
       horaInicioStr: timeStr,
       clienteNome: clienteObj?.nome || 'Cliente sem nome',
       clienteTelefone: clienteObj?.telefone || null,
-      servicoNome: servicoObj?.nome || 'Serviço',
-      servicoDuracaoMinutos: servicoObj?.duracao_minutos ?? null,
+      servicoNome: resolvedServicoNome,
+      servicoDuracaoMinutos: totalDuracao,
       servicoPreco: precoFinal,
       rawBooking: b as any,
     }

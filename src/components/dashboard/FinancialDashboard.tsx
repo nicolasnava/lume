@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import BookingDetailModal from '@/components/dashboard/BookingDetailModal'
 import {
@@ -18,6 +19,9 @@ import {
   Search,
   X,
   MessageCircle,
+  Clock,
+  ChevronDown,
+  Check,
 } from 'lucide-react'
 import {
   BarChart,
@@ -31,6 +35,7 @@ import {
 } from 'recharts'
 import PaymentIcon from '@/components/common/PaymentIcon'
 import CustomSelect from '@/components/ui/CustomSelect'
+import CustomDatePicker from '@/components/ui/CustomDatePicker'
 
 export interface FinancialBookingRow {
   id: string
@@ -52,11 +57,27 @@ export interface FinancialBookingRow {
     nome: string
     preco: number
   } | null
+  agendamento_servicos?: {
+    id: string
+    preco_no_momento: number
+    duracao_no_momento_minutos: number
+    servicos?: {
+      id?: string
+      nome: string
+      preco: number
+    } | null
+  }[] | null
 }
 
 interface FinancialDashboardProps {
   initialBookings: FinancialBookingRow[]
-  allServices?: { id: string; nome: string }[]
+  allServices?: {
+    id: string
+    nome: string
+    preco?: number
+    duracao_minutos?: number
+    foto_url?: string | null
+  }[]
   allClients?: { id: string; nome: string }[]
 }
 
@@ -111,19 +132,49 @@ export default function FinancialDashboard({
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedBookingForDetail, setSelectedBookingForDetail] = useState<FinancialBookingRow | null>(null)
 
+  // Estado do dropdown rico de serviços
+  const [isServiceFilterOpen, setIsServiceFilterOpen] = useState(false)
+  const serviceFilterRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (serviceFilterRef.current && !serviceFilterRef.current.contains(e.target as Node)) {
+        setIsServiceFilterOpen(false)
+      }
+    }
+    if (isServiceFilterOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isServiceFilterOpen])
+
   // Obter lista única de serviços e clientes reais vindos dos agendamentos + cadastrados (Item 4)
   const servicesList = useMemo(() => {
-    const map = new Map<string, string>()
-    allServices.forEach((s) => map.set(s.id, s.nome))
+    const map = new Map<
+      string,
+      { id: string; nome: string; preco?: number; duracao_minutos?: number; foto_url?: string | null }
+    >()
+    allServices.forEach((s) => map.set(s.id, s))
     initialBookings.forEach((b) => {
-      if (b.servico_id && b.servicos?.nome) {
-        map.set(b.servico_id, b.servicos.nome)
+      if (b.servico_id && b.servicos?.nome && !map.has(b.servico_id)) {
+        map.set(b.servico_id, {
+          id: b.servico_id,
+          nome: b.servicos.nome,
+          preco: b.servicos.preco,
+          duracao_minutos: undefined,
+          foto_url: null,
+        })
       }
     })
-    return Array.from(map.entries())
-      .map(([id, name]) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name))
+    return Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome))
   }, [allServices, initialBookings])
+
+  const currentSelectedService = useMemo(() => {
+    if (selectedServicoId === 'todos') return null
+    return servicesList.find((s) => s.id === selectedServicoId) || null
+  }, [selectedServicoId, servicesList])
 
   const clientsList = useMemo(() => {
     const map = new Map<string, string>()
@@ -389,22 +440,151 @@ export default function FinancialDashboard({
             />
           </div>
 
-          {/* Filtro por Serviço */}
-          <div className="space-y-1">
+          {/* Filtro por Serviço com Foto à Esquerda e Detalhes */}
+          <div className="space-y-1 relative" ref={serviceFilterRef}>
             <label className="block font-semibold text-gray-700 flex items-center gap-1.5">
               <Scissors className="h-3.5 w-3.5 text-[#B8A9D9]" />
               <span>Serviço</span>
             </label>
-            <CustomSelect
-              options={[
-                { value: 'todos', label: 'Todos os Serviços' },
-                ...servicesList.map((s) => ({ value: s.id, label: s.name })),
-              ]}
-              value={selectedServicoId}
-              onChange={setSelectedServicoId}
-              size="sm"
-              buttonClassName="font-semibold"
-            />
+
+            <button
+              type="button"
+              onClick={() => setIsServiceFilterOpen(!isServiceFilterOpen)}
+              className={`w-full flex items-center justify-between gap-2 border font-semibold transition duration-150 rounded-xl min-h-[36px] px-3 py-1.5 text-xs bg-[#FAF8F5] border-gray-200 text-[#4A3F5C] hover:border-[#B8A9D9] cursor-pointer ${
+                isServiceFilterOpen ? 'border-[#B8A9D9] ring-2 ring-[#B8A9D9]/20' : ''
+              }`}
+            >
+              <div className="flex items-center gap-2 truncate text-left flex-1 min-w-0">
+                {currentSelectedService ? (
+                  <>
+                    <div className="relative h-5 w-5 rounded-md bg-gray-100 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center">
+                      {currentSelectedService.foto_url ? (
+                        <Image
+                          src={currentSelectedService.foto_url}
+                          alt={currentSelectedService.nome}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <Scissors className="h-3 w-3 text-[#8675A9]" />
+                      )}
+                    </div>
+                    <span className="truncate font-bold text-[#4A3F5C]">
+                      {currentSelectedService.nome}
+                    </span>
+                  </>
+                ) : (
+                  <span className="truncate font-semibold text-[#4A3F5C]">
+                    Todos os Serviços
+                  </span>
+                )}
+              </div>
+
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 transition-transform duration-200 opacity-60 ${
+                  isServiceFilterOpen ? 'rotate-180 opacity-100 text-[#8675A9]' : ''
+                }`}
+              />
+            </button>
+
+            {/* Dropdown com foto na esquerda, infos na direita */}
+            {isServiceFilterOpen && (
+              <div className="absolute left-0 min-w-full w-[290px] sm:w-[320px] top-full mt-1.5 z-[100] max-h-72 overflow-y-auto rounded-2xl border border-gray-100 bg-white p-1.5 space-y-1 shadow-2xl animate-in fade-in slide-in-from-top-1">
+                {/* Opção Todos os Serviços */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedServicoId('todos')
+                    setIsServiceFilterOpen(false)
+                  }}
+                  className={`w-full flex items-center justify-between gap-2.5 p-2 rounded-xl text-left transition cursor-pointer ${
+                    selectedServicoId === 'todos'
+                      ? 'bg-purple-50/80 border border-[#B8A9D9] font-bold text-[#4A3F5C]'
+                      : 'hover:bg-[#FAF8F5] text-[#4A3F5C]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-8 w-8 rounded-lg bg-[#B8A9D9]/20 flex items-center justify-center text-[#4A3F5C] shrink-0">
+                      <Scissors className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-[#4A3F5C]">Todos os Serviços</p>
+                      <p className="text-[10px] text-gray-400 font-medium">Ver agendamentos de todos</p>
+                    </div>
+                  </div>
+                  {selectedServicoId === 'todos' && (
+                    <Check className="h-4 w-4 text-[#8675A9] shrink-0" />
+                  )}
+                </button>
+
+                <div className="border-t border-gray-100 my-1" />
+
+                {/* Lista de serviços com foto na esquerda */}
+                {servicesList.map((s) => {
+                  const isSelected = selectedServicoId === s.id
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedServicoId(s.id)
+                        setIsServiceFilterOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between gap-2.5 p-2 rounded-xl text-left transition cursor-pointer ${
+                        isSelected
+                          ? 'bg-purple-50/80 border border-[#B8A9D9]'
+                          : 'hover:bg-[#FAF8F5] border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        {/* Foto à Esquerda */}
+                        <div className="relative h-10 w-10 rounded-xl bg-gray-100 border border-gray-200/80 overflow-hidden shrink-0 flex items-center justify-center">
+                          {s.foto_url ? (
+                            <Image
+                              src={s.foto_url}
+                              alt={s.nome}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                          ) : (
+                            <Scissors className="h-4 w-4 text-[#8675A9]" />
+                          )}
+                        </div>
+
+                        {/* Nome, Preço e Duração à Direita */}
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-xs font-bold truncate ${isSelected ? 'text-[#4A3F5C]' : 'text-gray-800'}`}>
+                            {s.nome}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-gray-500 font-medium">
+                            {s.preco !== undefined && s.preco !== null && (
+                              <span className="text-emerald-700 font-bold">
+                                R$ {Number(s.preco).toFixed(2)}
+                              </span>
+                            )}
+                            {s.duracao_minutos ? (
+                              <>
+                                <span>•</span>
+                                <span className="flex items-center gap-1 text-[10px] text-gray-400">
+                                  <Clock className="h-3 w-3" />
+                                  {s.duracao_minutos} min
+                                </span>
+                              </>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+
+                      {isSelected && (
+                        <Check className="h-4 w-4 text-[#8675A9] shrink-0 ml-1" />
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {/* Filtro por Cliente */}
@@ -422,6 +602,8 @@ export default function FinancialDashboard({
               onChange={setSelectedClienteId}
               size="sm"
               buttonClassName="font-semibold"
+              searchable={true}
+              searchPlaceholder="Buscar cliente..."
             />
           </div>
 
@@ -447,25 +629,25 @@ export default function FinancialDashboard({
           </div>
         </div>
 
-        {/* Intervalo Customizado */}
+        {/* Intervalo Customizado no mesmo horizonte */}
         {period === 'custom' && (
-          <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-gray-100">
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-gray-500 font-semibold">De:</span>
-              <input
-                type="date"
+          <div className="flex flex-row flex-nowrap items-center gap-2 sm:gap-3 pt-2 border-t border-gray-100 overflow-x-auto">
+            <div className="flex items-center gap-1.5 text-xs shrink-0 flex-1 min-w-[130px] sm:min-w-[160px]">
+              <span className="text-gray-500 font-semibold shrink-0">De:</span>
+              <CustomDatePicker
                 value={customStart}
-                onChange={(e) => setCustomStart(e.target.value)}
-                className="rounded-xl border border-gray-200 bg-gray-50/50 p-2 text-xs text-[#4A3F5C] font-semibold focus:border-[#B8A9D9] focus:outline-none"
+                onChange={setCustomStart}
+                placeholder="Data inicial"
+                className="w-full"
               />
             </div>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-gray-500 font-semibold">Até:</span>
-              <input
-                type="date"
+            <div className="flex items-center gap-1.5 text-xs shrink-0 flex-1 min-w-[130px] sm:min-w-[160px]">
+              <span className="text-gray-500 font-semibold shrink-0">Até:</span>
+              <CustomDatePicker
                 value={customEnd}
-                onChange={(e) => setCustomEnd(e.target.value)}
-                className="rounded-xl border border-gray-200 bg-gray-50/50 p-2 text-xs text-[#4A3F5C] font-semibold focus:border-[#B8A9D9] focus:outline-none"
+                onChange={setCustomEnd}
+                placeholder="Data final"
+                className="w-full"
               />
             </div>
           </div>
@@ -735,8 +917,14 @@ export default function FinancialDashboard({
                         </span>
                       </td>
                       <td className="py-3.5 px-3 font-medium text-gray-600">
-                        <span className="truncate max-w-[180px] block">
-                          {b.servicos?.nome || 'Personalizado'}
+                        <span className="truncate max-w-[180px] block" title={
+                          b.agendamento_servicos && b.agendamento_servicos.length > 0
+                            ? b.agendamento_servicos.map((as) => as.servicos?.nome).filter(Boolean).join(' + ')
+                            : (b.servicos?.nome || 'Personalizado')
+                        }>
+                          {b.agendamento_servicos && b.agendamento_servicos.length > 0
+                            ? b.agendamento_servicos.map((as) => as.servicos?.nome).filter(Boolean).join(' + ')
+                            : (b.servicos?.nome || 'Personalizado')}
                         </span>
                       </td>
                       <td className="py-3.5 px-3 text-center">
@@ -781,6 +969,7 @@ export default function FinancialDashboard({
                   preco: selectedBookingForDetail.servicos.preco,
                 }
               : null,
+            agendamento_servicos: selectedBookingForDetail.agendamento_servicos as any,
           }}
           onClose={() => setSelectedBookingForDetail(null)}
           onRefresh={() => {

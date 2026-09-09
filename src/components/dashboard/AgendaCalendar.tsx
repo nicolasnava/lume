@@ -348,6 +348,19 @@ export default function AgendaCalendar({ initialBookings, onRefresh }: AgendaCal
             const nomeCompleto = b.clientes?.nome || 'Cliente sem nome'
             const nomeCurto = formatShortName(b.clientes?.nome)
 
+            const hasMultipleServices = !!(b.agendamento_servicos && b.agendamento_servicos.length > 0)
+            const servicosNome = hasMultipleServices
+              ? b.agendamento_servicos!.map((as) => as.servicos?.nome).filter(Boolean).join(' + ')
+              : (b.servicos?.nome || 'Serviço')
+
+            const precoValor = b.valor_cobrado !== null && b.valor_cobrado !== undefined
+              ? Number(b.valor_cobrado)
+              : hasMultipleServices
+              ? b.agendamento_servicos!.reduce((acc, as) => acc + Number(as.preco_no_momento || as.servicos?.preco || 0), 0)
+              : b.servicos?.preco !== undefined && b.servicos?.preco !== null
+              ? Number(b.servicos.preco)
+              : null
+
             return (
               <div
                 key={b.id}
@@ -397,8 +410,8 @@ export default function AgendaCalendar({ initialBookings, onRefresh }: AgendaCal
                       <div className="flex items-start gap-2 min-w-0 flex-1">
                         <Scissors className="h-3.5 w-3.5 text-[#B8A9D9] shrink-0 mt-0.5" />
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs text-gray-600 font-medium leading-relaxed line-clamp-2 pr-1">
-                            {b.servicos?.nome || 'Serviço'}
+                          <p className="text-xs text-gray-600 font-medium leading-relaxed line-clamp-2 pr-1" title={servicosNome}>
+                            {servicosNome}
                           </p>
                           {b.servicos?.ativo === false && (
                             <span className="inline-block mt-1 text-[9px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">
@@ -408,10 +421,10 @@ export default function AgendaCalendar({ initialBookings, onRefresh }: AgendaCal
                         </div>
                       </div>
 
-                      {b.servicos?.preco !== undefined && b.servicos?.preco !== null && (
+                      {precoValor !== null && (
                         <div className="shrink-0 text-right">
                           <span className="text-xs sm:text-sm font-bold text-[#4A3F5C] whitespace-nowrap bg-gray-50 px-2.5 py-1 rounded-lg border border-gray-100">
-                            R$ {b.servicos.preco.toFixed(2)}
+                            R$ {precoValor.toFixed(2)}
                           </span>
                         </div>
                       )}

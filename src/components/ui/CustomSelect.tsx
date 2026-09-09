@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, ReactNode } from 'react'
-import { ChevronDown, Check } from 'lucide-react'
+import { ChevronDown, Check, Search, X } from 'lucide-react'
 
 export interface CustomSelectOption {
   value: string
@@ -22,6 +22,8 @@ export interface CustomSelectProps {
   dropdownClassName?: string
   variant?: 'light' | 'dark'
   size?: 'sm' | 'md' | 'lg'
+  searchable?: boolean
+  searchPlaceholder?: string
   id?: string
   name?: string
   ariaLabel?: string
@@ -38,12 +40,25 @@ export default function CustomSelect({
   dropdownClassName = '',
   variant = 'light',
   size = 'md',
+  searchable = false,
+  searchPlaceholder = 'Buscar...',
   id,
   name,
   ariaLabel,
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
+  const listboxRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchQuery('')
+    } else if (listboxRef.current) {
+      listboxRef.current.scrollTop = 0
+    }
+  }, [isOpen])
 
   // Normalizar opções para o formato CustomSelectOption
   const normalizedOptions: CustomSelectOption[] = options.map((opt) => {
@@ -119,17 +134,60 @@ export default function CustomSelect({
     ? 'bg-purple-950/40 text-purple-300 font-bold'
     : 'bg-[#FAF1EE] text-[#C86D51] font-bold'
 
-  const listboxRef = useRef<HTMLDivElement>(null)
-
-  // Rolar automaticamente para a opção selecionada ao abrir
+  // Rolar automaticamente para a opção selecionada ao abrir apenas quando não for pesquisável
   useEffect(() => {
-    if (isOpen && listboxRef.current) {
+    if (isOpen && listboxRef.current && !searchable) {
       const selectedEl = listboxRef.current.querySelector('[aria-selected="true"]') as HTMLElement
       if (selectedEl) {
         selectedEl.scrollIntoView({ block: 'nearest' })
       }
     }
-  }, [isOpen])
+  }, [isOpen, searchable])
+
+  // Filtragem de opções quando searchable estiver ativo
+  const firstOption = normalizedOptions[0]
+  const remainingOptions = normalizedOptions.slice(1)
+  const filteredRemainingOptions = searchable && searchQuery.trim()
+    ? remainingOptions.filter((opt) =>
+        opt.label.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : remainingOptions
+
+  const renderOption = (opt: CustomSelectOption) => {
+    const isSelected = opt.value === value
+    return (
+      <button
+        key={opt.value}
+        type="button"
+        role="option"
+        aria-selected={isSelected}
+        disabled={opt.disabled}
+        onClick={() => handleSelect(opt.value, opt.disabled)}
+        className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm text-left transition duration-100 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+          isSelected ? itemSelectedClasses : itemHoverClasses
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate flex-1">
+          {opt.icon && (
+            <span className="shrink-0" aria-hidden="true">
+              {opt.icon}
+            </span>
+          )}
+          <span className="truncate">{opt.label}</span>
+          {opt.badge && <span className="shrink-0 ml-auto mr-1">{opt.badge}</span>}
+        </div>
+
+        {isSelected && (
+          <Check
+            className={`h-4 w-4 shrink-0 ${
+              isDark ? 'text-purple-400' : 'text-[#C86D51]'
+            }`}
+            aria-hidden="true"
+          />
+        )}
+      </button>
+    )
+  }
 
   return (
     <div
@@ -185,42 +243,56 @@ export default function CustomSelect({
             <div className="py-3 px-3 text-xs text-gray-400 text-center">
               Nenhuma opção disponível
             </div>
-          ) : (
-            normalizedOptions.map((opt) => {
-              const isSelected = opt.value === value
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  role="option"
-                  aria-selected={isSelected}
-                  disabled={opt.disabled}
-                  onClick={() => handleSelect(opt.value, opt.disabled)}
-                  className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm text-left transition duration-100 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-                    isSelected ? itemSelectedClasses : itemHoverClasses
-                  }`}
-                >
-                  <div className="flex items-center gap-2 truncate flex-1">
-                    {opt.icon && (
-                      <span className="shrink-0" aria-hidden="true">
-                        {opt.icon}
-                      </span>
-                    )}
-                    <span className="truncate">{opt.label}</span>
-                    {opt.badge && <span className="shrink-0 ml-auto mr-1">{opt.badge}</span>}
-                  </div>
+          ) : searchable ? (
+            <>
+              {/* Primeiro item (Ex: Todas as Clientes) */}
+              {firstOption && renderOption(firstOption)}
 
-                  {isSelected && (
-                    <Check
-                      className={`h-4 w-4 shrink-0 ${
-                        isDark ? 'text-purple-400' : 'text-[#C86D51]'
-                      }`}
-                      aria-hidden="true"
-                    />
+              {/* Barra de pesquisa posicionada entre o primeiro item e a lista */}
+              <div className="px-1 py-1 my-0.5">
+                <div className="relative flex items-center">
+                  <Search className="absolute left-2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={searchPlaceholder}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    className={`w-full pl-7 pr-6 py-1.5 text-xs rounded-xl border focus:outline-hidden font-medium ${
+                      isDark
+                        ? 'bg-zinc-800 border-zinc-700 text-zinc-200 placeholder-zinc-500 focus:border-purple-500'
+                        : 'bg-[#FAF8F5] border-gray-200 text-[#4A3F5C] placeholder-gray-400 focus:border-[#B8A9D9] focus:bg-white'
+                    }`}
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSearchQuery('')
+                        searchInputRef.current?.focus()
+                      }}
+                      className="absolute right-2 p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-zinc-200 cursor-pointer"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   )}
-                </button>
-              )
-            })
+                </div>
+              </div>
+
+              {/* Lista dos demais clientes/itens filtrados */}
+              {filteredRemainingOptions.length === 0 ? (
+                <div className="py-2.5 px-3 text-xs text-gray-400 text-center font-medium">
+                  Nenhum cliente encontrado
+                </div>
+              ) : (
+                filteredRemainingOptions.map((opt) => renderOption(opt))
+              )}
+            </>
+          ) : (
+            normalizedOptions.map((opt) => renderOption(opt))
           )}
         </div>
       )}

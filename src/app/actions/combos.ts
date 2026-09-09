@@ -146,8 +146,8 @@ export async function createComboAction(data: ComboFormData): Promise<{
       return { success: false, message: 'O nome do combo é obrigatório.' }
     }
 
-    if (!data.servico_ids || data.servico_ids.length < 2) {
-      return { success: false, message: 'Selecione ao menos 2 serviços para formar um combo.' }
+    if (!data.servico_ids || data.servico_ids.length < 1) {
+      return { success: false, message: 'Selecione ao menos 1 serviço para formar um pacote.' }
     }
 
     if (data.preco_combo === undefined || Number(data.preco_combo) <= 0) {
@@ -226,8 +226,8 @@ export async function updateComboAction(
       return { success: false, message: 'O nome do combo é obrigatório.' }
     }
 
-    if (!data.servico_ids || data.servico_ids.length < 2) {
-      return { success: false, message: 'Selecione ao menos 2 serviços para formar um combo.' }
+    if (!data.servico_ids || data.servico_ids.length < 1) {
+      return { success: false, message: 'Selecione ao menos 1 serviço para formar um pacote.' }
     }
 
     const adminSupabase = createAdminClient()

@@ -17,6 +17,7 @@ import {
 } from '@/app/actions/blockedDates'
 import Toast from '@/components/ui/Toast'
 import CustomSelect from '@/components/ui/CustomSelect'
+import CustomDatePicker from '@/components/ui/CustomDatePicker'
 import { TIME_OPTIONS_15MIN } from '@/lib/utils/timeOptions'
 
 interface DateBlockManagerProps {
@@ -109,12 +110,11 @@ export default function DateBlockManager({ initialBlocks }: DateBlockManagerProp
             <label className="block text-[11px] font-semibold text-gray-600 mb-1">
               Data Início *
             </label>
-            <input
-              type="date"
-              required
+            <CustomDatePicker
               value={dataInicio}
-              onChange={(e) => setDataInicio(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-white p-2.5 text-xs text-[#4A3F5C] font-semibold focus:border-[#B8A9D9] focus:outline-none"
+              onChange={setDataInicio}
+              placeholder="Selecione data início..."
+              className="w-full"
             />
           </div>
 
@@ -123,13 +123,12 @@ export default function DateBlockManager({ initialBlocks }: DateBlockManagerProp
             <label className="block text-[11px] font-semibold text-gray-600 mb-1">
               Data Fim (Opcional)
             </label>
-            <input
-              type="date"
+            <CustomDatePicker
               value={dataFim}
-              min={dataInicio || undefined}
-              onChange={(e) => setDataFim(e.target.value)}
+              minDate={dataInicio || undefined}
+              onChange={setDataFim}
               placeholder="Mesma data se em branco"
-              className="w-full rounded-xl border border-gray-200 bg-white p-2.5 text-xs text-[#4A3F5C] font-semibold focus:border-[#B8A9D9] focus:outline-none"
+              className="w-full"
             />
           </div>
 

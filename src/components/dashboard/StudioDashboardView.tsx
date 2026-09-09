@@ -45,8 +45,9 @@ import {
   sairDoEstudio,
 } from '@/app/actions/estudio'
 import { createClient } from '@/lib/supabase/client'
-import { parseCategorias, getCategoryLabel } from '@/lib/utils/categories'
 import { getContrastingTextColor, getLightTint } from '@/lib/utils/contrast'
+import { parseCategorias, getCategoryLabel } from '@/lib/utils/categories'
+import CustomColorPickerModal from '@/components/ui/CustomColorPickerModal'
 
 interface StudioDashboardViewProps {
   status: StudioUserStatus
@@ -101,6 +102,7 @@ function CreateStudioSection({ defaultSlug }: { defaultSlug: string }) {
   const [fotoCapaUrl, setFotoCapaUrl] = useState('')
   const [corPrimaria, setCorPrimaria] = useState('#B8A9D9')
   const [corSecundaria, setCorSecundaria] = useState('#FAF7F5')
+  const [colorModalTarget, setColorModalTarget] = useState<'primaria' | 'secundaria' | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -314,22 +316,24 @@ function CreateStudioSection({ defaultSlug }: { defaultSlug: string }) {
             </div>
           </div>
 
-          {/* Cores Primária e Secundária lado a lado */}
+          {/* Cores Primária e Secundária lado a lado (Círculos) */}
           <div className="grid grid-cols-2 gap-3 sm:gap-6 pt-2">
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-700 block">Cor Primária (Destaque)</label>
               <div className="flex items-center gap-2 sm:gap-3">
-                <input
-                  type="color"
-                  value={corPrimaria}
-                  onChange={(e) => setCorPrimaria(e.target.value)}
-                  className="h-10 w-10 sm:w-12 rounded-xl border border-gray-200 cursor-pointer p-0.5 shrink-0"
+                <button
+                  type="button"
+                  onClick={() => setColorModalTarget('primaria')}
+                  className="h-10 w-10 sm:w-11 rounded-full border-2 border-white shadow-md ring-2 ring-gray-200 cursor-pointer shrink-0 transition-transform duration-150 hover:scale-110 active:scale-95"
+                  style={{ backgroundColor: corPrimaria }}
+                  title="Clique para escolher a cor primária"
                 />
                 <input
                   type="text"
                   value={corPrimaria}
                   onChange={(e) => setCorPrimaria(e.target.value)}
-                  className="w-full max-w-[120px] px-2.5 sm:px-3 py-2 rounded-xl border border-gray-200 text-xs font-mono uppercase font-bold text-[#4A3F5C]"
+                  maxLength={7}
+                  className="w-full max-w-[120px] px-2.5 sm:px-3 py-2 rounded-xl border border-gray-200 text-xs font-mono uppercase font-bold text-[#4A3F5C] bg-white focus:border-[#B8A9D9] focus:outline-hidden"
                 />
               </div>
             </div>
@@ -337,17 +341,19 @@ function CreateStudioSection({ defaultSlug }: { defaultSlug: string }) {
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-700 block">Cor Secundária (Fundo)</label>
               <div className="flex items-center gap-2 sm:gap-3">
-                <input
-                  type="color"
-                  value={corSecundaria}
-                  onChange={(e) => setCorSecundaria(e.target.value)}
-                  className="h-10 w-10 sm:w-12 rounded-xl border border-gray-200 cursor-pointer p-0.5 shrink-0"
+                <button
+                  type="button"
+                  onClick={() => setColorModalTarget('secundaria')}
+                  className="h-10 w-10 sm:w-11 rounded-full border-2 border-white shadow-md ring-2 ring-gray-200 cursor-pointer shrink-0 transition-transform duration-150 hover:scale-110 active:scale-95"
+                  style={{ backgroundColor: corSecundaria }}
+                  title="Clique para escolher a cor secundária"
                 />
                 <input
                   type="text"
                   value={corSecundaria}
                   onChange={(e) => setCorSecundaria(e.target.value)}
-                  className="w-full max-w-[120px] px-2.5 sm:px-3 py-2 rounded-xl border border-gray-200 text-xs font-mono uppercase font-bold text-[#4A3F5C]"
+                  maxLength={7}
+                  className="w-full max-w-[120px] px-2.5 sm:px-3 py-2 rounded-xl border border-gray-200 text-xs font-mono uppercase font-bold text-[#4A3F5C] bg-white focus:border-[#B8A9D9] focus:outline-hidden"
                 />
               </div>
             </div>
@@ -360,7 +366,6 @@ function CreateStudioSection({ defaultSlug }: { defaultSlug: string }) {
                 <Sparkles className="h-3.5 w-3.5 text-[#B8A9D9]" />
                 <span>Prévia da Vitrine com suas Cores</span>
               </label>
-              <span className="text-[11px] text-gray-400 font-medium">Visualização em tempo real</span>
             </div>
 
             <div
@@ -450,6 +455,21 @@ function CreateStudioSection({ defaultSlug }: { defaultSlug: string }) {
               <span>Criar meu Studio</span>
             </button>
           </div>
+          {/* Modal Customizado de Cores da Vitrine do Studio */}
+          <CustomColorPickerModal
+            isOpen={colorModalTarget !== null}
+            onClose={() => setColorModalTarget(null)}
+            currentColor={colorModalTarget === 'primaria' ? corPrimaria : corSecundaria}
+            title={
+              colorModalTarget === 'primaria'
+                ? 'Cor Primária da Vitrine'
+                : 'Cor Secundária (Fundo) da Vitrine'
+            }
+            onSelectColor={(hex) => {
+              if (colorModalTarget === 'primaria') setCorPrimaria(hex)
+              else if (colorModalTarget === 'secundaria') setCorSecundaria(hex)
+            }}
+          />
         </form>
       </div>
     </div>
@@ -658,6 +678,7 @@ function OwnerStudioSection({
   const [fotoCapaUrl, setFotoCapaUrl] = useState(estudio.foto_capa_url || '')
   const [corPrimaria, setCorPrimaria] = useState(estudio.cor_primaria || '#B8A9D9')
   const [corSecundaria, setCorSecundaria] = useState(estudio.cor_secundaria || '#FAF7F5')
+  const [ownerColorModalTarget, setOwnerColorModalTarget] = useState<'primaria' | 'secundaria' | null>(null)
   const [fotosEspaco, setFotosEspaco] = useState<string[]>(estudio.fotos_espaco || [])
   const [isUploadingEspaco, setIsUploadingEspaco] = useState(false)
   const [isSavingEdit, setIsSavingEdit] = useState(false)
@@ -1654,17 +1675,23 @@ function OwnerStudioSection({
                       Cor Primária de Destaque
                     </label>
                     <div className="flex items-center gap-3">
-                      <input
-                        type="color"
-                        value={corPrimaria}
-                        onChange={(e) => setCorPrimaria(e.target.value)}
-                        className="h-10 w-12 cursor-pointer rounded-lg border border-gray-200 p-1"
+                      <button
+                        type="button"
+                        onClick={() => setOwnerColorModalTarget('primaria')}
+                        className="h-10 w-10 rounded-full border-2 border-white shadow-md ring-2 ring-gray-200 cursor-pointer shrink-0 transition-transform duration-150 hover:scale-110 active:scale-95"
+                        style={{ backgroundColor: corPrimaria }}
+                        title="Clique para escolher a cor primária"
                       />
                       <input
                         type="text"
                         value={corPrimaria}
-                        onChange={(e) => setCorPrimaria(e.target.value)}
-                        className="w-28 rounded-xl border border-gray-200 bg-gray-50/50 p-2 text-xs font-mono text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-hidden font-bold"
+                        onChange={(e) => {
+                          setCorPrimaria(e.target.value)
+                          handleAutoSaveVitrine({ cor_primaria: e.target.value })
+                        }}
+                        placeholder="#B8A9D9"
+                        maxLength={7}
+                        className="w-28 rounded-xl border border-gray-200 bg-gray-50/50 p-2 text-xs font-mono text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-hidden font-bold uppercase"
                       />
                     </div>
                     <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -1694,14 +1721,12 @@ function OwnerStudioSection({
                       Cor Secundária (Fundo)
                     </label>
                     <div className="flex items-center gap-3">
-                      <input
-                        type="color"
-                        value={corSecundaria}
-                        onChange={(e) => {
-                          setCorSecundaria(e.target.value)
-                        }}
-                        onBlur={() => handleAutoSaveVitrine({ cor_secundaria: corSecundaria })}
-                        className="h-10 w-12 cursor-pointer rounded-lg border border-gray-200 p-1"
+                      <button
+                        type="button"
+                        onClick={() => setOwnerColorModalTarget('secundaria')}
+                        className="h-10 w-10 rounded-full border-2 border-white shadow-md ring-2 ring-gray-200 cursor-pointer shrink-0 transition-transform duration-150 hover:scale-110 active:scale-95"
+                        style={{ backgroundColor: corSecundaria }}
+                        title="Clique para escolher a cor secundária"
                       />
                       <input
                         type="text"
@@ -1710,11 +1735,13 @@ function OwnerStudioSection({
                           setCorSecundaria(e.target.value)
                         }}
                         onBlur={() => handleAutoSaveVitrine({ cor_secundaria: corSecundaria })}
-                        className="w-28 rounded-xl border border-gray-200 bg-gray-50/50 p-2 text-xs font-mono text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-hidden font-bold"
+                        placeholder="#FAF7F5"
+                        maxLength={7}
+                        className="w-28 rounded-xl border border-gray-200 bg-gray-50/50 p-2 text-xs font-mono text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-hidden font-bold uppercase"
                       />
                     </div>
                     <div className="flex flex-wrap items-center gap-2 pt-1">
-                      {['#FAF7F5', '#FFFFFF', '#F5F3FF', '#FFFBEB', '#F0FDF4', '#FDF2F8'].map((hex) => (
+                      {['#FAF7F5', '#FFFFFF', '#F5EBE6', '#F3F4F6', '#EBF4F6', '#EFE9F4'].map((hex) => (
                         <button
                           key={hex}
                           type="button"
@@ -2003,6 +2030,26 @@ function OwnerStudioSection({
           </div>
         </div>
       )}
+      {/* Modal Customizado de Cores da Vitrine do Studio (Cores em Círculo) */}
+      <CustomColorPickerModal
+        isOpen={ownerColorModalTarget !== null}
+        onClose={() => setOwnerColorModalTarget(null)}
+        currentColor={ownerColorModalTarget === 'primaria' ? corPrimaria : corSecundaria}
+        title={
+          ownerColorModalTarget === 'primaria'
+            ? 'Cor Primária da Vitrine'
+            : 'Cor Secundária (Fundo) da Vitrine'
+        }
+        onSelectColor={(hex) => {
+          if (ownerColorModalTarget === 'primaria') {
+            setCorPrimaria(hex)
+            handleAutoSaveVitrine({ cor_primaria: hex })
+          } else if (ownerColorModalTarget === 'secundaria') {
+            setCorSecundaria(hex)
+            handleAutoSaveVitrine({ cor_secundaria: hex })
+          }
+        }}
+      />
     </div>
   )
 }

@@ -701,7 +701,7 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
               {/* Classificação de Confiabilidade do Histórico (Prompt 60) */}
               {selectedReliability && (
                 <div
-                  className={`p-3.5 rounded-2xl border flex items-start gap-3 transition ${
+                  className={`p-3.5 rounded-2xl border space-y-2 transition ${
                     selectedReliability.tier === 'confiavel'
                       ? 'bg-emerald-50/70 border-emerald-200/80 text-emerald-900'
                       : selectedReliability.tier === 'atencao'
@@ -711,21 +711,20 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
                       : 'bg-gray-50 border-gray-200/80 text-gray-800'
                   }`}
                 >
-                  <div className="shrink-0 mt-0.5">
-                    {selectedReliability.tier === 'confiavel' && <ShieldCheck className="h-5 w-5 text-emerald-600" />}
-                    {selectedReliability.tier === 'atencao' && <AlertTriangle className="h-5 w-5 text-amber-600" />}
-                    {selectedReliability.tier === 'risco_falta' && <ShieldAlert className="h-5 w-5 text-rose-600" />}
-                    {selectedReliability.tier === 'sem_historico' && <HelpCircle className="h-5 w-5 text-gray-400" />}
-                  </div>
-                  <div className="space-y-2 text-xs flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-sm">
-                        Confiabilidade: {selectedReliability.label}
-                      </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-sm">
+                      Confiabilidade: {selectedReliability.label}
+                    </span>
+                    <div className="shrink-0">
+                      {selectedReliability.tier === 'confiavel' && <ShieldCheck className="h-5 w-5 text-emerald-600" />}
+                      {selectedReliability.tier === 'atencao' && <AlertTriangle className="h-5 w-5 text-amber-600" />}
+                      {selectedReliability.tier === 'risco_falta' && <ShieldAlert className="h-5 w-5 text-rose-600" />}
+                      {selectedReliability.tier === 'sem_historico' && <HelpCircle className="h-5 w-5 text-gray-400" />}
                     </div>
-                    <p className="text-[11px] font-medium leading-relaxed opacity-90">
-                      {selectedReliability.reason}
-                    </p>
+                  </div>
+                  <p className="text-[11px] font-medium leading-relaxed opacity-90">
+                    {selectedReliability.reason}
+                  </p>
 
                     {/* Mini-Cards Estéticos de Insights (Concluídos, Cancelados, No-Show) - Cores Verde, Amarelo e Vermelho com tipografia padrão */}
                     <div className="grid grid-cols-3 gap-2 pt-1 w-full">
@@ -760,7 +759,6 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
                       </div>
                     </div>
                   </div>
-                </div>
               )}
 
               {/* Sugestão Contextual de Cupom para Cliente Inativa (Prompt 62) */}

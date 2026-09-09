@@ -22,14 +22,14 @@ export default async function FinanceiroPage() {
   // Buscar todos os agendamentos da profissional com dados de cliente, serviço e pagamento
   const { data: agendamentos } = await adminSupabase
     .from('agendamentos')
-    .select('*, clientes(nome, telefone), servicos(nome, preco)')
+    .select('*, clientes(nome, telefone), servicos(nome, preco), agendamento_servicos(id, preco_no_momento, duracao_no_momento_minutos, servicos(id, nome, preco))')
     .eq('profissional_id', user.id)
     .order('data_hora_inicio', { ascending: false })
 
   // Buscar todos os serviços cadastrados da profissional para o filtro
   const { data: servicos } = await adminSupabase
     .from('servicos')
-    .select('id, nome')
+    .select('id, nome, preco, duracao_minutos, foto_url')
     .eq('profissional_id', user.id)
     .order('nome', { ascending: true })
 
@@ -46,7 +46,13 @@ export default async function FinanceiroPage() {
   return (
     <FinancialDashboard
       initialBookings={formattedBookings}
-      allServices={(servicos || []).map((s) => ({ id: s.id, nome: s.nome }))}
+      allServices={(servicos || []).map((s) => ({
+        id: s.id,
+        nome: s.nome,
+        preco: Number(s.preco || 0),
+        duracao_minutos: Number(s.duracao_minutos || 0),
+        foto_url: s.foto_url || null,
+      }))}
       allClients={(clientes || []).map((c) => ({ id: c.id, nome: c.nome }))}
     />
   )

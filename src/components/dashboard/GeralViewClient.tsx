@@ -63,9 +63,10 @@ function capitalizeName(name: string | null | undefined): string {
 
 function formatShortClientName(name: string | null | undefined): string {
   if (!name) return ''
-  const words = name.trim().split(/\s+/).filter(Boolean)
-  if (words.length <= 2) return capitalizeName(name)
-  return capitalizeName(words.slice(0, 2).join(' '))
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length <= 1) return capitalizeName(parts[0] || '')
+  // Retorna Nome e Sobrenome (ex: Vanessa Schawstaiguer)
+  return capitalizeName(`${parts[0]} ${parts[1]}`)
 }
 
 function getWhatsAppUrl(
@@ -128,18 +129,18 @@ function TimelineBookingCard({
 
       {/* 2. Informações Centrais */}
       <div className="min-w-0 flex-1 space-y-0.5 sm:space-y-1">
-        {/* Nome da Cliente + Separador + Valor (Substitui o badge de "Próximo") */}
-        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          <span className="text-xs sm:text-sm font-bold text-[#4A3F5C] truncate capitalize tracking-tight">
+        {/* Nome da Cliente + Separador + Valor (Fluido, sem travar na borda direita e truncando sobrenome com ... se necessário) */}
+        <div className="flex items-center gap-1.5 min-w-0 flex-nowrap overflow-hidden">
+          <span className="text-xs sm:text-sm font-bold text-[#4A3F5C] truncate capitalize tracking-tight shrink min-w-0">
             {formatShortClientName(booking.clienteNome)}
           </span>
           {booking.servicoPreco !== null && booking.servicoPreco !== undefined && (
-            <>
-              <span className="text-gray-300 shrink-0">•</span>
-              <span className="font-extrabold text-emerald-700 text-xs sm:text-sm shrink-0 whitespace-nowrap">
+            <span className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
+              <span className="text-gray-300">•</span>
+              <span className="font-extrabold text-emerald-700 text-xs sm:text-sm">
                 R$ {booking.servicoPreco.toFixed(2).replace('.', ',')}
               </span>
-            </>
+            </span>
           )}
         </div>
 

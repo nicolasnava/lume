@@ -319,7 +319,7 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
 
   // Visualização Desktop Sidebar
   return (
-    <div className="space-y-3.5">
+    <div className="space-y-2">
       {/* Novidades e Feedback (Sem linha divisória, exatamente igual à foto) */}
       <div className="flex items-center justify-between px-1">
         <button
@@ -331,7 +331,7 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
           title="Ver novidades e atualizações"
         >
           <div className="relative">
-            <Bell className="h-4 w-4 text-purple-600" />
+            <Bell className="h-3.5 w-3.5 text-purple-600" />
             {hasUnreadNovidades && (
               <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-rose-500 animate-ping" />
             )}
@@ -341,14 +341,14 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
 
         <button
           onClick={() => setIsFeedbackOpen(true)}
-          className="text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200/80 px-3 py-1 rounded-xl transition cursor-pointer"
+          className="text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200/80 px-2.5 py-0.5 rounded-xl transition cursor-pointer"
         >
           Feedback
         </button>
       </div>
 
       {/* Lista dos 10 Itens de Navegação com espaçamento e cantos arredondados idênticos à foto */}
-      <nav className="space-y-1">
+      <nav className="space-y-0.5">
         {NAV_ITEMS.map((item) => {
           const isActive =
             pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
@@ -382,14 +382,14 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
               key={item.href}
               href={item.href}
               prefetch={true}
-              className={`flex items-center gap-3.5 rounded-2xl px-3.5 py-2.5 text-xs sm:text-[13px] transition cursor-pointer ${
+              className={`flex items-center gap-3 rounded-2xl px-3 py-2 text-xs transition cursor-pointer ${
                 isActive
                   ? 'bg-[#B8A9D9]/25 text-[#4A3F5C] font-bold shadow-2xs'
                   : 'text-gray-600 font-semibold hover:bg-gray-100/80 hover:text-[#4A3F5C]'
               }`}
             >
-              <Icon className={`h-4.5 w-4.5 ${isActive ? 'text-[#4A3F5C]' : 'text-gray-400'}`} />
-              <span>{item.name}</span>
+              <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-[#4A3F5C]' : 'text-gray-400'}`} />
+              <span className="truncate">{item.name}</span>
             </Link>
           )
         })}

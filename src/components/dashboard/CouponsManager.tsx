@@ -27,6 +27,9 @@ import {
   toggleCupomStatusAction,
   deleteCupomAction,
 } from '@/app/actions/coupons'
+import CustomDatePicker from '@/components/ui/CustomDatePicker'
+import CustomSelect from '@/components/ui/CustomSelect'
+import { Clock } from 'lucide-react'
 
 interface CouponsManagerProps {
   onCouponsLoaded?: (cupons: CupomProfissionalItem[]) => void
@@ -146,7 +149,7 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
       segmento_alvo: segmentoAlvo,
       limite_uso_total: limiteUsoTotal ? parseInt(limiteUsoTotal, 10) : null,
       limite_uso_por_cliente: limiteUsoPorCliente ? parseInt(limiteUsoPorCliente, 10) : 1,
-      valido_ate: validoAte ? new Date(`${validoAte}T23:59:59`).toISOString() : null,
+      valido_ate: validoAte ? `${validoAte}T23:59:59` : null,
     }
 
     let res
@@ -408,24 +411,43 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
               </div>
 
               {/* Tipo de Desconto e Valor */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Tipo de Desconto e Valor */}
+              <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-bold text-[#4A3F5C] mb-1">
+                  <label className="block text-xs font-bold text-[#4A3F5C] mb-1.5">
                     Tipo de Desconto
                   </label>
-                  <select
-                    value={tipoDesconto}
-                    onChange={(e) => setTipoDesconto(e.target.value as any)}
-                    className="w-full rounded-2xl border border-gray-200 p-3 text-xs text-[#4A3F5C] font-semibold focus:border-[#B8A9D9] focus:outline-hidden bg-white"
-                  >
-                    <option value="percentual">Percentual (%)</option>
-                    <option value="valor_fixo">Valor Fixo (R$)</option>
-                  </select>
+                  <div className="grid grid-cols-2 gap-2 bg-[#FAF7F5] p-1 rounded-2xl border border-gray-200/80">
+                    <button
+                      type="button"
+                      onClick={() => setTipoDesconto('percentual')}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                        tipoDesconto === 'percentual'
+                          ? 'bg-[#4A3F5C] text-white shadow-xs'
+                          : 'text-gray-600 hover:text-[#4A3F5C] hover:bg-white/60'
+                      }`}
+                    >
+                      <Percent className="h-3.5 w-3.5" />
+                      <span>Porcentagem (%)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTipoDesconto('valor_fixo')}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                        tipoDesconto === 'valor_fixo'
+                          ? 'bg-[#4A3F5C] text-white shadow-xs'
+                          : 'text-gray-600 hover:text-[#4A3F5C] hover:bg-white/60'
+                      }`}
+                    >
+                      <DollarSign className="h-3.5 w-3.5" />
+                      <span>Valor Fixo (R$)</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-[#4A3F5C] mb-1">
-                    {tipoDesconto === 'percentual' ? 'Porcentagem (%)' : 'Valor (R$)'} *
+                    {tipoDesconto === 'percentual' ? 'Porcentagem de Desconto (%)' : 'Valor do Desconto (R$)'} *
                   </label>
                   <input
                     type="number"
@@ -443,25 +465,39 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
 
               {/* Segmento Alvo */}
               <div>
-                <label className="block text-xs font-bold text-[#4A3F5C] mb-1">
+                <label className="block text-xs font-bold text-[#4A3F5C] mb-1.5">
                   Quem pode usar este cupom?
                 </label>
-                <select
+                <CustomSelect
+                  options={[
+                    {
+                      value: 'todos',
+                      label: 'Qualquer cliente',
+                      icon: <Users className="h-3.5 w-3.5 text-[#B8A9D9]" />,
+                    },
+                    {
+                      value: 'nunca_agendou',
+                      label: 'Apenas novas clientes (1º agendamento)',
+                      icon: <Sparkles className="h-3.5 w-3.5 text-emerald-600" />,
+                    },
+                    {
+                      value: 'inativa',
+                      label: 'Apenas clientes inativas (+60 dias sem agendamento)',
+                      icon: <Clock className="h-3.5 w-3.5 text-amber-600" />,
+                    },
+                  ]}
                   value={segmentoAlvo}
-                  onChange={(e) => setSegmentoAlvo(e.target.value as any)}
-                  className="w-full rounded-2xl border border-gray-200 p-3 text-xs text-[#4A3F5C] font-semibold focus:border-[#B8A9D9] focus:outline-hidden bg-white"
-                >
-                  <option value="todos">Qualquer cliente</option>
-                  <option value="nunca_agendou">Apenas quem nunca agendou (Novas clientes)</option>
-                  <option value="inativa">Apenas clientes inativas (+60 dias sem agendamento)</option>
-                </select>
+                  onChange={(val) => setSegmentoAlvo(val as any)}
+                  size="sm"
+                  buttonClassName="font-semibold rounded-2xl bg-white border-gray-200"
+                />
                 <p className="text-[11px] text-gray-400 mt-1">
                   Ao criar cupons segmentados, o sistema sugere o código na tela da cliente.
                 </p>
               </div>
 
               {/* Limite Total e Validade */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-[#4A3F5C] mb-1">
                     Limite Total de Usos
@@ -480,11 +516,11 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
                   <label className="block text-xs font-bold text-[#4A3F5C] mb-1">
                     Válido Até (Opcional)
                   </label>
-                  <input
-                    type="date"
+                  <CustomDatePicker
                     value={validoAte}
-                    onChange={(e) => setValidoAte(e.target.value)}
-                    className="w-full rounded-2xl border border-gray-200 p-2.5 text-xs text-[#4A3F5C] font-medium focus:border-[#B8A9D9] focus:outline-hidden bg-white"
+                    onChange={setValidoAte}
+                    placeholder="Sem data limite"
+                    className="w-full"
                   />
                 </div>
               </div>

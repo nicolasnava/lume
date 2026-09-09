@@ -102,6 +102,23 @@ export async function createCupomAction(payload: {
 
     const admin = createAdminClient()
 
+    // Garantir que a profissional existe na tabela profissionais (para que a FK não falhe se for admin testando)
+    const { data: profExistente } = await admin
+      .from('profissionais')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (!profExistente) {
+      const nomeUser = user.user_metadata?.nome || user.email?.split('@')[0] || 'Profissional'
+      await (admin.from('profissionais') as any).insert({
+        id: user.id,
+        nome: nomeUser,
+        slug: `prof-${user.id.slice(0, 8)}`,
+        status_conta: 'ativa',
+      })
+    }
+
     // Verificar unicidade
     const { data: existente } = await (admin.from('cupons_profissional') as any)
       .select('id')
@@ -113,15 +130,33 @@ export async function createCupomAction(payload: {
       return { success: false, message: `Você já possui um cupom com o código ${codigoLimpo}.` }
     }
 
+    let dataValidadeIso: string | null = null
+    if (payload.valido_ate && payload.valido_ate.trim()) {
+      const parsed = new Date(payload.valido_ate)
+      if (!isNaN(parsed.getTime())) {
+        dataValidadeIso = parsed.toISOString()
+      }
+    }
+
+    let limTotal: number | null = null
+    if (payload.limite_uso_total && Number(payload.limite_uso_total) > 0) {
+      limTotal = Math.floor(Number(payload.limite_uso_total))
+    }
+
+    const limPorCliente =
+      payload.limite_uso_por_cliente && Number(payload.limite_uso_por_cliente) > 0
+        ? Math.floor(Number(payload.limite_uso_por_cliente))
+        : 1
+
     const { error } = await (admin.from('cupons_profissional') as any).insert({
       profissional_id: user.id,
       codigo: codigoLimpo,
       tipo_desconto: payload.tipo_desconto,
       valor: payload.valor,
       segmento_alvo: payload.segmento_alvo || 'todos',
-      limite_uso_total: payload.limite_uso_total || null,
-      limite_uso_por_cliente: payload.limite_uso_por_cliente || 1,
-      valido_ate: payload.valido_ate || null,
+      limite_uso_total: limTotal,
+      limite_uso_por_cliente: limPorCliente,
+      valido_ate: dataValidadeIso,
       usos_atuais: 0,
       ativo: true,
     })
