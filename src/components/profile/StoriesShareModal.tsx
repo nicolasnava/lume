@@ -39,29 +39,9 @@ export default function StoriesShareModal({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    // 1. Fundo liso em tom pastel bege (#FAF7F5 com iluminação ambiente)
-    ctx.fillStyle = '#FAF7F5'
+    // 1. Fundo de uma só cor no tom lavanda/pastel (#EDE8F7)
+    ctx.fillStyle = '#EDE8F7'
     ctx.fillRect(0, 0, 1080, 1920)
-
-    // Ambient Glow Superior (Lilás Lumê #B8A9D9 suave)
-    const topGlow = ctx.createRadialGradient(540, 320, 50, 540, 320, 560)
-    topGlow.addColorStop(0, 'rgba(184, 169, 217, 0.28)')
-    topGlow.addColorStop(0.7, 'rgba(184, 169, 217, 0.06)')
-    topGlow.addColorStop(1, 'transparent')
-    ctx.fillStyle = topGlow
-    ctx.beginPath()
-    ctx.arc(540, 320, 560, 0, Math.PI * 2)
-    ctx.fill()
-
-    // Ambient Glow Inferior (Ameixa Lumê suave #8C5383)
-    const bottomGlow = ctx.createRadialGradient(540, 1650, 50, 540, 1650, 580)
-    bottomGlow.addColorStop(0, 'rgba(140, 83, 131, 0.12)')
-    bottomGlow.addColorStop(0.7, 'rgba(184, 169, 217, 0.05)')
-    bottomGlow.addColorStop(1, 'transparent')
-    ctx.fillStyle = bottomGlow
-    ctx.beginPath()
-    ctx.arc(540, 1650, 580, 0, Math.PI * 2)
-    ctx.fill()
 
     // 2. Avatar da Profissional (com sombra elegante e anel branco)
     const avatarY = 360

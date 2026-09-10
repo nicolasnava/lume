@@ -760,15 +760,11 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                     </h3>
 
                     {/* Descrição */}
-                    <div className="min-h-[2.25rem] flex items-center mt-1">
-                      {s.descricao ? (
-                        <p className="text-xs text-[#4A3F5C]/75 leading-relaxed line-clamp-2">
-                          {s.descricao}
-                        </p>
-                      ) : (
-                        <p className="text-xs text-transparent select-none">—</p>
-                      )}
-                    </div>
+                    {s.descricao && (
+                      <p className="text-xs text-[#4A3F5C]/75 leading-relaxed line-clamp-2 mt-1">
+                        {s.descricao}
+                      </p>
+                    )}
 
                     {/* Duração e Preço */}
                     <div className="flex items-center justify-between text-xs font-semibold pt-2 border-t border-gray-100 mt-2">
@@ -782,31 +778,33 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                     </div>
                   </div>
 
-                  {/* Intervalo de Manutenção (Item 7) */}
-                  <div className="min-h-[1.75rem] flex flex-col justify-center mt-2 space-y-2">
-                    {s.intervalo_manutencao_dias ? (
-                      <div className="flex items-center gap-1.5 text-[11px] text-[#4A3F5C] bg-[#FAF7F5] px-2.5 py-1.5 rounded-xl border border-[#B8A9D9]/30 font-semibold w-full">
-                        <Calendar className="h-3.5 w-3.5 text-[#B8A9D9]" />
-                        <span>Manutenção a cada {s.intervalo_manutencao_dias} dias</span>
-                      </div>
-                    ) : null}
+                  {/* Intervalo de Manutenção (Item 7) e Alertas */}
+                  {(s.intervalo_manutencao_dias || !isAtivo) && (
+                    <div className="flex flex-col justify-center mt-2 space-y-2">
+                      {s.intervalo_manutencao_dias ? (
+                        <div className="flex items-center gap-1.5 text-[11px] text-[#4A3F5C] bg-[#FAF7F5] px-2.5 py-1.5 rounded-xl border border-[#B8A9D9]/30 font-semibold w-full">
+                          <Calendar className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                          <span>Manutenção a cada {s.intervalo_manutencao_dias} dias</span>
+                        </div>
+                      ) : null}
 
-                    {/* Alerta de Serviço Desativado com Atendimentos Pendentes */}
-                    {!isAtivo && (
-                      <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs font-semibold">
-                        <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-                        <span>
-                          {s.pending_bookings_count && s.pending_bookings_count > 0
-                            ? `Desativado para novas clientes · Possui ${s.pending_bookings_count} ${
-                                s.pending_bookings_count === 1
-                                  ? 'atendimento agendado'
-                                  : 'atendimentos agendados'
-                              }`
-                            : 'Desativado para novas clientes'}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                      {/* Alerta de Serviço Desativado com Atendimentos Pendentes */}
+                      {!isAtivo && (
+                        <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs font-semibold">
+                          <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                          <span>
+                            {s.pending_bookings_count && s.pending_bookings_count > 0
+                              ? `Desativado para novas clientes · Possui ${s.pending_bookings_count} ${
+                                  s.pending_bookings_count === 1
+                                    ? 'atendimento agendado'
+                                    : 'atendimentos agendados'
+                                }`
+                              : 'Desativado para novas clientes'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Ações do Serviço */}
@@ -942,15 +940,11 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                         </h3>
 
                         {/* Descrição */}
-                        <div className="min-h-[2.25rem] flex items-center mt-1">
-                          {combo.descricao ? (
-                            <p className="text-xs text-[#4A3F5C]/75 leading-relaxed line-clamp-2">
-                              {combo.descricao}
-                            </p>
-                          ) : (
-                            <p className="text-xs text-transparent select-none">—</p>
-                          )}
-                        </div>
+                        {combo.descricao && (
+                          <p className="text-xs text-[#4A3F5C]/75 leading-relaxed line-clamp-2 mt-1">
+                            {combo.descricao}
+                          </p>
+                        )}
 
                         {/* Duração e Preço (Padronizado como no card de serviços) */}
                         <div className="flex items-center justify-between text-xs font-semibold pt-2 border-t border-gray-100 mt-2">

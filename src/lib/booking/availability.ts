@@ -114,11 +114,12 @@ export async function getWorkingDaysInNextNDays(
 }
 
 function getTodayDateString(): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
 }
 
 /**
@@ -131,8 +132,7 @@ export async function calculateAvailableSlots(
   allowPastSlots = false
 ): Promise<DayAvailability> {
   const supabase = createAdminClient()
-  const [year, month, day] = dateStr.split('-').map(Number)
-  const targetDate = new Date(year, month - 1, day)
+  const targetDate = new Date(`${dateStr}T12:00:00-03:00`)
   const dayOfWeek = targetDate.getDay()
 
   // 0. Buscar bloqueios específicos para esta data
@@ -160,14 +160,12 @@ export async function calculateAvailableSlots(
     }
   }
 
-  // Extrair faixas de horários bloqueados parcialmente no dia
+  // Extrair faixas de horários bloqueados parcialmente no dia (fuso Brasil -03:00)
   const partialBlockedRanges: { startMs: number; endMs: number }[] = []
   matchingBlocks.forEach((b) => {
     if (b.hora_inicio && b.hora_fim) {
-      const [hInit, mInit] = b.hora_inicio.split(':').map(Number)
-      const [hEnd, mEnd] = b.hora_fim.split(':').map(Number)
-      const startMs = new Date(year, month - 1, day, hInit, mInit).getTime()
-      const endMs = new Date(year, month - 1, day, hEnd, mEnd).getTime()
+      const startMs = new Date(`${dateStr}T${b.hora_inicio.slice(0, 5)}:00-03:00`).getTime()
+      const endMs = new Date(`${dateStr}T${b.hora_fim.slice(0, 5)}:00-03:00`).getTime()
       partialBlockedRanges.push({ startMs, endMs })
     }
   })
@@ -206,9 +204,9 @@ export async function calculateAvailableSlots(
 
   const duracaoMs = duracaoMinutos * 60 * 1000
 
-  // 3. Buscar agendamentos já ocupados no dia
-  const startOfDayIso = new Date(year, month - 1, day, 0, 0, 0, 0).toISOString()
-  const endOfDayIso = new Date(year, month - 1, day, 23, 59, 59, 999).toISOString()
+  // 3. Buscar agendamentos já ocupados no dia (fuso Brasil -03:00)
+  const startOfDayIso = new Date(`${dateStr}T00:00:00-03:00`).toISOString()
+  const endOfDayIso = new Date(`${dateStr}T23:59:59.999-03:00`).toISOString()
 
   const { data: agendamentosExistentes } = await supabase
     .from('agendamentos')
@@ -231,27 +229,25 @@ export async function calculateAvailableSlots(
     const [hInicio, mInicio] = disp.hora_inicio.split(':').map(Number)
     const [hFim, mFim] = disp.hora_fim.split(':').map(Number)
 
-    const janelaStartMs = new Date(year, month - 1, day, hInicio, mInicio).getTime()
-    const janelaEndMs = new Date(year, month - 1, day, hFim, mFim).getTime()
-
-    // Pausas cadastradas no dia
+    // Pausas cadastradas no dia (fuso Brasil -03:00)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pausas = (((disp as any).pausas as unknown) || []) as { pausa_inicio: string; pausa_fim: string }[]
-    const pausasMs = pausas.map((p) => {
-      const [pHIni, pMIni] = p.pausa_inicio.split(':').map(Number)
-      const [pHFim, pMFim] = p.pausa_fim.split(':').map(Number)
-      return {
-        start: new Date(year, month - 1, day, pHIni, pMIni).getTime(),
-        end: new Date(year, month - 1, day, pHFim, pMFim).getTime(),
-      }
-    })
+    const pausasMs = pausas.map((p) => ({
+      start: new Date(`${dateStr}T${p.pausa_inicio.slice(0, 5)}:00-03:00`).getTime(),
+      end: new Date(`${dateStr}T${p.pausa_fim.slice(0, 5)}:00-03:00`).getTime(),
+    }))
 
-    // Passo de 30 min para geração de slots
-    const stepMs = 30 * 60 * 1000
+    const startMinTotal = hInicio * 60 + mInicio
+    const endMinTotal = hFim * 60 + mFim
 
-    for (let currentMs = janelaStartMs; currentMs + duracaoMs <= janelaEndMs; currentMs += stepMs) {
-      const slotStartMs = currentMs
-      const slotEndMs = currentMs + duracaoMs
+    // Geração aritmética precisa de slots a cada 30 minutos
+    for (let curMin = startMinTotal; curMin + duracaoMinutos <= endMinTotal; curMin += 30) {
+      const curH = Math.floor(curMin / 60)
+      const curM = curMin % 60
+      const timeStr = `${String(curH).padStart(2, '0')}:${String(curM).padStart(2, '0')}`
+
+      const slotStartMs = new Date(`${dateStr}T${timeStr}:00-03:00`).getTime()
+      const slotEndMs = slotStartMs + duracaoMs
 
       // A. Não permitir horários no passado se for a data de hoje (apenas para agendamentos públicos)
       if (!allowPastSlots && dateStr === todayStr && slotStartMs <= Date.now()) {
@@ -276,18 +272,11 @@ export async function calculateAvailableSlots(
       })
       if (temConflitoBloqueioParcial) continue
 
-      // Se passou por todas as validações, formata o slot
-      const slotDate = new Date(slotStartMs)
-      const slotEndDate = new Date(slotEndMs)
-      const slotHours = String(slotDate.getHours()).padStart(2, '0')
-      const slotMinutes = String(slotDate.getMinutes()).padStart(2, '0')
-      const timeStr = `${slotHours}:${slotMinutes}`
-
       if (!availableSlotsMap.has(timeStr)) {
         availableSlotsMap.set(timeStr, {
           timeStr,
-          dataHoraInicio: slotDate.toISOString(),
-          dataHoraFim: slotEndDate.toISOString(),
+          dataHoraInicio: new Date(`${dateStr}T${timeStr}:00-03:00`).toISOString(),
+          dataHoraFim: new Date(slotEndMs).toISOString(),
         })
       }
     }

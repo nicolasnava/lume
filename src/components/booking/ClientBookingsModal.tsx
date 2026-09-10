@@ -221,7 +221,9 @@ export default function ClientBookingsModal({
       agendamentoId: activeBooking.id,
       telefone: searchedPhone,
       profissionalSlug,
-      novaDataHoraInicio: selectedSlot.dataHoraInicio,
+      novaDataHoraInicio: selectedDateStr && selectedSlot?.timeStr
+        ? `${selectedDateStr}T${selectedSlot.timeStr}:00-03:00`
+        : selectedSlot.dataHoraInicio,
     })
 
     setRescheduling(false)
@@ -375,18 +377,11 @@ export default function ClientBookingsModal({
         ) : (
           /* Etapa 2: Resultado dos Agendamentos */
           <div className="space-y-5">
-            <div className="flex items-center justify-between bg-[#FAF7F5] p-3 rounded-xl border border-gray-100 text-xs">
-              <span className="text-gray-500">
+            {/* Barra de identificação da cliente */}
+            <div className="flex items-center text-xs text-gray-500 bg-purple-50/50 p-3 rounded-xl border border-purple-100">
+              <span className="font-medium">
                 Telefone: <strong className="text-[#4A3F5C]">{searchedPhone}</strong>
               </span>
-              <button
-                type="button"
-                onClick={handleResetSearch}
-                className="inline-flex items-center gap-1 font-semibold text-purple-700 hover:underline cursor-pointer"
-              >
-                <ArrowLeft className="h-3 w-3" />
-                <span>Buscar outro número</span>
-              </button>
             </div>
 
             {/* Próximos Agendamentos */}
@@ -455,67 +450,6 @@ export default function ClientBookingsModal({
                             <span>Gerenciar / Cancelar</span>
                           </button>
                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Agendamentos Anteriores / Histórico */}
-            <div className="space-y-3 pt-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-gray-400" />
-                <span>Histórico Anterior ({past.length})</span>
-              </h3>
-
-              {past.length === 0 ? (
-                <p className="text-xs text-gray-400 italic">Sem histórico de atendimentos anteriores.</p>
-              ) : (
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {past.map((b) => {
-                    const inicioDate = new Date(b.data_hora_inicio)
-                    const dataStr = inicioDate.toLocaleDateString('pt-BR', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                    })
-                    const horaStr = inicioDate.toLocaleTimeString('pt-BR', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })
-
-                    return (
-                      <div
-                        key={b.id}
-                        className="flex items-center justify-between bg-gray-50/70 p-3 rounded-xl border border-gray-100 text-xs"
-                      >
-                        <div>
-                          <p className="font-bold text-gray-700">
-                            {b.servicos?.nome || 'Atendimento'}
-                          </p>
-                          <p className="text-[11px] text-gray-400">
-                            {dataStr} às {horaStr}
-                          </p>
-                        </div>
-
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            b.status === 'concluido'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : b.status === 'cancelado'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-gray-200 text-gray-700'
-                          }`}
-                        >
-                          {b.status === 'concluido'
-                            ? 'Concluído'
-                            : b.status === 'cancelado'
-                            ? 'Cancelado'
-                            : b.status === 'no_show'
-                            ? 'Faltou'
-                            : 'Realizado'}
-                        </span>
                       </div>
                     )
                   })}
@@ -821,13 +755,13 @@ export default function ClientBookingsModal({
                     </div>
                   )}
 
-                  {/* Card de Comparação: Anterior vs Novo */}
+                  {/* Card de Comparação: Anterior vs Novo vs Serviço e Valor */}
                   <div className="rounded-2xl border border-gray-200 bg-[#FAF7F5] p-4 space-y-3">
                     <div className="text-xs">
                       <span className="block text-[10px] font-bold uppercase text-gray-400">
                         Horário Anterior:
                       </span>
-                      <p className="font-semibold text-gray-500 line-through">
+                      <p className="font-semibold text-gray-500 line-through mt-0.5">
                         {new Date(activeBooking.data_hora_inicio).toLocaleDateString('pt-BR')} às{' '}
                         {new Date(activeBooking.data_hora_inicio).toLocaleTimeString('pt-BR', {
                           hour: '2-digit',
@@ -836,39 +770,54 @@ export default function ClientBookingsModal({
                       </p>
                     </div>
 
-                    <div className="border-t border-gray-200/60 pt-2 text-xs">
+                    <div className="border-t border-gray-200/60 pt-2.5 text-xs">
                       <span className="block text-[10px] font-bold uppercase text-emerald-700">
                         Novo Horário Escolhido:
                       </span>
                       <p className="font-bold text-[#4A3F5C] text-sm flex items-center gap-1.5 mt-0.5">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
                         <span>
-                          {new Date(selectedSlot.dataHoraInicio).toLocaleDateString('pt-BR', {
-                            weekday: 'short',
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                          })}{' '}
-                          às{' '}
-                          {new Date(selectedSlot.dataHoraInicio).toLocaleTimeString('pt-BR', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
+                          {selectedDateStr
+                            ? new Date(`${selectedDateStr}T12:00:00-03:00`).toLocaleDateString('pt-BR', {
+                                weekday: 'short',
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                              })
+                            : new Date(selectedSlot.dataHoraInicio).toLocaleDateString('pt-BR', {
+                                weekday: 'short',
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                              })}{' '}
+                          às <strong className="text-emerald-800">{selectedSlot.timeStr}</strong>
                         </span>
                       </p>
                     </div>
 
-                    <div className="border-t border-gray-200/60 pt-2 text-xs text-gray-600">
-                      <span>Serviço: </span>
-                      <strong className="text-[#4A3F5C]">
-                        {activeBooking.servicos?.nome || 'Atendimento'}
-                      </strong>
-                      {activeBooking.servicos?.duracao_minutos && (
-                        <span className="text-gray-400">
-                          {' '}
-                          ({activeBooking.servicos.duracao_minutos} min)
-                        </span>
-                      )}
+                    <div className="border-t border-gray-200/60 pt-2.5 text-xs">
+                      <span className="block text-[10px] font-bold uppercase text-[#8675A9]">
+                        Serviço e Valor:
+                      </span>
+                      <div className="flex items-center justify-between gap-2 mt-1">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-[#4A3F5C] text-sm truncate">
+                            {activeBooking.servicos?.nome || 'Atendimento'}
+                          </p>
+                          {activeBooking.servicos?.duracao_minutos && (
+                            <span className="flex items-center gap-1 text-[11px] text-gray-500 font-semibold mt-0.5">
+                              <Clock className="h-3 w-3 text-[#B8A9D9]" />
+                              {activeBooking.servicos.duracao_minutos} min
+                            </span>
+                          )}
+                        </div>
+
+                        {activeBooking.servicos?.preco !== undefined && activeBooking.servicos?.preco !== null && (
+                          <span className="text-sm font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-xl shrink-0">
+                            R$ {Number(activeBooking.servicos.preco).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 

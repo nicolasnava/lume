@@ -111,7 +111,7 @@ export default function CustomColorPickerModal({
         {/* Paleta de Cores em Formato Circular (Estritamente Círculos) */}
         <div className="space-y-2">
           <span className="text-xs font-bold text-[#4A3F5C] block">
-            Paleta de Cores em Círculo:
+            Paleta de Cores:
           </span>
           <div className="grid grid-cols-5 sm:grid-cols-7 gap-3 py-1">
             {PALETTE_OPTIONS.map((item) => {

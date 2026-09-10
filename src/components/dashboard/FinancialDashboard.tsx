@@ -126,7 +126,8 @@ export default function FinancialDashboard({
   const [customEnd, setCustomEnd] = useState('')
 
   // Item 4: Filtros combináveis por Serviço, Cliente e Forma de Pagamento (Dados reais dinâmicos)
-  const [selectedServicoId, setSelectedServicoId] = useState<string>('todos')
+  const [selectedServicoIds, setSelectedServicoIds] = useState<string[]>([])
+  const [isServiceMultiSelect, setIsServiceMultiSelect] = useState(false)
   const [selectedClienteId, setSelectedClienteId] = useState<string>('todos')
   const [selectedFormaPagamento, setSelectedFormaPagamento] = useState<string>('todas')
   const [searchQuery, setSearchQuery] = useState('')
@@ -171,10 +172,10 @@ export default function FinancialDashboard({
     return Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome))
   }, [allServices, initialBookings])
 
-  const currentSelectedService = useMemo(() => {
-    if (selectedServicoId === 'todos') return null
-    return servicesList.find((s) => s.id === selectedServicoId) || null
-  }, [selectedServicoId, servicesList])
+  const currentSelectedServices = useMemo(() => {
+    if (selectedServicoIds.length === 0) return []
+    return servicesList.filter((s) => selectedServicoIds.includes(s.id))
+  }, [selectedServicoIds, servicesList])
 
   const clientsList = useMemo(() => {
     const map = new Map<string, string>()
@@ -225,9 +226,17 @@ export default function FinancialDashboard({
 
       if (!periodMatch) return false
 
-      // Filtro por Serviço Específico
-      if (selectedServicoId !== 'todos' && b.servico_id !== selectedServicoId) {
-        return false
+      // Filtro por Serviço Específico (suporte a seleção múltipla)
+      if (selectedServicoIds.length > 0) {
+        const matchesMain = b.servico_id && selectedServicoIds.includes(b.servico_id)
+        const matchesAgendamentoServicos =
+          b.agendamento_servicos &&
+          b.agendamento_servicos.some(
+            (as) => as.servicos?.id && selectedServicoIds.includes(as.servicos.id)
+          )
+        if (!matchesMain && !matchesAgendamentoServicos) {
+          return false
+        }
       }
 
       // Filtro por Cliente Específica
@@ -251,7 +260,7 @@ export default function FinancialDashboard({
     period,
     customStart,
     customEnd,
-    selectedServicoId,
+    selectedServicoIds,
     selectedClienteId,
     selectedFormaPagamento,
   ])
@@ -398,7 +407,7 @@ export default function FinancialDashboard({
             <span>Filtros</span>
           </div>
 
-          {(selectedServicoId !== 'todos' ||
+          {(selectedServicoIds.length > 0 ||
             selectedClienteId !== 'todos' ||
             selectedFormaPagamento !== 'todas' ||
             period !== 'hoje') && (
@@ -406,7 +415,7 @@ export default function FinancialDashboard({
               type="button"
               onClick={() => {
                 setPeriod('hoje')
-                setSelectedServicoId('todos')
+                setSelectedServicoIds([])
                 setSelectedClienteId('todos')
                 setSelectedFormaPagamento('todas')
               }}
@@ -455,13 +464,17 @@ export default function FinancialDashboard({
               }`}
             >
               <div className="flex items-center gap-2 truncate text-left flex-1 min-w-0">
-                {currentSelectedService ? (
+                {selectedServicoIds.length === 0 ? (
+                  <span className="truncate font-semibold text-[#4A3F5C]">
+                    Todos os Serviços
+                  </span>
+                ) : selectedServicoIds.length === 1 ? (
                   <>
                     <div className="relative h-5 w-5 rounded-md bg-gray-100 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center">
-                      {currentSelectedService.foto_url ? (
+                      {currentSelectedServices[0]?.foto_url ? (
                         <Image
-                          src={currentSelectedService.foto_url}
-                          alt={currentSelectedService.nome}
+                          src={currentSelectedServices[0].foto_url}
+                          alt={currentSelectedServices[0].nome}
                           fill
                           className="object-cover"
                           unoptimized
@@ -471,13 +484,29 @@ export default function FinancialDashboard({
                       )}
                     </div>
                     <span className="truncate font-bold text-[#4A3F5C]">
-                      {currentSelectedService.nome}
+                      {currentSelectedServices[0]?.nome}
                     </span>
                   </>
                 ) : (
-                  <span className="truncate font-semibold text-[#4A3F5C]">
-                    Todos os Serviços
-                  </span>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="flex -space-x-1.5 overflow-hidden shrink-0">
+                      {currentSelectedServices.slice(0, 2).map((s) => (
+                        <div
+                          key={s.id}
+                          className="relative h-5 w-5 rounded-md border border-white bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center shadow-2xs"
+                        >
+                          {s.foto_url ? (
+                            <Image src={s.foto_url} alt={s.nome} fill className="object-cover" unoptimized />
+                          ) : (
+                            <Scissors className="h-2.5 w-2.5 text-[#8675A9]" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <span className="truncate font-bold text-[#4A3F5C]">
+                      {selectedServicoIds.length} serviços selecionados
+                    </span>
+                  </div>
                 )}
               </div>
 
@@ -491,15 +520,38 @@ export default function FinancialDashboard({
             {/* Dropdown com foto na esquerda, infos na direita */}
             {isServiceFilterOpen && (
               <div className="absolute left-0 min-w-full w-[290px] sm:w-[320px] top-full mt-1.5 z-[100] max-h-72 overflow-y-auto rounded-2xl border border-gray-100 bg-white p-1.5 space-y-1 shadow-2xl animate-in fade-in slide-in-from-top-1">
+                {/* Cabeçalho com toggle de seleção múltipla */}
+                <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    {isServiceMultiSelect ? 'Múltiplos Serviços' : 'Serviço'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsServiceMultiSelect(!isServiceMultiSelect)}
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border transition cursor-pointer flex items-center gap-1 ${
+                      isServiceMultiSelect
+                        ? 'bg-[#B8A9D9]/25 border-[#B8A9D9] text-[#4A3F5C]'
+                        : 'bg-[#FAF8F5] border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-[#4A3F5C]'
+                    }`}
+                  >
+                    <span>Selecionar vários</span>
+                    {isServiceMultiSelect && selectedServicoIds.length > 1 && (
+                      <span className="h-3.5 w-3.5 rounded-full bg-[#4A3F5C] text-white text-[9px] flex items-center justify-center font-bold">
+                        {selectedServicoIds.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
                 {/* Opção Todos os Serviços */}
                 <button
                   type="button"
                   onClick={() => {
-                    setSelectedServicoId('todos')
-                    setIsServiceFilterOpen(false)
+                    setSelectedServicoIds([])
+                    if (!isServiceMultiSelect) setIsServiceFilterOpen(false)
                   }}
                   className={`w-full flex items-center justify-between gap-2.5 p-2 rounded-xl text-left transition cursor-pointer ${
-                    selectedServicoId === 'todos'
+                    selectedServicoIds.length === 0
                       ? 'bg-purple-50/80 border border-[#B8A9D9] font-bold text-[#4A3F5C]'
                       : 'hover:bg-[#FAF8F5] text-[#4A3F5C]'
                   }`}
@@ -513,7 +565,7 @@ export default function FinancialDashboard({
                       <p className="text-[10px] text-gray-400 font-medium">Ver agendamentos de todos</p>
                     </div>
                   </div>
-                  {selectedServicoId === 'todos' && (
+                  {selectedServicoIds.length === 0 && (
                     <Check className="h-4 w-4 text-[#8675A9] shrink-0" />
                   )}
                 </button>
@@ -522,14 +574,22 @@ export default function FinancialDashboard({
 
                 {/* Lista de serviços com foto na esquerda */}
                 {servicesList.map((s) => {
-                  const isSelected = selectedServicoId === s.id
+                  const isSelected = selectedServicoIds.includes(s.id)
                   return (
                     <button
                       key={s.id}
                       type="button"
                       onClick={() => {
-                        setSelectedServicoId(s.id)
-                        setIsServiceFilterOpen(false)
+                        if (isServiceMultiSelect) {
+                          if (selectedServicoIds.includes(s.id)) {
+                            setSelectedServicoIds(selectedServicoIds.filter((id) => id !== s.id))
+                          } else {
+                            setSelectedServicoIds([...selectedServicoIds, s.id])
+                          }
+                        } else {
+                          setSelectedServicoIds([s.id])
+                          setIsServiceFilterOpen(false)
+                        }
                       }}
                       className={`w-full flex items-center justify-between gap-2.5 p-2 rounded-xl text-left transition cursor-pointer ${
                         isSelected
@@ -577,12 +637,42 @@ export default function FinancialDashboard({
                         </div>
                       </div>
 
-                      {isSelected && (
-                        <Check className="h-4 w-4 text-[#8675A9] shrink-0 ml-1" />
-                      )}
+                      {/* Indicador de Seleção */}
+                      <div className="shrink-0 pl-1">
+                        {isServiceMultiSelect ? (
+                          <div
+                            className={`h-4 w-4 rounded-md border flex items-center justify-center transition ${
+                              isSelected
+                                ? 'bg-[#4A3F5C] border-[#4A3F5C] text-white'
+                                : 'border-gray-300 bg-white'
+                            }`}
+                          >
+                            {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                          </div>
+                        ) : (
+                          isSelected && <Check className="h-4 w-4 text-[#8675A9]" />
+                        )}
+                      </div>
                     </button>
                   )
                 })}
+
+                {isServiceMultiSelect && (
+                  <div className="pt-2 border-t border-gray-100 flex items-center justify-between px-1">
+                    <span className="text-[11px] font-semibold text-gray-600">
+                      {selectedServicoIds.length === 0
+                        ? 'Todos os serviços'
+                        : `${selectedServicoIds.length} selecionado(s)`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsServiceFilterOpen(false)}
+                      className="px-3 py-1 rounded-xl bg-[#4A3F5C] text-white text-xs font-bold hover:bg-[#3d334d] transition cursor-pointer"
+                    >
+                      Concluir
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -886,7 +976,7 @@ export default function FinancialDashboard({
                   <th className="py-3 px-3">Cliente</th>
                   <th className="py-3 px-3">Serviço</th>
                   <th className="py-3 px-3 text-center">Pagamento</th>
-                  <th className="py-3 px-3 text-right">Valor Cobrado</th>
+                  <th className="py-3 px-3 text-right">Valor</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-[#4A3F5C]">

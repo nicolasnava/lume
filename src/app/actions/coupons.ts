@@ -59,9 +59,16 @@ export async function getCuponsProfissionalAction(): Promise<{
     }
   } catch (err: unknown) {
     console.error('Erro ao listar cupons:', err)
+    const errObj = err as { code?: string; message?: string }
+    const isMissingTable =
+      errObj?.code === 'PGRST205' ||
+      errObj?.message?.includes('cupons_profissional') ||
+      (err instanceof Error && err.message.includes('cupons_profissional'))
     return {
       success: false,
-      message: err instanceof Error ? err.message : 'Erro ao buscar cupons.',
+      message: isMissingTable
+        ? 'A tabela de cupons não foi criada no banco de dados. Execute a migração 00039_reports_coupons_demo.sql no SQL Editor do Supabase.'
+        : err instanceof Error ? err.message : 'Erro ao buscar cupons.',
       cupons: [],
     }
   }
@@ -166,9 +173,16 @@ export async function createCupomAction(payload: {
     return { success: true, message: 'Cupom criado com sucesso!' }
   } catch (err: unknown) {
     console.error('Erro ao criar cupom:', err)
+    const errObj = err as { code?: string; message?: string }
+    const isMissingTable =
+      errObj?.code === 'PGRST205' ||
+      errObj?.message?.includes('cupons_profissional') ||
+      (err instanceof Error && err.message.includes('cupons_profissional'))
     return {
       success: false,
-      message: err instanceof Error ? err.message : 'Erro ao criar cupom.',
+      message: isMissingTable
+        ? 'A tabela de cupons não foi criada no banco de dados. Execute a migração 00039_reports_coupons_demo.sql no SQL Editor do Supabase.'
+        : err instanceof Error ? err.message : 'Erro ao criar cupom.',
     }
   }
 }
