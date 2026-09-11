@@ -504,9 +504,11 @@ export default function SubscriptionSection({ initialData }: SubscriptionSection
                                 day: '2-digit',
                                 month: 'short',
                                 year: 'numeric',
+                                timeZone: 'America/Sao_Paulo',
                               })} às ${new Date(fatura.data_pagamento).toLocaleTimeString('pt-BR', {
                                 hour: '2-digit',
                                 minute: '2-digit',
+                                timeZone: 'America/Sao_Paulo',
                               })}`
                             : 'Pago'}{' '}
                           • R$ {fatura.valor.toFixed(2)}
@@ -725,6 +727,7 @@ export default function SubscriptionSection({ initialData }: SubscriptionSection
                     {new Date(selectedInvoiceDetail.data_pagamento).toLocaleTimeString('pt-BR', {
                       hour: '2-digit',
                       minute: '2-digit',
+                      timeZone: 'America/Sao_Paulo',
                     })}
                   </span>
                 </div>

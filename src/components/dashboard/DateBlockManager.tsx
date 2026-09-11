@@ -251,6 +251,12 @@ export default function DateBlockManager({ initialBlocks }: DateBlockManagerProp
                       {dateDisplay}
                     </span>
 
+                    {b.motivo && (
+                      <p className="text-[11px] text-rose-700/80 italic truncate font-medium">
+                        &ldquo;{b.motivo}&rdquo;
+                      </p>
+                    )}
+
                     {isPartial ? (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-md border border-amber-200">
                         <Clock className="h-3 w-3" />
@@ -262,12 +268,6 @@ export default function DateBlockManager({ initialBlocks }: DateBlockManagerProp
                       <span className="inline-block text-[10px] font-bold text-rose-700 bg-rose-100/80 px-2 py-0.5 rounded-md">
                         Dia Inteiro
                       </span>
-                    )}
-
-                    {b.motivo && (
-                      <p className="text-[11px] text-rose-700/80 italic truncate font-medium">
-                        &ldquo;{b.motivo}&rdquo;
-                      </p>
                     )}
                   </div>
 

@@ -249,7 +249,7 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
                   <div className="flex items-start justify-between gap-2">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-base font-extrabold tracking-wider text-[#4A3F5C] bg-purple-50 px-2.5 py-1 rounded-xl border border-purple-200/80">
+                        <span className="text-2xl font-black tracking-tight text-[#4A3F5C] uppercase">
                           {cupom.codigo}
                         </span>
                         <button
@@ -411,7 +411,6 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
               </div>
 
               {/* Tipo de Desconto e Valor */}
-              {/* Tipo de Desconto e Valor */}
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-bold text-[#4A3F5C] mb-1.5">
@@ -428,7 +427,7 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
                       }`}
                     >
                       <Percent className="h-3.5 w-3.5" />
-                      <span>Porcentagem (%)</span>
+                      <span className="whitespace-nowrap">Porcentagem (%)</span>
                     </button>
                     <button
                       type="button"
@@ -440,7 +439,7 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
                       }`}
                     >
                       <DollarSign className="h-3.5 w-3.5" />
-                      <span>Valor Fixo (R$)</span>
+                      <span className="whitespace-nowrap">Valor Fixo (R$)</span>
                     </button>
                   </div>
                 </div>

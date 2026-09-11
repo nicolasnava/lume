@@ -380,8 +380,8 @@ export async function createBookingAction(formData: {
     // Disparar notificação Push para a profissional
     try {
       const dataInicioObj = new Date(data_hora_inicio_iso)
-      const dataFormatada = dataInicioObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-      const horaFormatada = dataInicioObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false })
+      const dataFormatada = dataInicioObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
+      const horaFormatada = dataInicioObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' })
       sendPushToProfissional(profissional_id, {
         title: 'Novo Agendamento Recebido!',
         body: `${cliente_nome} agendou ${nomesCombo} para ${dataFormatada} às ${horaFormatada}.`,
@@ -852,8 +852,8 @@ export async function cancelClientBookingAction(params: {
     // Disparar notificação Push para a profissional
     try {
       const inicioObj = new Date(agendamento.data_hora_inicio)
-      const dataFormatada = inicioObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-      const horaFormatada = inicioObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false })
+      const dataFormatada = inicioObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
+      const horaFormatada = inicioObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' })
       const nomeCliente = clienteObj?.nome || 'Uma cliente'
       sendPushToProfissional(agendamento.profissional_id, {
         title: 'Agendamento Cancelado',
@@ -1050,8 +1050,8 @@ export async function rescheduleClientBookingAction(params: {
 
     // 7. Disparar notificação Push para a profissional
     try {
-      const dataFormatada = novaInicioDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-      const horaFormatada = novaInicioDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false })
+      const dataFormatada = novaInicioDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' })
+      const horaFormatada = novaInicioDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Sao_Paulo' })
       const nomeCliente = clienteObj?.nome || 'Uma cliente'
 
       sendPushToProfissional(agendamento.profissional_id, {
@@ -1080,6 +1080,58 @@ export async function rescheduleClientBookingAction(params: {
       success: false,
       message: err?.message || 'Erro ao remarcar agendamento.',
     }
+  }
+}
+
+/**
+ * Server Action para atualizar diretamente o status de um agendamento (Confirmado, Concluído, Cancelado, No-Show)
+ */
+export async function updateBookingStatusAction(
+  agendamentoId: string,
+  novoStatus: 'confirmado' | 'concluido' | 'cancelado' | 'no_show'
+): Promise<{ success: boolean; message?: string }> {
+  try {
+    const supabase = createAdminClient()
+    const { data: agendamento, error: fetchError } = await supabase
+      .from('agendamentos')
+      .select('id, profissional_id, google_event_id, status')
+      .eq('id', agendamentoId)
+      .single()
+
+    if (fetchError || !agendamento) {
+      return { success: false, message: 'Agendamento não encontrado.' }
+    }
+
+    const { error: updateError } = await supabase
+      .from('agendamentos')
+      .update({ status: novoStatus })
+      .eq('id', agendamentoId)
+
+    if (updateError) {
+      throw updateError
+    }
+
+    if (novoStatus === 'cancelado' && agendamento.google_event_id) {
+      try {
+        await deleteGoogleCalendarEvent({
+          profissionalId: agendamento.profissional_id,
+          googleEventId: agendamento.google_event_id,
+        })
+      } catch (err) {
+        console.error('[Google Calendar] Erro ao deletar evento cancelado:', err)
+      }
+    }
+
+    revalidatePath('/dashboard')
+    revalidatePath('/dashboard/agenda')
+    revalidatePath('/dashboard/geral')
+    revalidatePath('/dashboard/clientes')
+
+    return { success: true }
+  } catch (error: unknown) {
+    const err = error as { message?: string }
+    console.error('[updateBookingStatusAction] Erro:', error)
+    return { success: false, message: err?.message || 'Erro ao atualizar status.' }
   }
 }
 

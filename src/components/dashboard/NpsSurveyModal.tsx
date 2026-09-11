@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { submitNpsResposta } from '@/app/actions/adminPrompt34'
-import { Star, X, Send, CheckCircle2, Loader2, AlertCircle } from 'lucide-react'
+import { Heart, X, Send, CheckCircle2, Loader2, AlertCircle } from 'lucide-react'
 
 export default function NpsSurveyModal() {
   const [isOpen, setIsOpen] = useState(false)
@@ -59,7 +59,7 @@ export default function NpsSurveyModal() {
     <div className="fixed bottom-20 sm:bottom-6 left-3 right-3 sm:left-auto sm:right-6 sm:max-w-sm w-auto bg-white rounded-3xl p-4 sm:p-5 shadow-2xl border border-purple-100 animate-in slide-in-from-bottom duration-300 font-sans z-50">
       <div className="flex items-center justify-between pb-2 border-b border-gray-100 mb-3">
         <div className="flex items-center gap-2 text-[#4A3F5C]">
-          <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+          <Heart className="h-4 w-4 text-rose-500 fill-rose-500" />
           <span className="text-xs font-bold">Sua opinião é importante!</span>
         </div>
         <button

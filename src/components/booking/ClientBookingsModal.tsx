@@ -27,6 +27,7 @@ import {
   CalendarClock,
   ChevronRight,
   Sparkles,
+  DollarSign,
 } from 'lucide-react'
 
 const CANCEL_NOTICE_HOURS = 4
@@ -406,10 +407,12 @@ export default function ClientBookingsModal({
                       day: '2-digit',
                       month: '2-digit',
                       year: 'numeric',
+                      timeZone: 'America/Sao_Paulo',
                     })
                     const horaStr = inicioDate.toLocaleTimeString('pt-BR', {
                       hour: '2-digit',
                       minute: '2-digit',
+                      timeZone: 'America/Sao_Paulo',
                     })
 
                     return (
@@ -459,10 +462,22 @@ export default function ClientBookingsModal({
           </div>
         )}
 
-        {/* Modal Interativo de Ação (Escolha, Remarcar ou Cancelar) */}
+        {/* Modal Interativo de Ação (Escolha, Remarcar em Tela Cheia ou Cancelar) */}
         {activeBooking && (
-          <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-            <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+          <div
+            className={
+              actionStep.startsWith('reschedule_')
+                ? 'fixed inset-0 z-60 bg-[#FAF7F5] overflow-y-auto flex flex-col'
+                : 'fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs'
+            }
+          >
+            <div
+              className={
+                actionStep.startsWith('reschedule_')
+                  ? 'w-full max-w-2xl mx-auto p-4 sm:p-6 md:py-8 flex-1 flex flex-col justify-start space-y-5'
+                  : 'w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto'
+              }
+            >
               {/* Se estiver fora do prazo (< 4h) para qualquer ação online */}
               {lateNoticeInfo?.isLate ? (
                 <div className="space-y-4">
@@ -486,7 +501,7 @@ export default function ClientBookingsModal({
                   {whatsappUrl && (
                     <a
                       href={`${whatsappUrl}?text=${encodeURIComponent(
-                        `Olá! Gostaria de remarcar ou cancelar meu agendamento de ${activeBooking.servicos?.nome || 'serviço'} marcado para hoje às ${new Date(activeBooking.data_hora_inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.`
+                        `Olá! Gostaria de remarcar ou cancelar meu agendamento de ${activeBooking.servicos?.nome || 'serviço'} marcado para hoje às ${new Date(activeBooking.data_hora_inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}.`
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -513,10 +528,11 @@ export default function ClientBookingsModal({
                       <h3 className="text-base font-bold text-[#4A3F5C]">O que você deseja fazer?</h3>
                       <p className="text-xs text-gray-500">
                         {activeBooking.servicos?.nome || 'Atendimento'} •{' '}
-                        {new Date(activeBooking.data_hora_inicio).toLocaleDateString('pt-BR')} às{' '}
+                        {new Date(activeBooking.data_hora_inicio).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} às{' '}
                         {new Date(activeBooking.data_hora_inicio).toLocaleTimeString('pt-BR', {
                           hour: '2-digit',
                           minute: '2-digit',
+                          timeZone: 'America/Sao_Paulo',
                         })}
                       </p>
                     </div>
@@ -599,13 +615,14 @@ export default function ClientBookingsModal({
                     </strong>{' '}
                     no dia{' '}
                     <strong className="text-[#4A3F5C]">
-                      {new Date(activeBooking.data_hora_inicio).toLocaleDateString('pt-BR')}
+                      {new Date(activeBooking.data_hora_inicio).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                     </strong>{' '}
                     às{' '}
                     <strong className="text-[#4A3F5C]">
                       {new Date(activeBooking.data_hora_inicio).toLocaleTimeString('pt-BR', {
                         hour: '2-digit',
                         minute: '2-digit',
+                        timeZone: 'America/Sao_Paulo',
                       })}
                     </strong>
                     ?
@@ -637,11 +654,11 @@ export default function ClientBookingsModal({
                   </div>
                 </div>
               ) : actionStep === 'reschedule_date' ? (
-                /* 3. Reagendamento: Seleção de Data */
-                <div className="space-y-4">
+                /* 3. Reagendamento: Seleção de Data em Tela Cheia (Item 17) */
+                <div className="rounded-3xl bg-white p-5 sm:p-7 shadow-xs border border-gray-200/80 space-y-5">
                   <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                     <div>
-                      <h3 className="text-base font-bold text-[#4A3F5C]">Escolha a Nova Data</h3>
+                      <h3 className="text-base sm:text-lg font-bold text-[#4A3F5C]">Escolha a Nova Data</h3>
                       <p className="text-xs text-gray-500">
                         {activeBooking.servicos?.nome || 'Serviço'}
                       </p>
@@ -649,14 +666,14 @@ export default function ClientBookingsModal({
                     <button
                       type="button"
                       onClick={() => setActionStep('choose')}
-                      className="text-xs font-semibold text-gray-500 hover:text-gray-800 transition cursor-pointer"
+                      className="text-xs font-semibold text-[#4A3F5C] hover:text-[#8675A9] transition cursor-pointer"
                     >
                       Voltar
                     </button>
                   </div>
 
                   {loadingDays ? (
-                    <div className="flex flex-col items-center justify-center p-8 gap-2 text-xs text-gray-400 font-semibold">
+                    <div className="flex flex-col items-center justify-center p-12 gap-2 text-xs text-gray-400 font-semibold">
                       <Loader2 className="h-6 w-6 animate-spin text-[#4A3F5C]" />
                       <span>Consultando dias de atendimento...</span>
                     </div>
@@ -670,11 +687,11 @@ export default function ClientBookingsModal({
                   )}
                 </div>
               ) : actionStep === 'reschedule_time' ? (
-                /* 4. Reagendamento: Seleção de Horário */
-                <div className="space-y-4">
+                /* 4. Reagendamento: Seleção de Horário em Tela Cheia (Item 16 e 17) */
+                <div className="rounded-3xl bg-white p-5 sm:p-7 shadow-xs border border-gray-200/80 space-y-5">
                   <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                     <div>
-                      <h3 className="text-base font-bold text-[#4A3F5C]">Escolha o Horário</h3>
+                      <h3 className="text-base sm:text-lg font-bold text-[#4A3F5C]">Escolha o Horário</h3>
                       <p className="text-xs text-gray-500 capitalize">
                         {selectedDateStr
                           ? new Date(`${selectedDateStr}T12:00:00`).toLocaleDateString('pt-BR', {
@@ -685,18 +702,19 @@ export default function ClientBookingsModal({
                           : ''}
                       </p>
                     </div>
+                    {/* Item 16: Cor de Trocar Data no estilo Lumê */}
                     <button
                       type="button"
                       onClick={() => setActionStep('reschedule_date')}
-                      className="text-xs font-semibold text-purple-700 hover:underline cursor-pointer flex items-center gap-1"
+                      className="text-xs font-semibold text-[#4A3F5C] hover:text-[#8675A9] hover:underline cursor-pointer flex items-center gap-1 transition"
                     >
-                      <ArrowLeft className="h-3 w-3" />
+                      <ArrowLeft className="h-3 w-3 text-[#8675A9]" />
                       <span>Trocar data</span>
                     </button>
                   </div>
 
                   {loadingSlots ? (
-                    <div className="flex flex-col items-center justify-center p-8 gap-2 text-xs text-gray-400 font-semibold">
+                    <div className="flex flex-col items-center justify-center p-12 gap-2 text-xs text-gray-400 font-semibold">
                       <Loader2 className="h-6 w-6 animate-spin text-[#4A3F5C]" />
                       <span>Verificando horários vagos...</span>
                     </div>
@@ -715,8 +733,8 @@ export default function ClientBookingsModal({
                       </button>
                     </div>
                   ) : (
-                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                      <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
                         {availableSlots.map((slot) => (
                           <button
                             key={slot.timeStr}
@@ -732,8 +750,8 @@ export default function ClientBookingsModal({
                   )}
                 </div>
               ) : actionStep === 'reschedule_confirm' && selectedSlot ? (
-                /* 5. Reagendamento: Confirmação Clara do Novo Horário */
-                <div className="space-y-4">
+                /* 5. Reagendamento: Confirmação Clara do Novo Horário (Itens 15, 17 e 18) */
+                <div className="rounded-3xl bg-white p-5 sm:p-7 shadow-xs border border-gray-200/80 space-y-5">
                   <div className="flex items-center gap-3">
                     <div
                       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white font-bold"
@@ -742,7 +760,7 @@ export default function ClientBookingsModal({
                       <CalendarClock className="h-5 w-5" />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-[#4A3F5C]">Confirmar Novo Horário</h3>
+                      <h3 className="text-base sm:text-lg font-bold text-[#4A3F5C]">Confirmar Novo Horário</h3>
                       <p className="text-xs text-gray-500">
                         Revise a alteração da sua data e horário
                       </p>
@@ -762,10 +780,11 @@ export default function ClientBookingsModal({
                         Horário Anterior:
                       </span>
                       <p className="font-semibold text-gray-500 line-through mt-0.5">
-                        {new Date(activeBooking.data_hora_inicio).toLocaleDateString('pt-BR')} às{' '}
+                        {new Date(activeBooking.data_hora_inicio).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} às{' '}
                         {new Date(activeBooking.data_hora_inicio).toLocaleTimeString('pt-BR', {
                           hour: '2-digit',
                           minute: '2-digit',
+                          timeZone: 'America/Sao_Paulo',
                         })}
                       </p>
                     </div>
@@ -819,21 +838,35 @@ export default function ClientBookingsModal({
                         )}
                       </div>
                     </div>
+
+                    {/* Item 18: Valor total : X igual aos detalhes do agendamento */}
+                    <div className="border-t border-gray-200/60 pt-2.5 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <DollarSign className="h-3.5 w-3.5 text-[#B8A9D9] shrink-0" />
+                        <span className="font-bold text-[#4A3F5C]/80">Valor total:</span>
+                      </div>
+                      <span className="font-extrabold text-base text-emerald-700">
+                        {activeBooking.servicos?.preco !== undefined && activeBooking.servicos?.preco !== null
+                          ? `R$ ${Number(activeBooking.servicos.preco).toFixed(2).replace('.', ',')}`
+                          : 'R$ 0,00'}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex gap-2 pt-1">
                     <button
                       type="button"
                       onClick={() => setActionStep('reschedule_time')}
-                      className="flex-1 py-2.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition cursor-pointer"
+                      className="flex-1 py-3 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition cursor-pointer"
                     >
                       Alterar Horário
                     </button>
+                    {/* Item 15: Botão apenas Confirmar */}
                     <button
                       type="button"
                       onClick={handleConfirmReschedule}
                       disabled={rescheduling}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-white shadow-xs transition hover:opacity-95 disabled:opacity-50 cursor-pointer"
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 py-3 rounded-xl text-xs font-bold text-white shadow-xs transition hover:opacity-95 disabled:opacity-50 cursor-pointer"
                       style={{ backgroundColor: '#4A3F5C' }}
                     >
                       {rescheduling ? (
@@ -842,7 +875,7 @@ export default function ClientBookingsModal({
                           <span>Remarcando...</span>
                         </>
                       ) : (
-                        <span>Confirmar Remarcação</span>
+                        <span>Confirmar</span>
                       )}
                     </button>
                   </div>
@@ -873,11 +906,13 @@ export default function ClientBookingsModal({
                         day: '2-digit',
                         month: 'long',
                         year: 'numeric',
+                        timeZone: 'America/Sao_Paulo',
                       })}{' '}
                       às{' '}
                       {new Date(rescheduleResult.novoInicio).toLocaleTimeString('pt-BR', {
                         hour: '2-digit',
                         minute: '2-digit',
+                        timeZone: 'America/Sao_Paulo',
                       })}
                     </strong>
                     <span className="block text-[11px] text-emerald-700">

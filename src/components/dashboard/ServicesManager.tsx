@@ -852,8 +852,8 @@ export default function ServicesManager({ initialServices, initialCombos, profis
         </>
       ) : (
         <>
-          {/* Aba de Pacotes: Header e Botão */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {/* Aba de Pacotes: Header e Botão com espaçamento idêntico a Serviços (Itens 10 e 11) */}
+          <div className="space-y-3">
             <div className="rounded-3xl bg-white p-5 border border-gray-200/80 shadow-2xs flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-50 text-[#4A3F5C] border border-[#B8A9D9]/30">
@@ -874,7 +874,7 @@ export default function ServicesManager({ initialServices, initialCombos, profis
               className="w-full py-3.5 rounded-2xl bg-[#4A3F5C] text-xs font-semibold text-white shadow-xs hover:bg-[#393047] transition cursor-pointer flex items-center justify-center gap-2"
             >
               <Plus className="h-4 w-4 text-[#B8A9D9]" />
-              <span>Criar Novo Pacote</span>
+              <span>Cadastrar novo pacote</span>
             </button>
           </div>
 

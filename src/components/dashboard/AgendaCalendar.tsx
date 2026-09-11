@@ -31,25 +31,35 @@ function formatShortName(fullName: string | null | undefined): string {
   return `${parts[0]} ${parts[1]}`
 }
 
+function getLocalDateStr(date: Date | string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(date))
+}
+
 export default function AgendaCalendar({ initialBookings, onRefresh }: AgendaCalendarProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('dia')
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [selectedBooking, setSelectedBooking] = useState<BookingDetail | null>(null)
 
   // Item 3: Filtro de período para os 3 cards de indicadores
-  const [indicatorPeriod, setIndicatorPeriod] = useState<IndicatorPeriod>('semana')
+  const [indicatorPeriod, setIndicatorPeriod] = useState<IndicatorPeriod>('hoje')
 
-  // Agendamentos filtrados para o cálculo dos 3 cards de indicadores
+  // Recalcular os agendamentos conforme o período selecionado para os indicadores (hoje, semana, mês)
   const periodBookings = useMemo(() => {
     const now = new Date()
+    const todayStr = getLocalDateStr(now)
+
     return initialBookings.filter((b) => {
       if (b.status === 'cancelado') return false
+      const bDateStr = getLocalDateStr(b.data_hora_inicio)
       const bDate = new Date(b.data_hora_inicio)
 
       if (indicatorPeriod === 'hoje') {
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
-        const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
-        return bDate >= startOfToday && bDate <= endOfToday
+        return bDateStr === todayStr
       }
 
       if (indicatorPeriod === 'semana') {
@@ -120,11 +130,7 @@ export default function AgendaCalendar({ initialBookings, onRefresh }: AgendaCal
     const bDate = new Date(b.data_hora_inicio)
 
     if (viewMode === 'dia') {
-      return (
-        bDate.getDate() === selectedDate.getDate() &&
-        bDate.getMonth() === selectedDate.getMonth() &&
-        bDate.getFullYear() === selectedDate.getFullYear()
-      )
+      return getLocalDateStr(b.data_hora_inicio) === getLocalDateStr(selectedDate)
     }
 
     if (viewMode === 'semana') {
@@ -340,10 +346,12 @@ export default function AgendaCalendar({ initialBookings, onRefresh }: AgendaCal
             const horaInicio = inicio.toLocaleTimeString('pt-BR', {
               hour: '2-digit',
               minute: '2-digit',
+              timeZone: 'America/Sao_Paulo',
             })
             const horaFim = fim.toLocaleTimeString('pt-BR', {
               hour: '2-digit',
               minute: '2-digit',
+              timeZone: 'America/Sao_Paulo',
             })
             const nomeCompleto = b.clientes?.nome || 'Cliente sem nome'
             const nomeCurto = formatShortName(b.clientes?.nome)

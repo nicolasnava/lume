@@ -36,15 +36,21 @@ export default async function DashboardGeralPage() {
   const profissionalNome = profissional?.nome || user.user_metadata?.nome || 'Profissional'
   const onboardingConcluido = profissional?.onboarding_concluido === true
 
-  // Limites do dia de hoje (00:00:00 a 23:59:59)
-  const now = new Date()
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
-  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
+  // Limites do dia de hoje e semana atual no fuso horário de Brasília (America/Sao_Paulo)
+  const todayStr = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
 
-  // Limites da semana atual
-  const startOfWeek = new Date(now)
-  startOfWeek.setDate(now.getDate() - now.getDay())
-  startOfWeek.setHours(0, 0, 0, 0)
+  const startOfToday = new Date(`${todayStr}T00:00:00-03:00`)
+  const endOfToday = new Date(`${todayStr}T23:59:59.999-03:00`)
+
+  // Limites da semana atual baseados no dia da semana em Brasília
+  const todayDayOfWeek = new Date(`${todayStr}T12:00:00-03:00`).getDay()
+  const startOfWeek = new Date(`${todayStr}T00:00:00-03:00`)
+  startOfWeek.setDate(startOfWeek.getDate() - todayDayOfWeek)
 
   const endOfWeek = new Date(startOfWeek)
   endOfWeek.setDate(startOfWeek.getDate() + 6)
@@ -72,12 +78,13 @@ export default async function DashboardGeralPage() {
     return d >= startOfWeek && d <= endOfWeek
   })
 
-  // Formatar todos os agendamentos de hoje
+  // Formatar todos os agendamentos de hoje com fuso explícito de Brasília
   const todayBookingsList = todayRawBookings.map((b) => {
     const dateObj = new Date(b.data_hora_inicio)
     const timeStr = dateObj.toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit',
+      timeZone: 'America/Sao_Paulo',
     })
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -119,8 +126,9 @@ export default async function DashboardGeralPage() {
   })
 
   // Próximo agendamento pendente a partir do momento atual (ou o primeiro de hoje se nenhum for futuro)
+  const nowMs = Date.now()
   const nextPendingBooking =
-    todayBookingsList.find((b) => new Date(b.dataHoraInicio) >= now) || todayBookingsList[0] || null
+    todayBookingsList.find((b) => new Date(b.dataHoraInicio).getTime() >= nowMs) || todayBookingsList[0] || null
 
   return (
     <>

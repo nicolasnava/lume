@@ -211,11 +211,8 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
     setSubmitting(true)
     setErrorMsg(null)
 
-    // Construir data_hora_inicio com precisão no fuso horário do usuário
-    const [year, month, day] = dataStr.split('-').map(Number)
-    const [hour, minute] = horaStr.split(':').map(Number)
-    const localStartDate = new Date(year, month - 1, day, hour, minute, 0)
-    const dataHoraInicioStr = localStartDate.toISOString()
+    // Construir data_hora_inicio estritamente no fuso de Brasília (-03:00) para evitar desvios
+    const dataHoraInicioStr = new Date(`${dataStr}T${horaStr}:00-03:00`).toISOString()
 
     const res = await createBookingAction({
       profissional_id: profissionalId,

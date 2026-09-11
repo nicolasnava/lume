@@ -15,6 +15,7 @@ import {
   Trash2,
   Loader2,
   AlertCircle,
+  Pin,
 } from 'lucide-react'
 
 export interface DisponibilidadeRow {
@@ -368,8 +369,73 @@ export default function AvailabilityManager({
     value: string
   ) => {
     setSchedules((prev) =>
-      prev.map((s) => (s.dia_semana === diaSemana ? { ...s, [field]: value } : s))
+      prev.map((s) => {
+        if (s.dia_semana !== diaSemana) return s
+        const newStart = field === 'hora_inicio' ? value : s.hora_inicio
+        const newEnd = field === 'hora_fim' ? value : s.hora_fim
+        // Se a nova janela de atendimento cortar pausas existentes, ajustar ou remover as inválidas
+        const adjustedPausas = s.pausas
+          .filter((p) => p.pausa_inicio < newEnd && p.pausa_fim > newStart)
+          .map((p) => {
+            let pStart = p.pausa_inicio
+            let pEnd = p.pausa_fim
+            if (pStart < newStart) pStart = newStart
+            if (pEnd > newEnd) pEnd = newEnd
+            return { ...p, pausa_inicio: pStart, pausa_fim: pEnd }
+          })
+          .filter((p) => p.pausa_inicio < p.pausa_fim)
+
+        return {
+          ...s,
+          [field]: value,
+          pausas: adjustedPausas,
+        }
+      })
     )
+  }
+
+  const handlePinPausaToAllDays = (pausa: BreakTime, sourceDiaSemana: number) => {
+    let affectedCount = 0
+    const updated = schedules.map((s) => {
+      if (!s.ativo) return s
+      // Se a pausa estiver fora dos limites do dia ativo, não aplica
+      if (pausa.pausa_inicio <= s.hora_inicio || pausa.pausa_fim >= s.hora_fim) {
+        return s
+      }
+
+      // Checa se já tem exatamente essa pausa
+      const alreadyHas = s.pausas.some(
+        (p) => p.pausa_inicio === pausa.pausa_inicio && p.pausa_fim === pausa.pausa_fim
+      )
+      if (alreadyHas && s.dia_semana !== sourceDiaSemana) return s
+
+      // Remove pausas que conflitam/sobrepõem diretamente com esta pausa
+      const cleanPausas = s.pausas.filter((p) => {
+        return pausa.pausa_fim <= p.pausa_inicio || pausa.pausa_inicio >= p.pausa_fim
+      })
+
+      affectedCount++
+      return {
+        ...s,
+        pausas: [
+          ...cleanPausas,
+          {
+            id: `pausa-pin-${s.dia_semana}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            pausa_inicio: pausa.pausa_inicio,
+            pausa_fim: pausa.pausa_fim,
+          },
+        ].sort((a, b) => a.pausa_inicio.localeCompare(b.pausa_inicio)),
+      }
+    })
+
+    setSchedules(updated)
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+    executeSave(updated)
+    setToast({
+      show: true,
+      message: `Pausa (${pausa.pausa_inicio} às ${pausa.pausa_fim}) fixada e replicada para todos os dias ativos de atendimento!`,
+      type: 'success',
+    })
   }
 
   return (
@@ -536,28 +602,42 @@ export default function AvailabilityManager({
                             key={pausa.id}
                             className="bg-amber-50/60 p-3 rounded-xl border border-amber-200/60 space-y-2 w-full max-w-full"
                           >
-                            {/* Linha 1: Ícone + Horário de pausa à esquerda, Lixeira alinhada à direita */}
+                            {/* Linha 1: Ícone + Horário de pausa à esquerda, Ações (Alfinete + Lixeira) alinhadas à direita */}
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
                                 <Coffee className="h-3.5 w-3.5 text-amber-600 shrink-0" />
                                 <span>Horário de pausa {schedule.pausas.length > 1 ? `#${pIdx + 1}` : ''}:</span>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => handleRemovePausa(dia.dia, pausa.id)}
-                                className="p-1 text-red-600 hover:bg-red-100/70 rounded-lg transition cursor-pointer shrink-0"
-                                title="Remover esta pausa"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handlePinPausaToAllDays(pausa, dia.dia)}
+                                  className="p-1 text-amber-800 hover:text-[#4A3F5C] hover:bg-amber-200/70 rounded-lg transition cursor-pointer shrink-0"
+                                  title="Fixar e replicar este horário de pausa em todos os dias de atendimento ativos"
+                                >
+                                  <Pin className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemovePausa(dia.dia, pausa.id)}
+                                  className="p-1 text-red-600 hover:bg-red-100/70 rounded-lg transition cursor-pointer shrink-0"
+                                  title="Remover esta pausa"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
                             </div>
 
-                            {/* Linha 2: Das [09:00] até [13:00] */}
+                            {/* Linha 2: Das [09:00] até [13:00] filtradas estritamente pela janela de atendimento do dia */}
                             <div className="flex items-center gap-2 text-xs font-medium text-amber-900 flex-wrap sm:flex-nowrap">
                               <span>Das</span>
                               <div className="w-28 shrink-0">
                                 <CustomSelect
-                                  options={TIME_OPTIONS_15MIN}
+                                  options={TIME_OPTIONS_15MIN.filter(
+                                    (opt) =>
+                                      (opt.value > schedule.hora_inicio && opt.value < schedule.hora_fim) ||
+                                      opt.value === pausa.pausa_inicio
+                                  )}
                                   value={pausa.pausa_inicio}
                                   onChange={(val) =>
                                     updatePausaTime(dia.dia, pausa.id, 'pausa_inicio', val)
@@ -569,7 +649,11 @@ export default function AvailabilityManager({
                               <span>até</span>
                               <div className="w-28 shrink-0">
                                 <CustomSelect
-                                  options={TIME_OPTIONS_15MIN}
+                                  options={TIME_OPTIONS_15MIN.filter(
+                                    (opt) =>
+                                      (opt.value > pausa.pausa_inicio && opt.value < schedule.hora_fim) ||
+                                      opt.value === pausa.pausa_fim
+                                  )}
                                   value={pausa.pausa_fim}
                                   onChange={(val) =>
                                     updatePausaTime(dia.dia, pausa.id, 'pausa_fim', val)

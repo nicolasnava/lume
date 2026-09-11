@@ -350,7 +350,7 @@ export default function RelatoriosViewClient({
             </div>
 
             <div>
-              <span className="text-lg sm:text-xl font-bold text-[#4A3F5C] line-clamp-1 block">
+              <span className="text-2xl sm:text-3xl font-black text-[#4A3F5C] tracking-tight line-clamp-1 block">
                 {mesAtual.servicoMaisVendido?.nome || 'Nenhum serviço realizado ainda'}
               </span>
               <p className="text-[11px] text-gray-400 mt-1.5">

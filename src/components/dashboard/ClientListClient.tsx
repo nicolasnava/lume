@@ -128,6 +128,8 @@ export function getClientStatus(agendamentos: ClientData['agendamentos']): {
   }
 }
 
+export type LegendaFilter = 'todas' | 'confiavel' | 'atencao' | 'risco' | 'sem_historico'
+
 export default function ClientListClient({ initialClients }: ClientListClientProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedClient, setSelectedClient] = useState<ClientData | null>(null)
@@ -158,6 +160,9 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
   // Filtro de Última Visita
   const [lastVisitFilter, setLastVisitFilter] = useState<LastVisitFilter>('todas')
 
+  // Filtro por Legenda (Item 8)
+  const [legendaFilter, setLegendaFilter] = useState<LegendaFilter>('todas')
+
   // Estado de Ordenação da listagem
   const [sortOrder, setSortOrder] = useState<SortOrder>('recents')
 
@@ -183,6 +188,11 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
         c.nome.toLowerCase().includes(term) || c.telefone.includes(term)
       if (!matchSearch) return false
 
+      if (legendaFilter !== 'todas') {
+        const rel = calculateClientReliability(c.agendamentos)
+        if (rel.tier !== legendaFilter) return false
+      }
+
       if (lastVisitFilter === 'todas') return true
 
       const validos = c.agendamentos
@@ -207,7 +217,7 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
 
       return true
     })
-  }, [initialClients, searchTerm, lastVisitFilter])
+  }, [initialClients, searchTerm, lastVisitFilter, legendaFilter])
 
   // 2. Item 8: Ordenar lista de clientes conforme selecionado
   const sortedClients = useMemo(() => {
@@ -328,7 +338,7 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
 
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           {/* Filtro de Última Visita */}
-          <div className="w-full sm:w-48">
+          <div className="w-full sm:w-44">
             <CustomSelect
               options={[
                 { value: 'todas', label: 'Todas as visitas' },
@@ -346,7 +356,24 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
             />
           </div>
 
-          {/* Item 8: Dropdown de Ordenação */}
+          {/* Item 8: Filtro por Legenda */}
+          <div className="w-full sm:w-44">
+            <CustomSelect
+              options={[
+                { value: 'todas', label: 'Todas as legendas' },
+                { value: 'confiavel', label: 'Confiável' },
+                { value: 'atencao', label: 'Atenção' },
+                { value: 'risco', label: 'Risco de Falta' },
+                { value: 'sem_historico', label: 'Sem histórico' },
+              ]}
+              value={legendaFilter}
+              onChange={(val) => setLegendaFilter(val as LegendaFilter)}
+              size="sm"
+              buttonClassName="font-bold bg-white"
+            />
+          </div>
+
+          {/* Dropdown de Ordenação */}
           <div className="w-full sm:w-44">
             <CustomSelect
               options={[
@@ -992,11 +1019,13 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
                   {new Date(selectedHistoryBooking.data_hora_inicio).toLocaleTimeString('pt-BR', {
                     hour: '2-digit',
                     minute: '2-digit',
+                    timeZone: 'America/Sao_Paulo',
                   })}{' '}
                   -{' '}
                   {new Date(selectedHistoryBooking.data_hora_fim).toLocaleTimeString('pt-BR', {
                     hour: '2-digit',
                     minute: '2-digit',
+                    timeZone: 'America/Sao_Paulo',
                   })}
                 </span>
               </div>

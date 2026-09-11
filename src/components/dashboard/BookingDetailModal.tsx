@@ -5,9 +5,11 @@ import {
   cancelBookingAction,
   completeBookingAction,
   markNoShowBookingAction,
+  updateBookingStatusAction,
 } from '@/app/actions/booking'
 import Toast from '@/components/ui/Toast'
 import CustomSelect from '@/components/ui/CustomSelect'
+import WhatsAppIcon from '@/components/ui/WhatsAppIcon'
 import { copyToClipboard } from '@/lib/utils/clipboard'
 import { formatPhoneNumber } from '@/lib/utils/phone'
 import {
@@ -18,7 +20,6 @@ import {
   Phone,
   Scissors,
   DollarSign,
-  MessageCircle,
   Loader2,
   CheckCircle,
   XCircle,
@@ -26,6 +27,7 @@ import {
   CreditCard,
   Ban,
   AlertTriangle,
+  Pencil,
 } from 'lucide-react'
 
 export interface BookingDetail {
@@ -120,6 +122,26 @@ export default function BookingDetailModal({
   const [pago, setPago] = useState(true)
   const [observacaoPagamento, setObservacaoPagamento] = useState('')
 
+  // Edição Direta de Status (Item 4)
+  const [currentStatus, setCurrentStatus] = useState<string>(booking?.status || 'confirmado')
+  const [isEditingStatus, setIsEditingStatus] = useState(false)
+  const [savingStatus, setSavingStatus] = useState(false)
+
+  const handleUpdateStatus = async (newStatus: 'confirmado' | 'concluido' | 'cancelado' | 'no_show') => {
+    if (!booking) return
+    setSavingStatus(true)
+    const res = await updateBookingStatusAction(booking.id, newStatus)
+    setSavingStatus(false)
+    if (!res.success) {
+      setToast({ show: true, message: res.message || 'Erro ao alterar status.', type: 'error' })
+    } else {
+      setCurrentStatus(newStatus)
+      setIsEditingStatus(false)
+      setToast({ show: true, message: 'Status atualizado com sucesso!', type: 'success' })
+      onRefresh()
+    }
+  }
+
   // Toast State
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' } | null>(null)
 
@@ -133,16 +155,19 @@ export default function BookingDetailModal({
     day: '2-digit',
     month: 'long',
     year: 'numeric',
+    timeZone: 'America/Sao_Paulo',
   })
 
   const horaInicioStr = inicioDate.toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'America/Sao_Paulo',
   })
 
   const horaFimStr = fimDate.toLocaleTimeString('pt-BR', {
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'America/Sao_Paulo',
   })
 
   const clienteNome = booking.clientes?.nome || 'Cliente sem nome'
@@ -155,7 +180,8 @@ export default function BookingDetailModal({
   const whatsappUrl = cleanPhone
     ? `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(
         `Olá, ${clienteNome}! Tudo bem? Gostaria de falar sobre seu agendamento de ${servicoNome} no dia ${inicioDate.toLocaleDateString(
-          'pt-BR'
+          'pt-BR',
+          { timeZone: 'America/Sao_Paulo' }
         )} às ${horaInicioStr}.`
       )}`
     : null
@@ -288,7 +314,7 @@ export default function BookingDetailModal({
                 className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition cursor-pointer shrink-0"
                 title="Conversar no WhatsApp"
               >
-                <MessageCircle className="h-4 w-4" />
+                <WhatsAppIcon className="h-4 w-4" />
               </a>
             )}
           </div>
@@ -349,28 +375,72 @@ export default function BookingDetailModal({
           </div>
         )}
 
-        {/* 3. Status Atual */}
-        <div className="flex items-center justify-between bg-[#FAF7F5] p-3.5 rounded-xl border border-gray-100">
-          <span className="text-xs font-semibold text-gray-500">Status atual:</span>
-          <span
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
-              booking.status === 'confirmado'
-                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                : booking.status === 'concluido'
-                ? 'bg-purple-100 text-purple-900 border border-purple-200'
-                : booking.status === 'cancelado'
-                ? 'bg-red-100 text-red-800 border border-red-200 line-through'
-                : 'bg-amber-100 text-amber-800 border border-amber-200'
-            }`}
-          >
-            {booking.status === 'confirmado' && <CheckCircle className="h-3.5 w-3.5" />}
-            {booking.status === 'cancelado' && <XCircle className="h-3.5 w-3.5" />}
-            {booking.status === 'concluido' && <Check className="h-3.5 w-3.5" />}
-            {booking.status === 'no_show' && <Ban className="h-3.5 w-3.5" />}
-            <span className="capitalize">
-              {booking.status === 'no_show' ? 'Faltou (No-Show)' : booking.status}
+        {/* 3. Status Atual com botão de edição estilo meta financeira (Item 4) */}
+        <div className="bg-[#FAF7F5] p-3.5 rounded-xl border border-gray-100 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-gray-500">Status atual:</span>
+              <button
+                type="button"
+                onClick={() => setIsEditingStatus((prev) => !prev)}
+                className="p-1 text-gray-400 hover:text-[#4A3F5C] hover:bg-gray-200/60 rounded-lg transition cursor-pointer"
+                title="Editar status atual"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+                currentStatus === 'confirmado'
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                  : currentStatus === 'concluido'
+                  ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                  : currentStatus === 'cancelado'
+                  ? 'bg-red-100 text-red-800 border border-red-200 line-through'
+                  : 'bg-amber-100 text-amber-800 border border-amber-200'
+              }`}
+            >
+              {currentStatus === 'confirmado' && <CheckCircle className="h-3.5 w-3.5" />}
+              {currentStatus === 'cancelado' && <XCircle className="h-3.5 w-3.5" />}
+              {currentStatus === 'concluido' && <Check className="h-3.5 w-3.5" />}
+              {currentStatus === 'no_show' && <Ban className="h-3.5 w-3.5" />}
+              <span className="capitalize">
+                {currentStatus === 'no_show' ? 'Faltou (No-Show)' : currentStatus}
+              </span>
             </span>
-          </span>
+          </div>
+
+          {isEditingStatus && (
+            <div className="pt-2 border-t border-gray-200/60 flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-bold text-[#4A3F5C] block w-full">
+                Alterar status para:
+              </span>
+              {(
+                [
+                  { val: 'confirmado', label: 'Confirmado' },
+                  { val: 'concluido', label: 'Concluído' },
+                  { val: 'cancelado', label: 'Cancelado' },
+                  { val: 'no_show', label: 'Falta (No-Show)' },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.val}
+                  type="button"
+                  disabled={savingStatus}
+                  onClick={() => handleUpdateStatus(opt.val)}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition cursor-pointer disabled:opacity-50 ${
+                    currentStatus === opt.val
+                      ? 'bg-[#4A3F5C] text-white border-[#4A3F5C]'
+                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+              {savingStatus && <Loader2 className="h-3.5 w-3.5 animate-spin text-[#4A3F5C]" />}
+            </div>
+          )}
         </div>
 
         {/* 4. Card de Serviços Selecionados e Valor Total */}
@@ -393,9 +463,21 @@ export default function BookingDetailModal({
                   className="flex items-start justify-between gap-3 pt-2.5 first:pt-0 border-t first:border-0 border-purple-100/60"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs sm:text-sm font-semibold text-[#4A3F5C] leading-snug">
-                      {as.servicos?.nome || 'Serviço'}
-                    </p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-xs sm:text-sm font-semibold text-[#4A3F5C] leading-snug">
+                        {as.servicos?.nome || 'Serviço'}
+                      </p>
+                      {/* Item 5: Ícone/badge no card do serviço desativado */}
+                      {as.servicos?.ativo === false && (
+                        <span
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200"
+                          title="Este serviço foi desativado no catálogo"
+                        >
+                          <AlertTriangle className="h-2.5 w-2.5 text-amber-600 shrink-0" />
+                          <span>Desativado</span>
+                        </span>
+                      )}
+                    </div>
                     <span className="inline-block text-[11px] text-gray-400 font-medium mt-0.5 whitespace-nowrap">
                       {as.duracao_no_momento_minutos || as.servicos?.duracao_minutos || 0} min
                     </span>

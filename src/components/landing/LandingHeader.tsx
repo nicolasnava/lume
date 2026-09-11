@@ -6,7 +6,7 @@ import Image from 'next/image'
 import {
   Sparkles,
   ArrowRight,
-  Star,
+  CreditCard,
   Clock,
   ChevronDown,
   Menu,
@@ -110,7 +110,7 @@ export default function LandingHeader() {
                     onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium text-[#3D2E4D] hover:bg-[#FAF8F5] transition"
                   >
-                    <Star className="h-4 w-4 text-[#8C5383]" />
+                    <CreditCard className="h-4 w-4 text-[#8C5383]" />
                     <div>
                       <span className="font-bold block">Plano e Preços</span>
                       <span className="text-[10px] text-[#6B5E7A]">Conheça os detalhes do plano</span>
