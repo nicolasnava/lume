@@ -69,18 +69,18 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
   return (
     <div className="min-h-screen bg-[#FAF7F5] flex flex-col justify-between selection:bg-[#B8A9D9]/30">
       <div className="flex-1 flex flex-col md:flex-row">
-        {/* Sidebar Desktop (Sem scrollbar) */}
-        <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-white border-r border-gray-200 px-3.5 py-3 justify-between z-30 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-          <div className="space-y-2.5">
-            {/* Logo */}
-            <div className="flex items-center px-1">
+        {/* Sidebar Desktop (Sem scrollbar, adaptável à altura) */}
+        <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-white border-r border-gray-200 px-3.5 py-4 justify-between z-30 overflow-hidden select-none">
+          <div className="flex-1 flex flex-col min-h-0">
+            {/* Logo com respiro visual equilibrado */}
+            <div className="flex items-center px-1 pb-2.5 shrink-0">
               <Image
                 src="/assets/lume_logo.webp"
                 alt="Lumê"
-                width={112}
-                height={32}
+                width={124}
+                height={36}
                 priority
-                className="h-auto w-auto max-h-8 object-contain"
+                className="h-auto w-auto max-h-9 object-contain"
               />
             </div>
 
@@ -88,14 +88,14 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
             {profissional && (
               <div
                 id="tour-public-link-desktop"
-                className="rounded-2xl p-2.5 shadow-2xs border transition-all duration-300"
+                className="rounded-2xl p-3 shadow-2xs border transition-all duration-300 shrink-0 mb-2"
                 style={{
                   backgroundColor: corPrimaria,
                   borderColor: getLightTint(corPrimaria, 40),
                 }}
               >
                 <span
-                  className="text-[9px] font-bold uppercase tracking-wider block mb-0.5 opacity-80"
+                  className="text-[10px] font-bold uppercase tracking-wider block mb-0.5 opacity-85"
                   style={{ color: textColor }}
                 >
                   Sua Página Pública
@@ -106,8 +106,8 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
                   className="inline-flex items-center gap-1.5 text-xs font-bold transition truncate max-w-full hover:opacity-80"
                   style={{ color: textColor }}
                 >
-                  <span className="truncate">/p/{profissional.slug}</span>
-                  <ExternalLink className="h-3 w-3 shrink-0" style={{ color: textColor }} />
+                  <span className="truncate font-black">/p/{profissional.slug}</span>
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0" style={{ color: textColor }} />
                 </Link>
               </div>
             )}
@@ -117,7 +117,7 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
           </div>
 
           {/* Rodapé da Sidebar - Usuário & Logout */}
-          <div className="border-t border-gray-100 pt-2.5 mt-2">
+          <div className="pt-2 shrink-0">
             <div className="flex items-center gap-2.5 px-1">
               <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-[#B8A9D9]/40 bg-gray-100">
                 {profissional?.foto_url ? (

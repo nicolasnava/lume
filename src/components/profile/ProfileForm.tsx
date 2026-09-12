@@ -28,7 +28,9 @@ import {
   Trash2,
   AlertTriangle,
   X,
-  Sparkles,
+  Compass,
+  Share2,
+  Eye,
   LogOut,
   Copy,
   Building2,
@@ -816,7 +818,7 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
               }}
               className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-gray-50 text-gray-700 border border-gray-200/80 text-xs font-bold hover:bg-gray-100 transition cursor-pointer flex items-center justify-center gap-2"
             >
-              <Sparkles className="h-4 w-4 text-gray-500" />
+              <Compass className="h-4 w-4 text-gray-500" />
               <span>Tour geral da plataforma</span>
             </button>
 
@@ -971,7 +973,7 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
           <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-2xs border border-gray-200/80 space-y-4">
             <div>
               <h3 className="text-sm font-bold text-[#4A3F5C] flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-[#B8A9D9]" />
+                <Share2 className="h-4 w-4 text-[#B8A9D9]" />
                 <span>Divulgação & Redes Sociais</span>
               </h3>
               <p className="text-xs text-gray-500 font-medium mt-0.5">
@@ -1224,7 +1226,7 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
             {/* Prévia Vitrine Pública */}
             <div id="profile-tour-preview" className="pt-4 border-t border-gray-100 space-y-2">
               <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                <Eye className="h-3.5 w-3.5 text-[#B8A9D9]" />
                 <span>Prévia da Sua Vitrine Pública com estas Cores</span>
               </label>
               <div

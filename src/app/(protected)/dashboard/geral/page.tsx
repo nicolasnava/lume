@@ -104,13 +104,17 @@ export default async function DashboardGeralPage() {
       : (servicoObj?.duracao_minutos ?? null)
 
     const precoFinal =
-      b.valor_cobrado !== null && b.valor_cobrado !== undefined
+      b.valor_cobrado !== null && b.valor_cobrado !== undefined && Number(b.valor_cobrado) > 0
         ? Number(b.valor_cobrado)
         : hasMultiple
         ? agServicos.reduce((acc, as) => acc + Number(as.preco_no_momento || as.servicos?.preco || 0), 0)
         : servicoObj?.preco !== undefined
         ? Number(servicoObj.preco)
         : null
+
+    const hasDesativado = hasMultiple
+      ? agServicos.some((as) => as.servicos?.ativo === false)
+      : servicoObj?.ativo === false
 
     return {
       id: b.id,
@@ -121,6 +125,7 @@ export default async function DashboardGeralPage() {
       servicoNome: resolvedServicoNome,
       servicoDuracaoMinutos: totalDuracao,
       servicoPreco: precoFinal,
+      temServicoDesativado: Boolean(hasDesativado),
       rawBooking: b as any,
     }
   })

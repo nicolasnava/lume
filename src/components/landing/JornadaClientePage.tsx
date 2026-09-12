@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import {
-  Sparkles,
+  Scissors,
   ArrowRight,
   CheckCircle2,
   Calendar,
@@ -92,7 +92,7 @@ export default function JornadaClientePage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="h-12 w-12 rounded-2xl bg-white border border-[#E8DFD8] flex items-center justify-center text-[#8C5383] shadow-xs">
-                    <Sparkles className="h-6 w-6 text-[#8C5383]" />
+                    <Scissors className="h-6 w-6 text-[#8C5383]" />
                   </div>
                   <span className="text-xs font-extrabold text-[#8C5383] bg-white px-2.5 py-1 rounded-full border border-[#E8DFD8]">
                     02

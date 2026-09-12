@@ -14,9 +14,9 @@ import {
   ChevronUp,
   Phone,
   DollarSign,
-  Sparkles,
   BarChart2,
   ChevronRight,
+  AlertTriangle,
 } from 'lucide-react'
 import NewBookingModal from '@/components/dashboard/NewBookingModal'
 import ProductTourModal from '@/components/dashboard/ProductTourModal'
@@ -31,6 +31,7 @@ export interface GeralBookingItem {
   servicoNome: string
   servicoDuracaoMinutos?: number | null
   servicoPreco?: number | null
+  temServicoDesativado?: boolean
   rawBooking?: any
 }
 
@@ -140,6 +141,11 @@ function TimelineBookingCard({
 
         {/* Serviço */}
         <div className="flex items-center gap-1.5 text-xs text-gray-500">
+          {booking.temServicoDesativado && (
+            <span title="Serviço desativado no catálogo" className="inline-flex shrink-0">
+              <AlertTriangle className="h-3.5 w-3.5 text-rose-600 animate-pulse" />
+            </span>
+          )}
           <span className="truncate text-gray-600 font-medium text-[11px] sm:text-xs">
             {booking.servicoNome}
           </span>

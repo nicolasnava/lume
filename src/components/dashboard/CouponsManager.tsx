@@ -17,7 +17,7 @@ import {
   AlertCircle,
   Loader2,
   X,
-  Sparkles,
+  UserPlus,
 } from 'lucide-react'
 import {
   CupomProfissionalItem,
@@ -420,25 +420,23 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
                     <button
                       type="button"
                       onClick={() => setTipoDesconto('percentual')}
-                      className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center cursor-pointer ${
                         tipoDesconto === 'percentual'
                           ? 'bg-[#4A3F5C] text-white shadow-xs'
                           : 'text-gray-600 hover:text-[#4A3F5C] hover:bg-white/60'
                       }`}
                     >
-                      <Percent className="h-3.5 w-3.5" />
                       <span className="whitespace-nowrap">Porcentagem (%)</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setTipoDesconto('valor_fixo')}
-                      className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center cursor-pointer ${
                         tipoDesconto === 'valor_fixo'
                           ? 'bg-[#4A3F5C] text-white shadow-xs'
                           : 'text-gray-600 hover:text-[#4A3F5C] hover:bg-white/60'
                       }`}
                     >
-                      <DollarSign className="h-3.5 w-3.5" />
                       <span className="whitespace-nowrap">Valor Fixo (R$)</span>
                     </button>
                   </div>
@@ -477,7 +475,7 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
                     {
                       value: 'nunca_agendou',
                       label: 'Apenas novas clientes (1º agendamento)',
-                      icon: <Sparkles className="h-3.5 w-3.5 text-emerald-600" />,
+                      icon: <UserPlus className="h-3.5 w-3.5 text-emerald-600" />,
                     },
                     {
                       value: 'inativa',
@@ -490,9 +488,6 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
                   size="sm"
                   buttonClassName="font-semibold rounded-2xl bg-white border-gray-200"
                 />
-                <p className="text-[11px] text-gray-400 mt-1">
-                  Ao criar cupons segmentados, o sistema sugere o código na tela da cliente.
-                </p>
               </div>
 
               {/* Limite Total e Validade */}

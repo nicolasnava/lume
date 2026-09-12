@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Sparkles, Loader2, ArrowRight } from 'lucide-react'
+import { Users, Loader2, ArrowRight } from 'lucide-react'
 import { selecionarQualquerProfissional } from '@/app/actions/estudio'
 import { getContrastingTextColor } from '@/lib/utils/contrast'
 
@@ -56,7 +56,7 @@ export default function StudioAnyMemberButton({
           </>
         ) : (
           <>
-            <Sparkles className="h-5 w-5 transition-transform group-hover:rotate-12" />
+            <Users className="h-5 w-5 transition-transform group-hover:scale-110" />
             <span>Qualquer profissional disponível</span>
             <ArrowRight className="h-4 w-4 opacity-70 group-hover:translate-x-1 transition-transform" />
           </>

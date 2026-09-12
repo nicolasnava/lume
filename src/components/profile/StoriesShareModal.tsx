@@ -478,10 +478,6 @@ export default function StoriesShareModal({
               <span>Baixar (PNG)</span>
             </button>
           </div>
-
-          <p className="text-[11px] text-gray-400">
-            Dica: no Instagram Stories, adicione a figurinha de link com a sua URL da vitrine!
-          </p>
         </div>
       </div>
     </div>

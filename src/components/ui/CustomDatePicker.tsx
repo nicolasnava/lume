@@ -11,6 +11,8 @@ interface CustomDatePickerProps {
   placeholder?: string
   disabled?: boolean
   className?: string
+  dateFormat?: 'short' | 'full'
+  showAlterarButton?: boolean
 }
 
 const MONTH_NAMES = [
@@ -37,6 +39,8 @@ export default function CustomDatePicker({
   placeholder = 'Selecione uma data...',
   disabled = false,
   className = '',
+  dateFormat = 'full',
+  showAlterarButton = true,
 }: CustomDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -116,12 +120,19 @@ export default function CustomDatePicker({
   let displayLabel = placeholder
   if (value) {
     const selectedDate = new Date(value + 'T12:00:00')
-    const dayOfWeek = WEEKDAY_NAMES[selectedDate.getDay()]
-    const dayNum = selectedDate.getDate()
-    const monthStr = MONTH_NAMES[selectedDate.getMonth()].slice(0, 3)
-    const isToday = value === todayStr
+    if (dateFormat === 'short') {
+      const dayNum = String(selectedDate.getDate()).padStart(2, '0')
+      const monthNum = String(selectedDate.getMonth() + 1).padStart(2, '0')
+      const yearNum = selectedDate.getFullYear()
+      displayLabel = `${dayNum}/${monthNum}/${yearNum}`
+    } else {
+      const dayOfWeek = WEEKDAY_NAMES[selectedDate.getDay()]
+      const dayNum = selectedDate.getDate()
+      const monthStr = MONTH_NAMES[selectedDate.getMonth()].slice(0, 3)
+      const isToday = value === todayStr
 
-    displayLabel = `${dayOfWeek}, ${dayNum} de ${monthStr} ${isToday ? '· Hoje' : ''}`
+      displayLabel = `${dayOfWeek}, ${dayNum} de ${monthStr} ${isToday ? '· Hoje' : ''}`
+    }
   }
 
   return (
@@ -146,9 +157,11 @@ export default function CustomDatePicker({
           <CalendarIcon className="h-4 w-4 text-[#8675A9] shrink-0" />
           <span className="truncate">{displayLabel}</span>
         </div>
-        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider shrink-0">
-          Alterar
-        </span>
+        {showAlterarButton && (
+          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider shrink-0">
+            Alterar
+          </span>
+        )}
       </button>
 
       {/* Modal Centralizado do Calendário Personalizado (Nunca Corta na Tela) */}

@@ -27,7 +27,7 @@ import {
   ArrowLeft,
   Calendar,
   Zap,
-  Sparkles,
+  Package,
   Tag,
 } from 'lucide-react'
 import { ComboItem } from '@/app/actions/combos'
@@ -397,7 +397,7 @@ export default function BookingWizardPageClient({
             <div className="rounded-2xl bg-[#FAF7F5] p-4 text-left border border-gray-100 space-y-2 text-xs font-medium">
               {selectedCombo && (
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-100 text-purple-900 font-bold text-xs mb-1">
-                  <Sparkles className="h-3.5 w-3.5 text-purple-600" />
+                  <Package className="h-3.5 w-3.5 text-purple-600" />
                   <span>Combo Especial: {selectedCombo.nome}</span>
                 </div>
               )}
@@ -482,7 +482,7 @@ export default function BookingWizardPageClient({
                               </h4>
                               {selectedCombo && selectedCombo.servicos.some((cs) => cs.id === servico.id) && (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
-                                  <Sparkles className="h-2.5 w-2.5 text-purple-600" />
+                                  <Package className="h-2.5 w-2.5 text-purple-600" />
                                   <span>Incluso no Combo</span>
                                 </span>
                               )}
@@ -572,7 +572,7 @@ export default function BookingWizardPageClient({
                   <div className="space-y-3 pt-4 border-t border-gray-100">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-bold uppercase tracking-wider text-[#4A3F5C] flex items-center gap-1.5">
-                        <Sparkles className="h-4 w-4 text-[#8675A9]" />
+                        <Package className="h-4 w-4 text-[#8675A9]" />
                         <span>Combos e Pacotes Especiais</span>
                       </h4>
                       <span className="text-[10px] font-bold text-purple-700 bg-purple-100/70 px-2 py-0.5 rounded-full">
@@ -595,7 +595,7 @@ export default function BookingWizardPageClient({
                             <div className="space-y-2">
                               <div className="flex items-center justify-between gap-2">
                                 <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#8675A9] text-white">
-                                  <Sparkles className="h-2.5 w-2.5" />
+                                  <Package className="h-2.5 w-2.5" />
                                   Combo
                                 </span>
                                 {combo.descontoEconomia > 0 && (
@@ -885,7 +885,7 @@ export default function BookingWizardPageClient({
                   <div className="space-y-3 text-xs sm:text-sm font-medium">
                     {selectedCombo && (
                       <div className="flex items-center gap-2 text-xs font-bold text-purple-800 bg-purple-50 px-3 py-2 rounded-xl border border-purple-200">
-                        <Sparkles className="h-4 w-4 text-purple-600 shrink-0" />
+                        <Package className="h-4 w-4 text-purple-600 shrink-0" />
                         <span>Combo: {selectedCombo.nome} (Preço especial aplicado)</span>
                       </div>
                     )}

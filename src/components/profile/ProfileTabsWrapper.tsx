@@ -5,7 +5,7 @@ import ProfileForm from '@/components/profile/ProfileForm'
 import SubscriptionSection from '@/components/profile/SubscriptionSection'
 import { Database } from '@/lib/supabase/database.types'
 import { SubscriptionData } from '@/app/actions/subscription'
-import { User, CreditCard, Sparkles, Store } from 'lucide-react'
+import { User, CreditCard, Clock, Store } from 'lucide-react'
 
 type ProfissionalRow = Database['public']['Tables']['profissionais']['Row']
 
@@ -64,7 +64,7 @@ export default function ProfileTabsWrapper({
 
           {subscriptionData.statusConta === 'trial' && subscriptionData.diasRestantesTrial > 0 && (
             <span className="hidden md:inline-flex items-center gap-1 ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-extrabold bg-amber-100 text-amber-800 shrink-0">
-              <Sparkles className="h-2.5 w-2.5" />
+              <Clock className="h-2.5 w-2.5" />
               <span>Trial ({subscriptionData.diasRestantesTrial}d)</span>
             </span>
           )}

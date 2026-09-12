@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import {
-  Sparkles,
   ArrowRight,
   CheckCircle2,
   Calendar,

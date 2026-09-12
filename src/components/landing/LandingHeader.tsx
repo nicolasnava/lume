@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
-  Sparkles,
+  LayoutGrid,
   ArrowRight,
   CreditCard,
   Clock,
@@ -98,7 +98,7 @@ export default function LandingHeader() {
                     onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium text-[#3D2E4D] hover:bg-[#FAF8F5] transition"
                   >
-                    <Sparkles className="h-4 w-4 text-[#8C5383]" />
+                    <LayoutGrid className="h-4 w-4 text-[#8C5383]" />
                     <div>
                       <span className="font-bold block">Funcionalidades</span>
                       <span className="text-[10px] text-[#6B5E7A]">Vitrine, agenda e Google Sync</span>

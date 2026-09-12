@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getOrCreateProfissional } from '@/lib/profissionais/getOrCreateProfissional'
 import { parseCategorias } from '@/lib/utils/categories'
-import { extrairFotosEspaco, limparBioStudio } from '@/lib/studio/utils'
+import { extrairFotosEspaco, extrairMetadadosStudio, limparBioStudio } from '@/lib/studio/utils'
 
 export interface StudioMember {
   id: string
@@ -35,6 +35,10 @@ export interface StudioData {
   slug: string
   bio: string | null
   foto_capa_url: string | null
+  foto_perfil_url?: string | null
+  instagram?: string | null
+  whatsapp?: string | null
+  endereco?: string | null
   cor_primaria: string
   cor_secundaria: string
   criado_por: string
@@ -88,11 +92,15 @@ export async function obterDadosEstudioUsuario(): Promise<StudioUserStatus | nul
     .maybeSingle()
 
   if (estudioDona) {
-    const fotos = extrairFotosEspaco(estudioDona)
+    const meta = extrairMetadadosStudio(estudioDona)
     const estudio = {
       ...estudioDona,
       bio: limparBioStudio(estudioDona.bio),
-      fotos_espaco: fotos,
+      fotos_espaco: meta.fotos_espaco,
+      foto_perfil_url: meta.foto_perfil_url,
+      instagram: meta.instagram,
+      whatsapp: meta.whatsapp,
+      endereco: meta.endereco,
     } as StudioData
 
     // Verifica se a dona também está vinculada como membro da equipe de atendimento
@@ -147,11 +155,15 @@ export async function obterDadosEstudioUsuario(): Promise<StudioUserStatus | nul
       .maybeSingle()
 
     if (estudioMembro) {
-      const fotos = extrairFotosEspaco(estudioMembro)
+      const meta = extrairMetadadosStudio(estudioMembro)
       const estudio = {
         ...estudioMembro,
         bio: limparBioStudio(estudioMembro.bio),
-        fotos_espaco: fotos,
+        fotos_espaco: meta.fotos_espaco,
+        foto_perfil_url: meta.foto_perfil_url,
+        instagram: meta.instagram,
+        whatsapp: meta.whatsapp,
+        endereco: meta.endereco,
       } as StudioData
 
       // Buscar dados da dona
@@ -289,6 +301,10 @@ export async function atualizarEstudio(dados: {
   slug: string
   bio?: string
   foto_capa_url?: string | null
+  foto_perfil_url?: string | null
+  instagram?: string | null
+  whatsapp?: string | null
+  endereco?: string | null
   cor_primaria?: string
   cor_secundaria?: string
   fotos_espaco?: string[]
@@ -333,12 +349,24 @@ export async function atualizarEstudio(dados: {
   }
 
   const cleanBio = limparBioStudio(dados.bio)
+  const meta = {
+    foto_perfil_url: dados.foto_perfil_url !== undefined ? dados.foto_perfil_url : null,
+    instagram: dados.instagram !== undefined ? dados.instagram : null,
+    whatsapp: dados.whatsapp !== undefined ? dados.whatsapp : null,
+    endereco: dados.endereco !== undefined ? dados.endereco : null,
+    fotos_espaco: dados.fotos_espaco || [],
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const payload: any = {
     nome: dados.nome.trim(),
     slug: cleanSlug,
     bio: cleanBio || null,
     foto_capa_url: dados.foto_capa_url || null,
+    foto_perfil_url: dados.foto_perfil_url || null,
+    instagram: dados.instagram || null,
+    whatsapp: dados.whatsapp || null,
+    endereco: dados.endereco || null,
     cor_primaria: dados.cor_primaria || '#B8A9D9',
     cor_secundaria: dados.cor_secundaria || '#FAF7F5',
   }
@@ -352,11 +380,15 @@ export async function atualizarEstudio(dados: {
     .update(payload)
     .eq('id', dados.id)
 
-  // Fallback resiliente caso a migration ainda não tenha sido rodada no Supabase
-  if (updateError && (updateError.code === '42703' || updateError.message?.includes('fotos_espaco'))) {
+  // Fallback resiliente caso as novas colunas não existam no Supabase
+  if (updateError && (updateError.code === '42703' || updateError.message?.includes('does not exist') || updateError.message?.includes('fotos_espaco'))) {
+    delete payload.foto_perfil_url
+    delete payload.instagram
+    delete payload.whatsapp
+    delete payload.endereco
     delete payload.fotos_espaco
-    const fotosMeta = JSON.stringify(dados.fotos_espaco || [])
-    payload.bio = cleanBio ? `${cleanBio}\n<!--LUME_PHOTOS:${fotosMeta}-->` : `<!--LUME_PHOTOS:${fotosMeta}-->`
+    const studioMetaStr = JSON.stringify(meta)
+    payload.bio = cleanBio ? `${cleanBio}\n<!--LUME_STUDIO_META:${studioMetaStr}-->` : `<!--LUME_STUDIO_META:${studioMetaStr}-->`
     const retry = await adminSupabase.from('estudios').update(payload).eq('id', dados.id)
     updateError = retry.error
   }

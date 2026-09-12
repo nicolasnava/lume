@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import {
-  Sparkles,
+  Eye,
+  Target,
   ArrowRight,
   Heart,
   Zap,
@@ -44,7 +45,7 @@ export default function SobrePage() {
   ]
 
   const especialidades = [
-    { icon: Sparkles, color: 'text-[#8C5383]', bg: 'bg-[#FAF0F5]', title: 'Lash Designers', desc: 'Controle exato de tempo para extensões e manutenção periódica de 15 a 21 dias.' },
+    { icon: Eye, color: 'text-[#8C5383]', bg: 'bg-[#FAF0F5]', title: 'Lash Designers', desc: 'Controle exato de tempo para extensões e manutenção periódica de 15 a 21 dias.' },
     { icon: Palette, color: 'text-[#8C5383]', bg: 'bg-[#FAF0F5]', title: 'Nail Designers & Manicures', desc: 'Catálogo de procedimentos, esmaltação em gel e blindagens sem choques de agenda.' },
     { icon: Smile, color: 'text-[#3D2E4D]', bg: 'bg-[#F5F0FA]', title: 'Designers de Sobrancelhas', desc: 'Agendamentos rápidos de henna, micropigmentação e alinhamentos faciais.' },
     { icon: Scissors, color: 'text-[#8C5383]', bg: 'bg-[#FAF0F5]', title: 'Cabeleireiras & Terapeutas', desc: 'Intervalos calculados para químicas, cortes, escovas e tratamentos profundos.' },
@@ -108,7 +109,7 @@ export default function SobrePage() {
 
           <div className="bg-[#FAF8F5] p-6 sm:p-8 rounded-3xl border border-[#E8DFD8] flex flex-col sm:flex-row items-center gap-6">
             <div className="h-16 w-16 rounded-2xl bg-[#FAF0F5] border border-[#E8DFD8] flex items-center justify-center text-[#8C5383] shrink-0" aria-hidden="true">
-              <Sparkles className="h-7 w-7 text-[#8C5383]" />
+              <Target className="h-7 w-7 text-[#8C5383]" />
             </div>
             <div className="space-y-1 text-center sm:text-left">
               <h3 className="text-base font-bold text-[#3D2E4D]">Nossa Missão</h3>

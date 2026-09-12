@@ -21,7 +21,6 @@ import {
   Star,
   Scissors,
   ChevronLeft,
-  Sparkles,
 } from 'lucide-react'
 
 type ProfissionalRow = Database['public']['Views']['profissionais_publico']['Row']
@@ -103,7 +102,7 @@ export default function PublicShowcaseView({
       {/* Banner de Vitrine Demo (Prompt 62 Parte 3) */}
       {(profissional as any).is_demo && (
         <div className="bg-[#4A3F5C] text-white text-xs py-2 px-4 text-center font-bold border-b border-[#3d334d] flex items-center justify-center gap-1.5 shadow-xs">
-          <Sparkles className="h-3.5 w-3.5 text-amber-300 shrink-0" />
+          <Info className="h-3.5 w-3.5 text-amber-300 shrink-0" />
           <span>Esta é uma vitrine de demonstração oficial do Lumê</span>
         </div>
       )}

@@ -21,7 +21,8 @@ import {
   Loader2,
   Eye,
   EyeOff,
-  Sparkles,
+  Hand,
+  Briefcase,
   MapPin,
   Palette,
   ArrowRight,
@@ -54,10 +55,10 @@ const PRESET_COLORS = [
 // Lista Rica de Especialidades com Ícones e Descrições
 const CATEGORY_ITEMS = [
   { id: 'cilios', label: 'Lash Designer', desc: 'Extensão de cílios e lifting', icon: Eye },
-  { id: 'unhas', label: 'Manicure & Unhas', desc: 'Alongamento em gel, fibra e esmaltação', icon: Sparkles },
+  { id: 'unhas', label: 'Manicure & Unhas', desc: 'Alongamento em gel, fibra e esmaltação', icon: Hand },
   { id: 'sobrancelha', label: 'Sobrancelhas & Micro', desc: 'Design, henna e micropigmentação', icon: Smile },
   { id: 'cabelo', label: 'Hair Stylist', desc: 'Cortes, coloração e tratamentos', icon: Scissors },
-  { id: 'maquiagem', label: 'Maquiadora', desc: 'Maquiagem social, eventos e noivas', icon: Sparkles },
+  { id: 'maquiagem', label: 'Maquiadora', desc: 'Maquiagem social, eventos e noivas', icon: Palette },
   { id: 'estetica', label: 'Esteticista / Pele', desc: 'Limpeza de pele, massagens e corpo', icon: Heart },
   { id: 'outro', label: 'Outra Especialidade', desc: 'Adicionar especialidade personalizada', icon: Plus },
 ]
@@ -493,7 +494,7 @@ function CadastroForm() {
                     : 'bg-gray-100 text-gray-400'
                 }`}
               >
-                {step > 2 ? <Check className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
+                {step > 2 ? <Check className="h-5 w-5" /> : <Briefcase className="h-5 w-5" />}
               </button>
               <span className="mt-1.5 text-[11px] font-bold text-[#4A3F5C] hidden sm:block">Nicho & Contato</span>
             </div>
@@ -1129,7 +1130,7 @@ function CadastroForm() {
               {/* Prévia da Vitrine Pública Elaborada (Cores em Ação - Primária nos Destaques e Secundária no Fundo) */}
               <div className="space-y-2 pt-1">
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                  <Eye className="h-3.5 w-3.5 text-[#B8A9D9]" />
                   <span>Prévia da Sua Página Pública (Cores em Ação)</span>
                 </label>
 

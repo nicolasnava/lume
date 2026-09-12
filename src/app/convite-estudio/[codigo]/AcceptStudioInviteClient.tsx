@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Building2, Sparkles, Check, AlertTriangle, Loader2, ArrowRight } from 'lucide-react'
+import { Building2, Info, Check, AlertTriangle, Loader2, ArrowRight } from 'lucide-react'
 import { aceitarConviteLink } from '@/app/actions/estudio'
 
 interface AcceptStudioInviteClientProps {
@@ -111,7 +111,7 @@ export default function AcceptStudioInviteClient({
         {!usuarioLogado && (
           <div className="space-y-3 pt-2">
             <div className="p-4 rounded-2xl bg-purple-50/70 border border-purple-200/80 text-center space-y-1">
-              <Sparkles className="h-5 w-5 text-purple-700 mx-auto mb-1" />
+              <Info className="h-5 w-5 text-purple-700 mx-auto mb-1" />
               <strong className="text-xs text-purple-900 block font-bold">
                 Você precisa ter uma conta no Lumê
               </strong>

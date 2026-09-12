@@ -12,10 +12,45 @@ export function PixIcon({ className = 'h-4 w-4' }: { className?: string }) {
     <svg
       className={className}
       viewBox="0 0 512 512"
-      fill="currentColor"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path d="M112.5 107.8L211.7 207c24.6 24.6 64.4 24.6 89 0l98.8-98.8c12.2-12.2 32.1-12.2 44.3 0l38.2 38.2c12.2 12.2 12.2 32.1 0 44.3L383.2 290c-24.6 24.6-24.6 64.4 0 89l98.8 98.8c12.2 12.2 12.2 32.1 0 44.3l-38.2 38.2c-12.2 12.2-32.1 12.2-44.3 0L300.7 361.5c-24.6-24.6-64.4-24.6-89 0l-98.8 98.8c-12.2 12.2-32.1 12.2-44.3 0l-38.2-38.2c-12.2-12.2-12.2-32.1 0-44.3L129.2 279c24.6-24.6 24.6-64.4 0-89L30.4 91.2c-12.2-12.2-12.2-32.1 0-44.3l38.2-38.2c12.2-12.2 32.1-12.2 43.9.1z" />
+      <rect
+        x="86"
+        y="86"
+        width="340"
+        height="340"
+        rx="72"
+        transform="rotate(45 256 256)"
+        fill="#32BCAD"
+      />
+      <path
+        d="M 130 148 C 196 204, 226 240, 256 242 C 286 240, 316 204, 382 148"
+        stroke="white"
+        strokeWidth="20"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <path
+        d="M 130 364 C 196 308, 226 272, 256 270 C 286 272, 316 308, 382 364"
+        stroke="white"
+        strokeWidth="20"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <path
+        d="M 148 130 C 204 196, 240 226, 242 256 C 240 286, 204 316, 148 382"
+        stroke="white"
+        strokeWidth="20"
+        strokeLinecap="round"
+        fill="none"
+      />
+      <path
+        d="M 364 130 C 308 196, 272 226, 270 256 C 272 286, 308 316, 364 382"
+        stroke="white"
+        strokeWidth="20"
+        strokeLinecap="round"
+        fill="none"
+      />
     </svg>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { FileCheck, Sparkles, AlertCircle, CreditCard, Shield } from 'lucide-react'
+import { FileCheck, AlertCircle, CreditCard, Shield } from 'lucide-react'
 import LandingHeader from './LandingHeader'
 import LandingFooter from './LandingFooter'
 
@@ -32,7 +32,7 @@ export default function TermosPage() {
             
             <section className="space-y-3">
               <h2 className="text-xl font-bold text-[#3D2E4D] flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-[#8C5383]" />
+                <FileCheck className="h-5 w-5 text-[#8C5383]" />
                 <span>1. Aceitação dos Termos</span>
               </h2>
               <p>

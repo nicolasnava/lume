@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Bell, BellOff, CheckCircle2, AlertCircle, Loader2, Send } from 'lucide-react'
+import { Bell, BellOff, CheckCircle2, AlertCircle, Loader2, Send, Check, X } from 'lucide-react'
 import {
   savePushSubscriptionAction,
   deletePushSubscriptionAction,
@@ -230,103 +230,119 @@ export default function PushNotificationToggle() {
 
   return (
     <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-2xs border border-gray-200/80 space-y-4">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-2 flex-1">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-50 text-[#4A3F5C] shrink-0">
-              <Bell className="h-4 w-4" />
-            </div>
-            <h3 className="text-sm font-bold text-[#4A3F5C]">
-              Notificações Push no Dispositivo
-            </h3>
-
-            {/* Item 13: Botão toggle de ativado/desativado verde e vermelho (sem badge de ativo) */}
-            <button
-              type="button"
-              onClick={isSubscribed ? handleUnsubscribe : handleSubscribe}
-              disabled={loading || permission === 'denied'}
-              className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer border shadow-2xs disabled:opacity-50 ${
-                isSubscribed
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                  : 'bg-rose-50 text-rose-800 border-rose-300 hover:bg-rose-100'
-              }`}
-            >
-              <div
-                className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors ${
-                  isSubscribed ? 'bg-emerald-600' : 'bg-rose-500'
-                }`}
-              >
-                <span
-                  className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform shadow-xs ${
-                    isSubscribed ? 'translate-x-3.5' : 'translate-x-0.5'
-                  }`}
-                />
-              </div>
-              <span>{isSubscribed ? 'Ativado' : 'Desativado'}</span>
-              {loading && <Loader2 className="h-3 w-3 animate-spin text-current ml-1" />}
-            </button>
-          </div>
-
-          <p className="text-xs text-gray-500 font-medium">
-            Receba alertas instantâneos no seu celular ou computador quando clientes agendarem, remarcarem ou cancelarem.
+      {/* 1. Ícone, Título e Subtítulo (estilo Aplicativo Lumê no Celular) */}
+      <div className="flex items-center gap-3">
+        <div className="h-9 w-9 rounded-2xl bg-[#FAF0F5] text-[#8C5383] flex items-center justify-center shrink-0">
+          <Bell className="h-5 w-5" />
+        </div>
+        <div>
+          <h3 className="text-base font-bold text-[#3D2E4D]">
+            Notificações Push no Dispositivo
+          </h3>
+          <p className="text-[11px] text-[#6B5E7A]">
+            Alertas instantâneos no seu celular e computador
           </p>
         </div>
-
-        {/* Item 14: Apenas um ícone na extremidade direita para testar mensagem, na ponta oposta */}
-        {isSubscribed && (
-          <button
-            type="button"
-            onClick={handleTestPush}
-            disabled={testing}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-purple-200 bg-purple-50/70 text-[#4A3F5C] hover:bg-purple-100 transition cursor-pointer shadow-2xs shrink-0 disabled:opacity-50"
-            title="Enviar mensagem de teste de notificação"
-          >
-            {testing ? (
-              <Loader2 className="h-4 w-4 animate-spin text-[#4A3F5C]" />
-            ) : (
-              <Send className="h-4 w-4 text-[#4A3F5C]" />
-            )}
-          </button>
-        )}
       </div>
 
-      {/* Item 12: Notificações Push Personalizadas */}
+      {/* 2. Botão de uma extremidade a outra (estilo cupom porcentagem / dinheiro) */}
+      <div className="grid grid-cols-2 gap-1.5 bg-[#FAF7F5] p-1 rounded-2xl border border-gray-200/80 w-full">
+        <button
+          type="button"
+          onClick={!isSubscribed ? handleSubscribe : undefined}
+          disabled={loading || permission === 'denied'}
+          className={`py-2 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 ${
+            isSubscribed
+              ? 'bg-[#4A3F5C] text-white shadow-xs'
+              : 'text-gray-600 hover:text-[#4A3F5C] hover:bg-white/60'
+          }`}
+        >
+          {loading && !isSubscribed ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Check className="h-3.5 w-3.5" />
+          )}
+          <span>Ativado</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={isSubscribed ? handleUnsubscribe : undefined}
+          disabled={loading}
+          className={`py-2 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 ${
+            !isSubscribed
+              ? 'bg-[#4A3F5C] text-white shadow-xs'
+              : 'text-gray-600 hover:text-[#4A3F5C] hover:bg-white/60'
+          }`}
+        >
+          {loading && isSubscribed ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <X className="h-3.5 w-3.5" />
+          )}
+          <span>Desativado</span>
+        </button>
+      </div>
+
+      {/* 3. Linha ultra fina e descrição */}
+      <div className="border-t border-gray-100" />
+      <p className="text-xs text-[#6B5E7A] leading-relaxed font-medium">
+        Receba alertas instantâneos no seu celular ou computador quando clientes agendarem, remarcarem ou cancelarem, garantindo agilidade e pontualidade no seu atendimento.
+      </p>
+
+      {/* 4. Quando ativado: Personalizar Alertas (sem fundo nos badges) e Botão Enviar Mensagem */}
       {isSubscribed && (
-        <div className="pt-3 border-t border-gray-100 space-y-2.5">
+        <div className="pt-2 border-t border-gray-100 space-y-3">
           <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">
             Personalizar Alertas
           </span>
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-            <label className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#FAF7F5] border border-gray-200/70 cursor-pointer hover:bg-purple-50/40 transition">
+            <label className="flex items-center gap-2 cursor-pointer py-1 hover:opacity-80 transition">
               <input
                 type="checkbox"
                 checked={prefNovos}
                 onChange={() => handleTogglePref('novos')}
-                className="rounded text-[#4A3F5C] focus:ring-[#B8A9D9] h-3.5 w-3.5 cursor-pointer"
+                className="rounded text-[#4A3F5C] focus:ring-[#B8A9D9] h-4 w-4 cursor-pointer"
               />
               <span className="font-semibold text-[#4A3F5C]">Novos Agendamentos</span>
             </label>
 
-            <label className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#FAF7F5] border border-gray-200/70 cursor-pointer hover:bg-purple-50/40 transition">
+            <label className="flex items-center gap-2 cursor-pointer py-1 hover:opacity-80 transition">
               <input
                 type="checkbox"
                 checked={prefCancel}
                 onChange={() => handleTogglePref('cancel')}
-                className="rounded text-[#4A3F5C] focus:ring-[#B8A9D9] h-3.5 w-3.5 cursor-pointer"
+                className="rounded text-[#4A3F5C] focus:ring-[#B8A9D9] h-4 w-4 cursor-pointer"
               />
               <span className="font-semibold text-[#4A3F5C]">Remarcações & Cancelamentos</span>
             </label>
 
-            <label className="flex items-center gap-2 p-2.5 rounded-2xl bg-[#FAF7F5] border border-gray-200/70 cursor-pointer hover:bg-purple-50/40 transition">
+            <label className="flex items-center gap-2 cursor-pointer py-1 hover:opacity-80 transition">
               <input
                 type="checkbox"
                 checked={prefLembretes}
                 onChange={() => handleTogglePref('lembretes')}
-                className="rounded text-[#4A3F5C] focus:ring-[#B8A9D9] h-3.5 w-3.5 cursor-pointer"
+                className="rounded text-[#4A3F5C] focus:ring-[#B8A9D9] h-4 w-4 cursor-pointer"
               />
               <span className="font-semibold text-[#4A3F5C]">Lembretes de Atendimento</span>
             </label>
           </div>
+
+          {/* Botão de uma extremidade a outra com Enviar mensagem e o ícone */}
+          <button
+            type="button"
+            onClick={handleTestPush}
+            disabled={testing}
+            className="w-full py-3 px-4 rounded-2xl bg-[#8C5383] hover:bg-[#784370] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer disabled:opacity-50 mt-1"
+          >
+            {testing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+            <span>Enviar mensagem de teste</span>
+          </button>
         </div>
       )}
 

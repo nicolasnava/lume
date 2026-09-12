@@ -20,7 +20,9 @@ import {
   ExternalLink,
   Plus,
   Loader2,
-  Sparkles,
+  Eye,
+  Info,
+  CheckCircle2,
   LogOut,
   Upload,
   Clock,
@@ -30,6 +32,9 @@ import {
   Store,
   Crown,
   User,
+  Instagram,
+  MapPin,
+  Phone,
 } from 'lucide-react'
 import {
   StudioUserStatus,
@@ -197,7 +202,7 @@ function CreateStudioSection({ defaultSlug }: { defaultSlug: string }) {
       {/* Formulário de Criação */}
       <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs">
         <h2 className="text-lg font-bold text-[#4A3F5C] mb-6 flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-[#B8A9D9]" />
+          <Building2 className="h-5 w-5 text-[#B8A9D9]" />
           <span>Informações do seu Studio</span>
         </h2>
 
@@ -363,7 +368,7 @@ function CreateStudioSection({ defaultSlug }: { defaultSlug: string }) {
           <div className="space-y-2 pt-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                <Eye className="h-3.5 w-3.5 text-[#B8A9D9]" />
                 <span>Prévia da Vitrine com suas Cores</span>
               </label>
             </div>
@@ -598,7 +603,7 @@ function MemberStudioSection({
       {/* Card Informativo sobre a Vitrine */}
       <div className="rounded-3xl bg-purple-50/50 border border-purple-200/70 p-6 space-y-3">
         <h3 className="text-sm font-bold text-purple-900 flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-purple-700" />
+          <Info className="h-4 w-4 text-purple-700" />
           <span>Como funciona sua página pública</span>
         </h3>
         <p className="text-xs text-purple-800/80 leading-relaxed">
@@ -676,11 +681,16 @@ function OwnerStudioSection({
   const [slug, setSlug] = useState(estudio.slug)
   const [bio, setBio] = useState(estudio.bio || '')
   const [fotoCapaUrl, setFotoCapaUrl] = useState(estudio.foto_capa_url || '')
+  const [fotoPerfilUrl, setFotoPerfilUrl] = useState(estudio.foto_perfil_url || '')
+  const [instagram, setInstagram] = useState(estudio.instagram || '')
+  const [whatsapp, setWhatsapp] = useState(estudio.whatsapp || '')
+  const [endereco, setEndereco] = useState(estudio.endereco || '')
   const [corPrimaria, setCorPrimaria] = useState(estudio.cor_primaria || '#B8A9D9')
   const [corSecundaria, setCorSecundaria] = useState(estudio.cor_secundaria || '#FAF7F5')
   const [ownerColorModalTarget, setOwnerColorModalTarget] = useState<'primaria' | 'secundaria' | null>(null)
   const [fotosEspaco, setFotosEspaco] = useState<string[]>(estudio.fotos_espaco || [])
   const [isUploadingEspaco, setIsUploadingEspaco] = useState(false)
+  const [isUploadingPerfil, setIsUploadingPerfil] = useState(false)
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [isUploadingEdit, setIsUploadingEdit] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
@@ -699,6 +709,10 @@ function OwnerStudioSection({
     cor_secundaria?: string
     fotos_espaco?: string[]
     foto_capa_url?: string | null
+    foto_perfil_url?: string | null
+    instagram?: string | null
+    whatsapp?: string | null
+    endereco?: string | null
   }) => {
     try {
       await atualizarEstudio({
@@ -707,6 +721,10 @@ function OwnerStudioSection({
         slug,
         bio,
         foto_capa_url: updatedFields.foto_capa_url !== undefined ? updatedFields.foto_capa_url : fotoCapaUrl,
+        foto_perfil_url: updatedFields.foto_perfil_url !== undefined ? updatedFields.foto_perfil_url : fotoPerfilUrl,
+        instagram: updatedFields.instagram !== undefined ? updatedFields.instagram : instagram,
+        whatsapp: updatedFields.whatsapp !== undefined ? updatedFields.whatsapp : whatsapp,
+        endereco: updatedFields.endereco !== undefined ? updatedFields.endereco : endereco,
         cor_primaria: updatedFields.cor_primaria ?? corPrimaria,
         cor_secundaria: updatedFields.cor_secundaria ?? corSecundaria,
         fotos_espaco: updatedFields.fotos_espaco ?? fotosEspaco,
@@ -716,6 +734,33 @@ function OwnerStudioSection({
       router.refresh()
     } catch (err) {
       console.error('Erro no auto-save da vitrine:', err)
+    }
+  }
+
+  const handleUploadFotoPerfil = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsUploadingPerfil(true)
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Usuário não autenticado.')
+
+      const ext = file.name.split('.').pop() || 'jpg'
+      const filePath = `${user.id}/estudio-perfil-${Date.now()}.${ext}`
+      await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true })
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath)
+      setFotoPerfilUrl(data.publicUrl)
+      await handleAutoSaveVitrine({ foto_perfil_url: data.publicUrl })
+    } catch (err) {
+      console.error('Erro ao enviar foto de perfil do studio:', err)
+      alert('Erro ao enviar imagem de perfil.')
+    } finally {
+      setIsUploadingPerfil(false)
     }
   }
 
@@ -962,6 +1007,10 @@ function OwnerStudioSection({
         slug,
         bio,
         foto_capa_url: fotoCapaUrl,
+        foto_perfil_url: fotoPerfilUrl,
+        instagram: instagram.trim() ? (instagram.startsWith('@') ? instagram : `@${instagram}`) : null,
+        whatsapp: whatsapp.trim() || null,
+        endereco: endereco.trim() || null,
         cor_primaria: corPrimaria,
         cor_secundaria: corSecundaria,
         fotos_espaco: fotosEspaco,
@@ -1120,13 +1169,13 @@ function OwnerStudioSection({
           {/* Dados Principais do Studio */}
           <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-6">
             <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-50 text-[#4A3F5C] border border-[#B8A9D9]/30">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#B8A9D9]/20 text-[#4A3F5C] border border-[#B8A9D9]/30">
                 <Building2 className="h-5 w-5" />
               </div>
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-[#4A3F5C]">Informações do Studio</h2>
                 <p className="text-xs text-gray-500">
-                  Personalize o nome, link e apresentação do seu studio
+                  Personalize o nome, link, redes e apresentação do seu studio
                 </p>
               </div>
             </div>
@@ -1163,6 +1212,54 @@ function OwnerStudioSection({
                       className="w-full bg-transparent px-1 outline-hidden font-bold text-gray-900 text-sm font-mono"
                     />
                   </div>
+                </div>
+
+                {/* Instagram do Studio (Item 18) */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                    <Instagram className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                    <span>Instagram do Studio</span>
+                  </label>
+                  <div className="flex items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs text-gray-500 focus-within:border-[#4A3F5C] focus-within:ring-1 focus-within:ring-[#4A3F5C] focus-within:bg-white">
+                    <span className="shrink-0 font-semibold text-gray-400">@</span>
+                    <input
+                      type="text"
+                      value={instagram}
+                      onChange={(e) => setInstagram(e.target.value.replace(/^@/, ''))}
+                      placeholder="seustudio"
+                      className="w-full bg-transparent px-1 outline-hidden font-semibold text-gray-900 text-xs"
+                    />
+                  </div>
+                </div>
+
+                {/* WhatsApp do Studio (Item 18) */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                    <Phone className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                    <span>WhatsApp do Studio</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={whatsapp}
+                    onChange={(e) => setWhatsapp(e.target.value)}
+                    placeholder="(11) 99999-9999"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:border-[#4A3F5C] focus:ring-1 focus:ring-[#4A3F5C] outline-hidden text-xs font-semibold text-[#4A3F5C]"
+                  />
+                </div>
+
+                {/* Endereço / Localização do Studio (Item 18) */}
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                    <span>Endereço / Localização do Studio</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={endereco}
+                    onChange={(e) => setEndereco(e.target.value)}
+                    placeholder="Ex: Av. Paulista, 1000 - Sala 42, Bela Vista, São Paulo - SP"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:border-[#4A3F5C] focus:ring-1 focus:ring-[#4A3F5C] outline-hidden text-xs font-semibold text-[#4A3F5C]"
+                  />
                 </div>
               </div>
 
@@ -1588,11 +1685,61 @@ function OwnerStudioSection({
             </div>
 
             <form onSubmit={handleSaveEdit} className="space-y-6">
-              {/* Foto de Capa */}
+              {/* Foto de Perfil / Logo do Studio (Item 16) */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-700 block">
+                  Foto de Perfil / Logo do Studio
+                </label>
+
+                <div className="flex items-center gap-4">
+                  {fotoPerfilUrl ? (
+                    <div className="relative h-20 w-20 rounded-2xl overflow-hidden border-2 border-[#B8A9D9] shadow-xs shrink-0">
+                      <Image src={fotoPerfilUrl} alt="Logo" fill className="object-cover" />
+                    </div>
+                  ) : (
+                    <div className="h-20 w-20 rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 text-xs bg-gray-50 shrink-0">
+                      <Building2 className="h-7 w-7 text-gray-300" />
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2">
+                    <label className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-bold text-gray-700 transition cursor-pointer">
+                      {isUploadingPerfil ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Upload className="h-3.5 w-3.5" />
+                      )}
+                      <span>{fotoPerfilUrl ? 'Alterar Imagem' : 'Enviar Imagem'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={isUploadingPerfil}
+                        onChange={handleUploadFotoPerfil}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {fotoPerfilUrl && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setFotoPerfilUrl('')
+                          await handleAutoSaveVitrine({ foto_perfil_url: null })
+                        }}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-xl transition cursor-pointer"
+                        title="Remover foto de perfil"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Foto de Capa (Item 17: sem recomendação de tamanho) */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-gray-700 block">Foto de Capa do Studio</label>
-                  <span className="text-[11px] text-gray-400">Recomendado: 1200x400 (paisagem)</span>
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -1851,7 +1998,7 @@ function OwnerStudioSection({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <div>
                     <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-[#B8A9D9]" />
+                      <Camera className="h-4 w-4 text-[#B8A9D9]" />
                       <span>Nosso Espaço (Fotos do Ambiente)</span>
                     </h3>
                     <p className="text-[11px] text-gray-500 mt-0.5">
@@ -1918,7 +2065,7 @@ function OwnerStudioSection({
                   </span>
                 ) : (
                   <span className="text-[11px] text-gray-400 font-medium flex items-center gap-1">
-                    <Sparkles className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-[#B8A9D9]" />
                     <span>Fotos e cores são salvas automaticamente</span>
                   </span>
                 )}

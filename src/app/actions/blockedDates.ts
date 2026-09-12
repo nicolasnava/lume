@@ -156,3 +156,105 @@ export async function removeBlockDateAction(
     return { success: false, message: 'Erro inesperado ao remover bloqueio.' }
   }
 }
+
+/**
+ * Item 21: Bloquear todo e qualquer agendamento (Bloqueio Geral da Agenda)
+ */
+export async function toggleLockAgendaAction(
+  locked: boolean
+): Promise<{ success: boolean; message?: string; isLocked: boolean }> {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, message: 'Usuário não autenticado.', isLocked: !locked }
+    }
+
+    const adminSupabase = createAdminClient()
+
+    if (locked) {
+      // Remove bloqueio geral prévio para evitar erro de duplicidade
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (adminSupabase.from('bloqueios_disponibilidade') as any)
+        .delete()
+        .eq('profissional_id', user.id)
+        .eq('motivo', 'Bloqueio Geral da Agenda')
+
+      // Insere bloqueio geral que cobre todo o calendário
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (adminSupabase.from('bloqueios_disponibilidade') as any)
+        .insert([
+          {
+            profissional_id: user.id,
+            data: '2020-01-01',
+            data_fim: '2099-12-31',
+            hora_inicio: null,
+            hora_fim: null,
+            motivo: 'Bloqueio Geral da Agenda',
+          },
+        ])
+
+      if (error) {
+        console.error('[toggleLockAgendaAction] Erro ao bloquear agenda:', error)
+        return { success: false, message: 'Erro ao bloquear a agenda.', isLocked: false }
+      }
+    } else {
+      // Desbloqueia excluindo o registro de bloqueio geral
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (adminSupabase.from('bloqueios_disponibilidade') as any)
+        .delete()
+        .eq('profissional_id', user.id)
+        .eq('motivo', 'Bloqueio Geral da Agenda')
+
+      if (error) {
+        console.error('[toggleLockAgendaAction] Erro ao desbloquear agenda:', error)
+        return { success: false, message: 'Erro ao desbloquear a agenda.', isLocked: true }
+      }
+    }
+
+    revalidatePath('/dashboard/disponibilidade')
+    revalidatePath('/p/[slug]/agendar')
+
+    return {
+      success: true,
+      message: locked ? 'Agenda bloqueada para novos agendamentos.' : 'Agenda desbloqueada com sucesso!',
+      isLocked: locked,
+    }
+  } catch (err) {
+    console.error('[toggleLockAgendaAction] Exceção:', err)
+    return { success: false, message: 'Erro inesperado ao alterar bloqueio da agenda.', isLocked: !locked }
+  }
+}
+
+export async function checkIsAgendaLockedAction(profissionalIdParam?: string): Promise<boolean> {
+  try {
+    let targetProfId = profissionalIdParam
+
+    if (!targetProfId) {
+      const supabase = await createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) return false
+      targetProfId = user.id
+    }
+
+    const adminSupabase = createAdminClient()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (adminSupabase.from('bloqueios_disponibilidade') as any)
+      .select('id')
+      .eq('profissional_id', targetProfId)
+      .eq('motivo', 'Bloqueio Geral da Agenda')
+      .limit(1)
+
+    if (error || !data || data.length === 0) return false
+    return true
+  } catch {
+    return false
+  }
+}
+

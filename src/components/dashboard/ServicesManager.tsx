@@ -26,12 +26,13 @@ import {
   Camera,
   AlertTriangle,
   CheckCircle2,
-  Sparkles,
   Tag,
   Check,
   Package,
   Layers,
   ChevronDown,
+  User,
+  Phone,
 } from 'lucide-react'
 import {
   ComboItem,
@@ -41,6 +42,16 @@ import {
   toggleComboStatusAction,
   getCombosProfissionalAction,
 } from '@/app/actions/combos'
+
+export interface ServicePendingBooking {
+  id: string
+  data_hora_inicio: string
+  data_hora_fim: string
+  status: string
+  cliente_nome?: string
+  cliente_telefone?: string
+  valor_cobrado?: number | null
+}
 
 export interface ServiceRow {
   id: string
@@ -53,6 +64,7 @@ export interface ServiceRow {
   intervalo_manutencao_dias: number | null
   ativo?: boolean | null
   pending_bookings_count?: number
+  pending_bookings?: ServicePendingBooking[]
   created_at: string
 }
 
@@ -80,6 +92,7 @@ export default function ServicesManager({ initialServices, initialCombos, profis
 
   const [showModal, setShowModal] = useState(false)
   const [editingService, setEditingService] = useState<ServiceRow | null>(null)
+  const [selectedServiceForBookings, setSelectedServiceForBookings] = useState<ServiceRow | null>(null)
 
   // Form State
   const [nome, setNome] = useState('')
@@ -766,19 +779,19 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                       </p>
                     )}
 
-                    {/* Duração e Preço */}
+                    {/* Duração e Preço (Item 11: sem fundo, harmonizados) */}
                     <div className="flex items-center justify-between text-xs font-semibold pt-2 border-t border-gray-100 mt-2">
-                      <div className="flex items-center gap-1.5 text-[#4A3F5C]/80 bg-gray-50 px-2.5 py-1 rounded-xl border border-gray-200/60">
+                      <div className="flex items-center gap-1.5 text-[#4A3F5C]/80">
                         <Clock className="h-3.5 w-3.5 text-[#B8A9D9]" />
                         <span>{s.duracao_minutos} min</span>
                       </div>
-                      <div className="flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-100">
+                      <div className="flex items-center gap-1 font-bold text-emerald-700">
                         <span>R$ {Number(s.preco).toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Intervalo de Manutenção (Item 7) e Alertas */}
+                  {/* Intervalo de Manutenção e Alertas */}
                   {(s.intervalo_manutencao_dias || !isAtivo) && (
                     <div className="flex flex-col justify-center mt-2 space-y-2">
                       {s.intervalo_manutencao_dias ? (
@@ -788,20 +801,34 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                         </div>
                       ) : null}
 
-                      {/* Alerta de Serviço Desativado com Atendimentos Pendentes */}
+                      {/* Alerta de Serviço Desativado com Atendimentos Pendentes (Item 12: Clicável) */}
                       {!isAtivo && (
-                        <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs font-semibold">
-                          <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-                          <span>
-                            {s.pending_bookings_count && s.pending_bookings_count > 0
-                              ? `Desativado para novas clientes · Possui ${s.pending_bookings_count} ${
-                                  s.pending_bookings_count === 1
-                                    ? 'atendimento agendado'
-                                    : 'atendimentos agendados'
-                                }`
-                              : 'Desativado para novas clientes'}
-                          </span>
-                        </div>
+                        s.pending_bookings_count && s.pending_bookings_count > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedServiceForBookings(s)}
+                            className="w-full flex items-center justify-between gap-2 p-2.5 rounded-2xl bg-amber-50/90 hover:bg-amber-100 border border-amber-200/80 text-amber-900 text-xs font-semibold transition cursor-pointer text-left shadow-2xs group"
+                            title="Clique para ver os atendimentos agendados deste serviço"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                              <span className="line-clamp-1">
+                                Possui {s.pending_bookings_count}{' '}
+                                {s.pending_bookings_count === 1
+                                  ? 'atendimento agendado'
+                                  : 'atendimentos agendados'}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-bold text-amber-800 bg-amber-200/70 px-2 py-0.5 rounded-lg shrink-0 group-hover:bg-amber-300 transition">
+                              Ver detalhes
+                            </span>
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-2 p-2.5 rounded-2xl bg-gray-50 border border-gray-200 text-gray-600 text-xs font-semibold">
+                            <AlertTriangle className="h-4 w-4 text-gray-400 shrink-0" />
+                            <span>Desativado para novas clientes</span>
+                          </div>
+                        )
                       )}
                     </div>
                   )}
@@ -874,7 +901,7 @@ export default function ServicesManager({ initialServices, initialCombos, profis
               className="w-full py-3.5 rounded-2xl bg-[#4A3F5C] text-xs font-semibold text-white shadow-xs hover:bg-[#393047] transition cursor-pointer flex items-center justify-center gap-2"
             >
               <Plus className="h-4 w-4 text-[#B8A9D9]" />
-              <span>Cadastrar novo pacote</span>
+              <span>Cadastrar Novo Pacote</span>
             </button>
           </div>
 
@@ -946,13 +973,13 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                           </p>
                         )}
 
-                        {/* Duração e Preço (Padronizado como no card de serviços) */}
+                        {/* Duração e Preço (Item 11: sem fundo, harmonizados) */}
                         <div className="flex items-center justify-between text-xs font-semibold pt-2 border-t border-gray-100 mt-2">
-                          <div className="flex items-center gap-1.5 text-[#4A3F5C]/80 bg-gray-50 px-2.5 py-1 rounded-xl border border-gray-200/60">
+                          <div className="flex items-center gap-1.5 text-[#4A3F5C]/80">
                             <Clock className="h-3.5 w-3.5 text-[#B8A9D9]" />
                             <span>{combo.duracaoTotalMinutos} min total</span>
                           </div>
-                          <div className="flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-100">
+                          <div className="flex items-center gap-1 font-bold text-emerald-700">
                             {combo.precoOriginalTotal > combo.preco_combo && (
                               <span className="text-[10px] text-gray-400 line-through mr-1 font-normal">
                                 R$ {combo.precoOriginalTotal.toFixed(2)}
@@ -1695,6 +1722,97 @@ export default function ServicesManager({ initialServices, initialCombos, profis
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Agendamentos do Serviço Desativado (Item 12) */}
+      {selectedServiceForBookings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4 relative max-h-[85vh] overflow-y-auto border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-800 border border-amber-200 shrink-0">
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#4A3F5C]">
+                    Atendimentos Agendados
+                  </h3>
+                  <p className="text-[11px] text-gray-500 font-medium">
+                    {selectedServiceForBookings.nome}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedServiceForBookings(null)}
+                className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-600 leading-relaxed">
+              Este serviço está desativado para novas clientes, mas os seguintes atendimentos futuros continuam confirmados na sua agenda:
+            </p>
+
+            <div className="space-y-2.5 pt-1">
+              {selectedServiceForBookings.pending_bookings && selectedServiceForBookings.pending_bookings.length > 0 ? (
+                selectedServiceForBookings.pending_bookings.map((booking) => {
+                  const dataInicio = new Date(booking.data_hora_inicio)
+                  const dataFormatada = dataInicio.toLocaleDateString('pt-BR', {
+                    weekday: 'short',
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
+
+                  return (
+                    <div
+                      key={booking.id}
+                      className="p-3.5 rounded-2xl bg-[#FAF7F5] border border-gray-200/80 space-y-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 font-bold text-xs text-[#4A3F5C]">
+                          <User className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                          <span>{booking.cliente_nome || 'Cliente'}</span>
+                        </div>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          {booking.status === 'confirmado' ? 'Confirmado' : booking.status}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-gray-600 pt-1 border-t border-gray-200/50">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                          <span className="capitalize font-medium">{dataFormatada}</span>
+                        </div>
+                        {booking.cliente_telefone && (
+                          <div className="flex items-center gap-1 text-gray-500 font-medium">
+                            <Phone className="h-3 w-3 text-gray-400" />
+                            <span>{booking.cliente_telefone}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
+              ) : (
+                <div className="text-center py-6 text-xs text-gray-400">
+                  Nenhum agendamento futuro encontrado para este serviço.
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSelectedServiceForBookings(null)}
+              className="w-full py-2.5 rounded-xl bg-[#4A3F5C] text-white text-xs font-bold hover:bg-[#393047] transition cursor-pointer mt-2"
+            >
+              Fechar
+            </button>
           </div>
         </div>
       )}

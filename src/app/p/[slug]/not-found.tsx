@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Sparkles, HelpCircle } from 'lucide-react'
+import { ArrowRight, HelpCircle } from 'lucide-react'
 
 export default function ProfessionalNotFound() {
   return (
@@ -22,7 +22,7 @@ export default function ProfessionalNotFound() {
             href="/"
             className="inline-flex items-center gap-2 rounded-xl bg-[#B8A9D9] px-6 py-3 text-xs font-semibold text-[#4A3F5C] shadow-sm hover:bg-[#a695ca] transition"
           >
-            <Sparkles className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4" />
             <span>Conhecer o Lumê</span>
           </Link>
         </div>

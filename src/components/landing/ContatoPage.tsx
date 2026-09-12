@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import {
-  Sparkles,
+  Heart,
   ArrowRight,
   MessageCircle,
   Headphones,
@@ -109,7 +109,7 @@ export default function ContatoPage() {
               </div>
 
               <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-[#FAF8F5] border border-[#E8DFD8]">
-                <Sparkles className="h-4 w-4 text-[#8C5383] shrink-0 mt-0.5" />
+                <Heart className="h-4 w-4 text-[#8C5383] shrink-0 mt-0.5" />
                 <div>
                   <strong className="text-[#3D2E4D] block font-bold">Atendimento Humanizado</strong>
                   <span>Sem bots confusos ou menus infinitos</span>

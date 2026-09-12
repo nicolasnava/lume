@@ -319,9 +319,9 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
 
   // Visualização Desktop Sidebar
   return (
-    <div className="space-y-2">
-      {/* Novidades e Feedback (Sem linha divisória, exatamente igual à foto) */}
-      <div className="flex items-center justify-between px-1">
+    <div className="flex-1 flex flex-col min-h-0">
+      {/* Novidades e Feedback */}
+      <div className="flex items-center justify-between px-1 shrink-0 pb-2">
         <button
           onClick={() => {
             setHasUnreadNovidades(false)
@@ -347,8 +347,11 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
         </button>
       </div>
 
-      {/* Lista dos 10 Itens de Navegação com espaçamento e cantos arredondados idênticos à foto */}
-      <nav className="space-y-0.5">
+      {/* Linha ultrafina entre novidades+feedback e o início dos links */}
+      <div className="border-t border-gray-200/70 my-1.5 shrink-0" />
+
+      {/* Lista dos 10 Itens de Navegação com espaçamento proporcional equilibrado */}
+      <nav className="flex-1 flex flex-col justify-evenly min-h-0 py-0.5">
         {NAV_ITEMS.map((item) => {
           const isActive =
             pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
@@ -382,7 +385,7 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
               key={item.href}
               href={item.href}
               prefetch={true}
-              className={`flex items-center gap-3 rounded-2xl px-3 py-2 text-xs transition cursor-pointer ${
+              className={`flex items-center gap-2.5 rounded-2xl px-3 py-1.25 text-xs transition cursor-pointer ${
                 isActive
                   ? 'bg-[#B8A9D9]/25 text-[#4A3F5C] font-bold shadow-2xs'
                   : 'text-gray-600 font-semibold hover:bg-gray-100/80 hover:text-[#4A3F5C]'
@@ -394,6 +397,9 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
           )
         })}
       </nav>
+
+      {/* Linha ultrafina após o fim dos links */}
+      <div className="border-t border-gray-200/70 my-1.5 shrink-0" />
 
       <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
       <NovidadesModal isOpen={isNovidadesOpen} onClose={() => setIsNovidadesOpen(false)} />

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { Building2, Check, X, Loader2, Sparkles } from 'lucide-react'
+import { Building2, Check, X, Loader2, Mail } from 'lucide-react'
 import { aceitarConviteEmail, recusarConviteEmail } from '@/app/actions/estudio'
 
 export interface PendingInviteItem {
@@ -99,7 +99,7 @@ export default function StudioPendingInvitesBanner({
 
               <div>
                 <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-purple-700">
-                  <Sparkles className="h-3 w-3" />
+                  <Mail className="h-3 w-3" />
                   <span>Convite para Equipe de Studio</span>
                 </div>
                 <h3 className="text-sm sm:text-base font-extrabold text-[#4A3F5C]">

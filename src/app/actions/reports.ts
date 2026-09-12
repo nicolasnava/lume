@@ -35,6 +35,11 @@ export interface RelatorioMesAtualData {
   }
   destaqueNarrativo: string
   metaMesAnteriorSugerida: number | null
+  dadosGrafico?: {
+    id: string
+    data_hora_inicio: string
+    valor_cobrado: number
+  }[]
 }
 
 export interface RelatorioMesFechadoData {
@@ -68,7 +73,9 @@ function formatNomeMes(date: Date): string {
   return date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
 }
 
-export async function getRelatoriosEMetasAction(): Promise<RelatoriosEMetasResponse> {
+export async function getRelatoriosEMetasAction(
+  mesReferenciaParam?: string
+): Promise<RelatoriosEMetasResponse> {
   try {
     const supabase = await createClient()
     const {
@@ -81,30 +88,50 @@ export async function getRelatoriosEMetasAction(): Promise<RelatoriosEMetasRespo
 
     const admin = createAdminClient()
     const now = new Date()
-    const anoAtual = now.getFullYear()
-    const mesAtualIndex = now.getMonth() // 0-indexed
-    const diaAtual = now.getDate()
 
-    // Data de início do mês atual
-    const mesAtualDate = new Date(anoAtual, mesAtualIndex, 1)
-    const mesAtualStr = getPrimeiroDiaDoMes(mesAtualDate)
-    const totalDiasNoMes = new Date(anoAtual, mesAtualIndex + 1, 0).getDate()
-    const diasRestantes = Math.max(1, totalDiasNoMes - diaAtual + 1)
+    let anoAlvo = now.getFullYear()
+    let mesAlvoIndex = now.getMonth()
+
+    if (mesReferenciaParam) {
+      const parts = mesReferenciaParam.split('-')
+      if (parts.length >= 2) {
+        const y = parseInt(parts[0], 10)
+        const m = parseInt(parts[1], 10) - 1
+        if (!isNaN(y) && !isNaN(m) && m >= 0 && m <= 11) {
+          anoAlvo = y
+          mesAlvoIndex = m
+        }
+      }
+    }
+
+    const isCurrentMonth = anoAlvo === now.getFullYear() && mesAlvoIndex === now.getMonth()
+    const isPastMonth =
+      anoAlvo < now.getFullYear() ||
+      (anoAlvo === now.getFullYear() && mesAlvoIndex < now.getMonth())
+
+    // Data de início do mês selecionado
+    const mesAlvoDate = new Date(anoAlvo, mesAlvoIndex, 1)
+    const mesAlvoStr = getPrimeiroDiaDoMes(mesAlvoDate)
+    const totalDiasNoMes = new Date(anoAlvo, mesAlvoIndex + 1, 0).getDate()
+    const diaAtual = isCurrentMonth ? now.getDate() : isPastMonth ? totalDiasNoMes : 0
+    const diasRestantes = isCurrentMonth ? Math.max(1, totalDiasNoMes - now.getDate() + 1) : 0
 
     // Data de início do mês anterior
-    const mesAnteriorDate = new Date(anoAtual, mesAtualIndex - 1, 1)
+    const mesAnteriorDate = new Date(anoAlvo, mesAlvoIndex - 1, 1)
     const mesAnteriorStr = getPrimeiroDiaDoMes(mesAnteriorDate)
-    const totalDiasMesAnterior = new Date(anoAtual, mesAtualIndex, 0).getDate()
-    const diaLimiteProporcionalAnterior = Math.min(diaAtual, totalDiasMesAnterior)
+    const totalDiasMesAnterior = new Date(anoAlvo, mesAlvoIndex, 0).getDate()
+    const diaLimiteProporcionalAnterior = isCurrentMonth
+      ? Math.min(now.getDate(), totalDiasMesAnterior)
+      : totalDiasMesAnterior
 
     // Limites de datas ISO
-    const mesAtualInicioIso = new Date(anoAtual, mesAtualIndex, 1, 0, 0, 0).toISOString()
-    const mesAtualFimIso = new Date(anoAtual, mesAtualIndex + 1, 0, 23, 59, 59, 999).toISOString()
+    const mesAlvoInicioIso = new Date(anoAlvo, mesAlvoIndex, 1, 0, 0, 0).toISOString()
+    const mesAlvoFimIso = new Date(anoAlvo, mesAlvoIndex + 1, 0, 23, 59, 59, 999).toISOString()
 
-    const mesAnteriorInicioIso = new Date(anoAtual, mesAtualIndex - 1, 1, 0, 0, 0).toISOString()
+    const mesAnteriorInicioIso = new Date(anoAlvo, mesAlvoIndex - 1, 1, 0, 0, 0).toISOString()
     const mesAnteriorLimiteIso = new Date(
-      anoAtual,
-      mesAtualIndex - 1,
+      anoAlvo,
+      mesAlvoIndex - 1,
       diaLimiteProporcionalAnterior,
       23,
       59,
@@ -112,7 +139,7 @@ export async function getRelatoriosEMetasAction(): Promise<RelatoriosEMetasRespo
       999
     ).toISOString()
 
-    // 1. Buscar Meta do Mês Atual
+    // 1. Buscar Meta do Mês Selecionado
     let valorMetaAtual: number | null = null
     let tipoMetaAtual: 'faturamento' | 'atendimentos' | 'novos_clientes' | 'ocupacao' = 'faturamento'
 
@@ -120,7 +147,7 @@ export async function getRelatoriosEMetasAction(): Promise<RelatoriosEMetasRespo
       const { data: metaAtualRaw } = await (admin.from('metas_mensais') as any)
         .select('*')
         .eq('profissional_id', user.id)
-        .eq('mes_referencia', mesAtualStr)
+        .eq('mes_referencia', mesAlvoStr)
         .maybeSingle()
 
       if (metaAtualRaw?.valor_meta) {
@@ -133,7 +160,7 @@ export async function getRelatoriosEMetasAction(): Promise<RelatoriosEMetasRespo
 
     // Fallback resiliente para user_metadata
     if (valorMetaAtual === null) {
-      const userMetaObj = user.user_metadata?.metas_mensais?.[mesAtualStr]
+      const userMetaObj = user.user_metadata?.metas_mensais?.[mesAlvoStr]
       if (userMetaObj?.valor_meta) {
         valorMetaAtual = Number(userMetaObj.valor_meta)
         tipoMetaAtual = userMetaObj.tipo_meta || 'faturamento'
@@ -163,20 +190,20 @@ export async function getRelatoriosEMetasAction(): Promise<RelatoriosEMetasRespo
       }
     }
 
-    // 3. Buscar Agendamentos Concluídos do Mês Atual
+    // 3. Buscar Agendamentos Concluídos do Mês Selecionado
     const { data: agendamentosMesAtual } = await admin
       .from('agendamentos')
       .select('id, data_hora_inicio, valor_cobrado, servico_id, servicos(nome)')
       .eq('profissional_id', user.id)
       .eq('status', 'concluido')
-      .gte('data_hora_inicio', mesAtualInicioIso)
-      .lte('data_hora_inicio', mesAtualFimIso)
+      .gte('data_hora_inicio', mesAlvoInicioIso)
+      .lte('data_hora_inicio', mesAlvoFimIso)
 
     const bookingsAtual = (agendamentosMesAtual || []) as any[]
     const faturamentoAtual = bookingsAtual.reduce((acc, b) => acc + Number(b.valor_cobrado || 0), 0)
     const atendimentosConcluidosAtual = bookingsAtual.length
 
-    // Identificar Serviço Mais Vendido do Mês Atual
+    // Identificar Serviço Mais Vendido do Mês Selecionado
     const servicoContagem: Record<string, { nome: string; count: number }> = {}
     for (const b of bookingsAtual) {
       const servicoNome = (b.servicos as any)?.nome || 'Serviço Personalizado'
@@ -193,7 +220,7 @@ export async function getRelatoriosEMetasAction(): Promise<RelatoriosEMetasRespo
       }
     }
 
-    // 4. Comparativo com o Mês Anterior (Até o mesmo dia proporcional)
+    // 4. Comparativo com o Mês Anterior (Até o mesmo dia proporcional se mês atual, ou mês completo se passado)
     const { data: agendamentosMesAnteriorProp } = await admin
       .from('agendamentos')
       .select('valor_cobrado')
@@ -221,34 +248,59 @@ export async function getRelatoriosEMetasAction(): Promise<RelatoriosEMetasRespo
     const metaDefinida = valorMeta > 0
     const progressoPct = metaDefinida ? Math.min(100, Math.round((faturamentoAtual / valorMeta) * 100)) : 0
     const faltam = metaDefinida ? Math.max(0, valorMeta - faturamentoAtual) : 0
-    const ritmoDiario = metaDefinida && faltam > 0 ? Math.round(faltam / diasRestantes) : 0
+    const ritmoDiario =
+      metaDefinida && faltam > 0 && diasRestantes > 0 ? Math.round(faltam / diasRestantes) : 0
 
     let statusMeta: 'sem_meta' | 'batida' | 'no_caminho' | 'atrasada' = 'sem_meta'
     if (metaDefinida) {
       if (faturamentoAtual >= valorMeta) {
         statusMeta = 'batida'
-      } else {
+      } else if (isPastMonth) {
+        statusMeta = 'atrasada'
+      } else if (isCurrentMonth) {
         // Se a média diária realizada até agora mantiver no ritmo para bater a meta
         const mediaDiariaRealizada = diaAtual > 0 ? faturamentoAtual / diaAtual : 0
         const previsaoFinal = faturamentoAtual + mediaDiariaRealizada * (totalDiasNoMes - diaAtual)
         statusMeta = previsaoFinal >= valorMeta * 0.9 ? 'no_caminho' : 'atrasada'
+      } else {
+        statusMeta = 'no_caminho'
       }
     }
 
     // 6. Destaque Narrativo Inteligente (Sem emojis)
     let destaqueNarrativo = ''
-    if (statusMeta === 'batida') {
-      destaqueNarrativo = 'Incrível! Você atingiu 100% da sua meta antes do final do mês!'
-    } else if (comparativoMesAnteriorPct !== null && comparativoMesAnteriorPct >= 15) {
-      destaqueNarrativo = `Excelente ritmo! Você está faturando ${comparativoMesAnteriorPct}% a mais que no mesmo período do mês passado.`
-    } else if (comparativoMesAnteriorPct !== null && comparativoMesAnteriorPct <= -15) {
-      destaqueNarrativo = `Faturamento ${Math.abs(comparativoMesAnteriorPct)}% abaixo do mês anterior. Sugestão: Crie um cupom exclusivo para reativar clientes inativas!`
-    } else if (metaDefinida && progressoPct >= 70) {
-      destaqueNarrativo = `Reta final! Você já conquistou ${progressoPct}% da sua meta. Faltam apenas R$ ${faltam.toFixed(2)}.`
-    } else if (metaDefinida) {
-      destaqueNarrativo = `Mantenha o foco: você precisa de uma média de R$ ${ritmoDiario}/dia nos próximos ${diasRestantes} dias para bater sua meta.`
+    if (isPastMonth) {
+      if (statusMeta === 'batida') {
+        destaqueNarrativo = 'Parabéns! A meta foi atingida com sucesso neste mês.'
+      } else if (metaDefinida) {
+        destaqueNarrativo = `Mês finalizado com ${progressoPct}% da meta atingida (R$ ${faturamentoAtual.toFixed(2)} de R$ ${valorMeta.toFixed(2)}).`
+      } else if (comparativoMesAnteriorPct !== null && comparativoMesAnteriorPct >= 0) {
+        destaqueNarrativo = `Neste mês o faturamento foi ${comparativoMesAnteriorPct}% superior ao mês anterior.`
+      } else if (comparativoMesAnteriorPct !== null) {
+        destaqueNarrativo = `Neste mês o faturamento foi ${Math.abs(comparativoMesAnteriorPct)}% inferior ao mês anterior.`
+      } else {
+        destaqueNarrativo = `Mês finalizado com ${atendimentosConcluidosAtual} atendimentos concluídos.`
+      }
+    } else if (!isCurrentMonth) {
+      if (metaDefinida) {
+        destaqueNarrativo = `Meta de R$ ${valorMeta.toFixed(2)} planejada para este mês.`
+      } else {
+        destaqueNarrativo = 'Defina uma meta para planejar o faturamento deste mês futuro.'
+      }
     } else {
-      destaqueNarrativo = 'Defina uma meta mensal para acompanhar seu ritmo de faturamento em tempo real.'
+      if (statusMeta === 'batida') {
+        destaqueNarrativo = 'Incrível! Você atingiu 100% da sua meta antes do final do mês!'
+      } else if (comparativoMesAnteriorPct !== null && comparativoMesAnteriorPct >= 15) {
+        destaqueNarrativo = `Excelente ritmo! Você está faturando ${comparativoMesAnteriorPct}% a mais que no mesmo período do mês passado.`
+      } else if (comparativoMesAnteriorPct !== null && comparativoMesAnteriorPct <= -15) {
+        destaqueNarrativo = `Faturamento ${Math.abs(comparativoMesAnteriorPct)}% abaixo do mês anterior. Sugestão: Crie um cupom exclusivo para reativar clientes inativas!`
+      } else if (metaDefinida && progressoPct >= 70) {
+        destaqueNarrativo = `Reta final! Você já conquistou ${progressoPct}% da sua meta. Faltam apenas R$ ${faltam.toFixed(2)}.`
+      } else if (metaDefinida) {
+        destaqueNarrativo = `Mantenha o foco: você precisa de uma média de R$ ${ritmoDiario}/dia nos próximos ${diasRestantes} dias para bater sua meta.`
+      } else {
+        destaqueNarrativo = 'Defina uma meta mensal para acompanhar seu ritmo de faturamento em tempo real.'
+      }
     }
 
     // 7. Histórico de Meses Fechados
@@ -283,11 +335,36 @@ export async function getRelatoriosEMetasAction(): Promise<RelatoriosEMetasRespo
       // Ignora erro de tabela não existente
     }
 
+    // 8. Buscar Agendamentos para o Gráfico de Evolução do Faturamento
+    let dadosGrafico: { id: string; data_hora_inicio: string; valor_cobrado: number }[] = []
+    try {
+      const anoInicioIso = new Date(anoAlvo - 2, 0, 1, 0, 0, 0).toISOString()
+      const anoFimIso = new Date(anoAlvo + 1, 11, 31, 23, 59, 59, 999).toISOString()
+
+      const { data: agendamentosGraficoRaw } = await admin
+        .from('agendamentos')
+        .select('id, data_hora_inicio, valor_cobrado')
+        .eq('profissional_id', user.id)
+        .eq('status', 'concluido')
+        .gte('data_hora_inicio', anoInicioIso)
+        .lte('data_hora_inicio', anoFimIso)
+
+      if (agendamentosGraficoRaw) {
+        dadosGrafico = agendamentosGraficoRaw.map((b: any) => ({
+          id: b.id,
+          data_hora_inicio: b.data_hora_inicio,
+          valor_cobrado: Number(b.valor_cobrado || 0),
+        }))
+      }
+    } catch {
+      // Ignora erro
+    }
+
     return {
       success: true,
       mesAtual: {
-        mesReferencia: mesAtualStr,
-        nomeMes: formatNomeMes(mesAtualDate),
+        mesReferencia: mesAlvoStr,
+        nomeMes: formatNomeMes(mesAlvoDate),
         faturamentoAtual,
         atendimentosConcluidos: atendimentosConcluidosAtual,
         servicoMaisVendido,
@@ -307,6 +384,7 @@ export async function getRelatoriosEMetasAction(): Promise<RelatoriosEMetasRespo
         },
         destaqueNarrativo,
         metaMesAnteriorSugerida: metaAnteriorSugerida,
+        dadosGrafico,
       },
       historicoMesesFechados,
     }

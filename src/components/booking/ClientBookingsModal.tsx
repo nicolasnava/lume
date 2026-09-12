@@ -26,7 +26,7 @@ import {
   ArrowLeft,
   CalendarClock,
   ChevronRight,
-  Sparkles,
+  CalendarCheck,
   DollarSign,
 } from 'lucide-react'
 
@@ -884,7 +884,7 @@ export default function ClientBookingsModal({
                 /* 6. Confirmação Clara de Sucesso */
                 <div className="space-y-4 text-center py-2">
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 font-bold shadow-xs">
-                    <Sparkles className="h-7 w-7" />
+                    <CalendarCheck className="h-7 w-7" />
                   </div>
 
                   <div className="space-y-1">

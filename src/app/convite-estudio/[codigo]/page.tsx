@@ -2,7 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { obterDadosConviteLink } from '@/app/actions/estudio'
 import AcceptStudioInviteClient from './AcceptStudioInviteClient'
-import { Building2, AlertCircle, Sparkles } from 'lucide-react'
+import { Building2, AlertCircle, Home } from 'lucide-react'
 
 interface InvitePageProps {
   params: Promise<{
@@ -82,7 +82,7 @@ function InviteErrorLayout({ title, description }: { title: string; description:
             href="/dashboard/geral"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4A3F5C] text-white text-xs font-bold hover:bg-[#3d334d] transition cursor-pointer"
           >
-            <Sparkles className="h-4 w-4" />
+            <Home className="h-4 w-4" />
             <span>Ir para o Início</span>
           </Link>
         </div>

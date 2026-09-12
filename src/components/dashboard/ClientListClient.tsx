@@ -21,7 +21,8 @@ import {
   Scissors,
   DollarSign,
   Tag,
-  Sparkles,
+  Lightbulb,
+  ChevronDown,
 } from 'lucide-react'
 import CustomSelect from '@/components/ui/CustomSelect'
 import CustomDatePicker from '@/components/ui/CustomDatePicker'
@@ -134,6 +135,7 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedClient, setSelectedClient] = useState<ClientData | null>(null)
   const [showLegendModal, setShowLegendModal] = useState(false)
+  const [legendActiveTab, setLegendActiveTab] = useState<'frequencia' | 'confiabilidade'>('frequencia')
 
   // Abas: Clientes vs Cupons de Desconto
   const [activeTab, setActiveTab] = useState<'clientes' | 'cupons'>('clientes')
@@ -174,7 +176,8 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
   // Item 5: Detalhes completos do atendimento do histórico
   const [selectedHistoryBooking, setSelectedHistoryBooking] = useState<ClientData['agendamentos'][0] | null>(null)
 
-  // Score de confiabilidade da cliente selecionada no modal (Prompt 60)
+  // Score de confiabilidade da cliente selecionada no modal (Prompt 60 e Item 6)
+  const [showReliabilityDetails, setShowReliabilityDetails] = useState(false)
   const selectedReliability = useMemo(() => {
     return selectedClient ? calculateClientReliability(selectedClient.agendamentos) : null
   }, [selectedClient])
@@ -289,32 +292,38 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
 
   return (
     <div className="space-y-6">
-      {/* Abas Superiores: Clientes vs Cupons de Desconto (Prompt 62) */}
-      <div className="flex items-center gap-2 border-b border-gray-200/80 pb-3">
+      {/* Abas Superiores: Clientes vs Cupons (Padrão idêntico a /perfil e /studio) */}
+      <div className="grid grid-cols-2 border-b border-gray-200/80 pb-px w-full">
         <button
           type="button"
           onClick={() => setActiveTab('clientes')}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition cursor-pointer ${
+          className={`flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer text-center w-full ${
             activeTab === 'clientes'
-              ? 'bg-[#4A3F5C] text-white shadow-xs'
-              : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+              ? 'border-purple-600 text-[#4A3F5C]'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
         >
-          <User className="h-4 w-4" />
-          <span>Clientes ({initialClients.length})</span>
+          <User className={`h-4 w-4 shrink-0 ${activeTab === 'clientes' ? 'text-purple-600' : 'text-gray-400'}`} />
+          <span className="truncate">Clientes</span>
+          <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 shrink-0">
+            {initialClients.length}
+          </span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('cupons')}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition cursor-pointer ${
+          className={`flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer text-center w-full ${
             activeTab === 'cupons'
-              ? 'bg-[#4A3F5C] text-white shadow-xs'
-              : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+              ? 'border-purple-600 text-[#4A3F5C]'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
         >
-          <Tag className="h-4 w-4" />
-          <span>Cupons de Desconto ({availableCupons.length})</span>
+          <Tag className={`h-4 w-4 shrink-0 ${activeTab === 'cupons' ? 'text-purple-600' : 'text-gray-400'}`} />
+          <span className="truncate">Cupons</span>
+          <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 shrink-0">
+            {availableCupons.length}
+          </span>
         </button>
       </div>
 
@@ -389,19 +398,19 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
               buttonClassName="font-bold bg-white"
             />
           </div>
-
-          {/* Item 7: Botão Legenda de Classificação em posição destacada */}
-          <button
-            type="button"
-            onClick={() => setShowLegendModal(true)}
-            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white text-[#4A3F5C] border border-gray-200/80 text-xs font-bold hover:bg-gray-50 transition cursor-pointer shrink-0 shadow-2xs"
-            title="Ver explicação dos ícones e faixas de confiabilidade"
-          >
-            <HelpCircle className="h-4 w-4 text-[#B8A9D9]" />
-            <span>Legenda</span>
-          </button>
         </div>
       </div>
+
+      {/* Botão de Legenda único de ponta a ponta com ícone original */}
+      <button
+        type="button"
+        onClick={() => setShowLegendModal(true)}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-white text-[#4A3F5C] border border-gray-200/80 text-xs font-bold hover:bg-gray-50 transition cursor-pointer shadow-2xs"
+        title="Ver explicação dos ícones e faixas de confiabilidade"
+      >
+        <HelpCircle className="h-4 w-4 text-[#B8A9D9] shrink-0" />
+        <span>Legenda de Classificações</span>
+      </button>
 
       {/* Lista de Clientes Ordenada */}
       {sortedClients.length === 0 ? (
@@ -533,7 +542,7 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
                   {statusInfo.status === 'inativa' && cupomInativa && (
                     <div className="mt-3 p-2.5 rounded-2xl bg-purple-50 border border-purple-200/80 flex items-center justify-between gap-2 text-xs">
                       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-purple-900 truncate">
-                        <Sparkles className="h-3.5 w-3.5 text-purple-600 shrink-0" />
+                        <Lightbulb className="h-3.5 w-3.5 text-purple-600 shrink-0" />
                         <span>
                           Sugestão: Envie o cupom <strong>{cupomInativa.codigo}</strong>
                         </span>
@@ -606,94 +615,126 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
               </button>
             </div>
 
+            {/* Abas do Modal de Legenda */}
+            <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-[#FAF7F5] border border-gray-200/70">
+              <button
+                type="button"
+                onClick={() => setLegendActiveTab('frequencia')}
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  legendActiveTab === 'frequencia'
+                    ? 'bg-white text-[#4A3F5C] shadow-xs'
+                    : 'text-gray-500 hover:text-[#4A3F5C]'
+                }`}
+              >
+                <Crown className="h-3.5 w-3.5 text-amber-500 fill-amber-400" />
+                <span>Frequência</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setLegendActiveTab('confiabilidade')}
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                  legendActiveTab === 'confiabilidade'
+                    ? 'bg-white text-[#4A3F5C] shadow-xs'
+                    : 'text-gray-500 hover:text-[#4A3F5C]'
+                }`}
+              >
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Confiabilidade</span>
+              </button>
+            </div>
+
             <div className="space-y-4 text-xs text-[#4A3F5C]">
               {/* Dimensão 1: Valor e Recorrência */}
-              <div>
-                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
-                  1. Frequência & Recorrência
-                </h4>
-                <div className="space-y-2">
-                  <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-amber-50/60 border border-amber-200/80">
-                    <Crown className="h-4 w-4 text-amber-500 fill-amber-400 shrink-0 mt-0.5" />
-                    <div className="space-y-0.5">
-                      <h4 className="font-bold text-amber-900 text-xs">Cliente VIP (Coroa)</h4>
-                      <p className="text-[11px] text-amber-800/90 font-medium leading-relaxed">
-                        Possui 3 ou mais agendamentos concluídos nos últimos 90 dias.
-                      </p>
+              {legendActiveTab === 'frequencia' && (
+                <div>
+                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                    Frequência & Recorrência
+                  </h4>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-amber-50/60 border border-amber-200/80">
+                      <Crown className="h-4 w-4 text-amber-500 fill-amber-400 shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        <h4 className="font-bold text-amber-900 text-xs">Cliente VIP (Coroa)</h4>
+                        <p className="text-[11px] text-amber-800/90 font-medium leading-relaxed">
+                          Possui 3 ou mais agendamentos concluídos nos últimos 90 dias.
+                        </p>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-rose-50/60 border border-rose-200/80">
-                    <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0 mt-0.5" />
-                    <div className="space-y-0.5">
-                      <h4 className="font-bold text-rose-900 text-xs">Cliente Inativa (Alerta)</h4>
-                      <p className="text-[11px] text-rose-800/90 font-medium leading-relaxed">
-                        Último atendimento foi há mais de 60 dias e não possui agendamento futuro.
-                      </p>
+                    <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-rose-50/60 border border-rose-200/80">
+                      <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        <h4 className="font-bold text-rose-900 text-xs">Cliente Inativa (Alerta)</h4>
+                        <p className="text-[11px] text-rose-800/90 font-medium leading-relaxed">
+                          Último atendimento foi há mais de 60 dias e não possui agendamento futuro.
+                        </p>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-gray-50 border border-gray-200/80">
-                    <div className="h-4 w-4 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-[10px] font-bold shrink-0 mt-0.5">
-                      —
-                    </div>
-                    <div className="space-y-0.5">
-                      <h4 className="font-bold text-gray-800 text-xs">Cliente Regular</h4>
-                      <p className="text-[11px] text-gray-600 font-medium leading-relaxed">
-                        Demais clientes com frequência normal de visitas.
-                      </p>
+                    <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-gray-50 border border-gray-200/80">
+                      <div className="h-4 w-4 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-[10px] font-bold shrink-0 mt-0.5">
+                        —
+                      </div>
+                      <div className="space-y-0.5">
+                        <h4 className="font-bold text-gray-800 text-xs">Cliente Regular</h4>
+                        <p className="text-[11px] text-gray-600 font-medium leading-relaxed">
+                          Demais clientes com frequência normal de visitas.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Dimensão 2: Confiabilidade de Comparecimento (Prompt 60) */}
-              <div>
-                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
-                  2. Confiabilidade de Comparecimento (Últimos 6 meses)
-                </h4>
-                <div className="space-y-2">
-                  <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/80">
-                    <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                    <div className="space-y-0.5">
-                      <h4 className="font-bold text-emerald-900 text-xs">Confiável (Verde)</h4>
-                      <p className="text-[11px] text-emerald-800/90 font-medium leading-relaxed">
-                        Pelo menos 3 atendimentos no período, excelente taxa de presença e 0 faltas sem aviso.
-                      </p>
+              {/* Dimensão 2: Confiabilidade de Comparecimento */}
+              {legendActiveTab === 'confiabilidade' && (
+                <div>
+                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                    Confiabilidade de Comparecimento (Últimos 6 meses)
+                  </h4>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/80">
+                      <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        <h4 className="font-bold text-emerald-900 text-xs">Confiável (Verde)</h4>
+                        <p className="text-[11px] text-emerald-800/90 font-medium leading-relaxed">
+                          Pelo menos 3 atendimentos no período, excelente taxa de presença e 0 faltas sem aviso.
+                        </p>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-amber-50/70 border border-amber-200/80">
-                    <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                    <div className="space-y-0.5">
-                      <h4 className="font-bold text-amber-900 text-xs">Atenção (Amarelo)</h4>
-                      <p className="text-[11px] text-amber-800/90 font-medium leading-relaxed">
-                        Histórico com 1 falta sem aviso (no-show) ou cancelamentos recorrentes.
-                      </p>
+                    <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-amber-50/70 border border-amber-200/80">
+                      <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        <h4 className="font-bold text-amber-900 text-xs">Atenção (Amarelo)</h4>
+                        <p className="text-[11px] text-amber-800/90 font-medium leading-relaxed">
+                          Histórico com 1 falta sem aviso (no-show) ou cancelamentos recorrentes.
+                        </p>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-rose-50/70 border border-rose-200/80">
-                    <ShieldAlert className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
-                    <div className="space-y-0.5">
-                      <h4 className="font-bold text-rose-900 text-xs">Risco de Falta (Vermelho)</h4>
-                      <p className="text-[11px] text-rose-800/90 font-medium leading-relaxed">
-                        2 ou mais faltas sem aviso nos últimos 6 meses ou histórico crítico de cancelamentos.
-                      </p>
+                    <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-rose-50/70 border border-rose-200/80">
+                      <ShieldAlert className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        <h4 className="font-bold text-rose-900 text-xs">Risco de Falta (Vermelho)</h4>
+                        <p className="text-[11px] text-rose-800/90 font-medium leading-relaxed">
+                          2 ou mais faltas sem aviso nos últimos 6 meses ou histórico crítico de cancelamentos.
+                        </p>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-gray-50 border border-gray-200/80">
-                    <HelpCircle className="h-4 w-4 text-gray-400 shrink-0 mt-0.5" />
-                    <div className="space-y-0.5">
-                      <h4 className="font-bold text-gray-700 text-xs">Sem histórico suficiente (Cinza)</h4>
-                      <p className="text-[11px] text-gray-600 font-medium leading-relaxed">
-                        Menos de 3 atendimentos nos últimos 6 meses — classificação neutra até acumular histórico.
-                      </p>
+                    <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-gray-50 border border-gray-200/80">
+                      <HelpCircle className="h-4 w-4 text-gray-400 shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        <h4 className="font-bold text-gray-700 text-xs">Sem histórico suficiente (Cinza)</h4>
+                        <p className="text-[11px] text-gray-600 font-medium leading-relaxed">
+                          Menos de 3 atendimentos nos últimos 6 meses — classificação neutra até acumular histórico.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <button
@@ -725,7 +766,7 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
                 </button>
               </div>
 
-              {/* Classificação de Confiabilidade do Histórico (Prompt 60) */}
+              {/* Classificação de Confiabilidade do Histórico (Item 6) */}
               {selectedReliability && (
                 <div
                   className={`p-3.5 rounded-2xl border space-y-2 transition ${
@@ -739,9 +780,18 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold text-sm">
-                      Confiabilidade: {selectedReliability.label}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowReliabilityDetails((prev) => !prev)}
+                      className="flex items-center gap-1.5 font-bold text-sm hover:opacity-85 transition cursor-pointer text-left"
+                    >
+                      <span>Confiabilidade: {selectedReliability.label}</span>
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform duration-200 ${
+                          showReliabilityDetails ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
                     <div className="shrink-0">
                       {selectedReliability.tier === 'confiavel' && <ShieldCheck className="h-5 w-5 text-emerald-600" />}
                       {selectedReliability.tier === 'atencao' && <AlertTriangle className="h-5 w-5 text-amber-600" />}
@@ -749,43 +799,48 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
                       {selectedReliability.tier === 'sem_historico' && <HelpCircle className="h-5 w-5 text-gray-400" />}
                     </div>
                   </div>
-                  <p className="text-[11px] font-medium leading-relaxed opacity-90">
-                    {selectedReliability.reason}
-                  </p>
 
-                    {/* Mini-Cards Estéticos de Insights (Concluídos, Cancelados, No-Show) - Cores Verde, Amarelo e Vermelho com tipografia padrão */}
-                    <div className="grid grid-cols-3 gap-2 pt-1 w-full">
-                      {/* Mini Card 1: Concluídos (Verde) */}
-                      <div className="rounded-xl bg-emerald-50/70 p-2 sm:p-2.5 border border-emerald-200/80 shadow-2xs text-center flex flex-col items-center justify-center">
-                        <span className="text-base sm:text-lg font-bold text-emerald-700 leading-none">
-                          {selectedReliability.metrics.concluidos}
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] font-bold text-emerald-800/80 uppercase tracking-tight mt-1 leading-none">
-                          Concluídos
-                        </span>
-                      </div>
+                  {showReliabilityDetails && (
+                    <div className="space-y-2 pt-1 border-t border-black/5 animate-in fade-in duration-200">
+                      <p className="text-[11px] font-medium leading-relaxed opacity-90">
+                        {selectedReliability.reason}
+                      </p>
 
-                      {/* Mini Card 2: Cancelados (Amarelo) */}
-                      <div className="rounded-xl bg-amber-50/70 p-2 sm:p-2.5 border border-amber-200/80 shadow-2xs text-center flex flex-col items-center justify-center">
-                        <span className="text-base sm:text-lg font-bold text-amber-700 leading-none">
-                          {selectedReliability.metrics.canceladosAntecedencia + selectedReliability.metrics.canceladosUltimaHora}
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] font-bold text-amber-800/80 uppercase tracking-tight mt-1 leading-none">
-                          Cancelados
-                        </span>
-                      </div>
+                      {/* Mini-Cards Estéticos de Insights (Concluídos, Cancelados, No-Show) */}
+                      <div className="grid grid-cols-3 gap-2 pt-1 w-full">
+                        {/* Mini Card 1: Concluídos (Verde) */}
+                        <div className="rounded-xl bg-emerald-50/70 p-2 sm:p-2.5 border border-emerald-200/80 shadow-2xs text-center flex flex-col items-center justify-center">
+                          <span className="text-base sm:text-lg font-bold text-emerald-700 leading-none">
+                            {selectedReliability.metrics.concluidos}
+                          </span>
+                          <span className="text-[9px] sm:text-[10px] font-bold text-emerald-800/80 uppercase tracking-tight mt-1 leading-none">
+                            Concluídos
+                          </span>
+                        </div>
 
-                      {/* Mini Card 3: No-show / Faltas (Vermelho) */}
-                      <div className="rounded-xl bg-rose-50/70 p-2 sm:p-2.5 border border-rose-200/80 shadow-2xs text-center flex flex-col items-center justify-center">
-                        <span className="text-base sm:text-lg font-bold text-rose-700 leading-none">
-                          {selectedReliability.metrics.noShow}
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] font-bold text-rose-800/80 uppercase tracking-tight mt-1 leading-none">
-                          No-show
-                        </span>
+                        {/* Mini Card 2: Cancelados (Amarelo) */}
+                        <div className="rounded-xl bg-amber-50/70 p-2 sm:p-2.5 border border-amber-200/80 shadow-2xs text-center flex flex-col items-center justify-center">
+                          <span className="text-base sm:text-lg font-bold text-amber-700 leading-none">
+                            {selectedReliability.metrics.canceladosAntecedencia + selectedReliability.metrics.canceladosUltimaHora}
+                          </span>
+                          <span className="text-[9px] sm:text-[10px] font-bold text-amber-800/80 uppercase tracking-tight mt-1 leading-none">
+                            Cancelados
+                          </span>
+                        </div>
+
+                        {/* Mini Card 3: No-show / Faltas (Vermelho) */}
+                        <div className="rounded-xl bg-rose-50/70 p-2 sm:p-2.5 border border-rose-200/80 shadow-2xs text-center flex flex-col items-center justify-center">
+                          <span className="text-base sm:text-lg font-bold text-rose-700 leading-none">
+                            {selectedReliability.metrics.noShow}
+                          </span>
+                          <span className="text-[9px] sm:text-[10px] font-bold text-rose-800/80 uppercase tracking-tight mt-1 leading-none">
+                            No-show
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
+                </div>
               )}
 
               {/* Sugestão Contextual de Cupom para Cliente Inativa (Prompt 62) */}
@@ -793,7 +848,7 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
                 <div className="p-3.5 rounded-2xl bg-purple-50 border border-purple-200 flex items-start justify-between gap-3">
                   <div className="space-y-1 text-xs">
                     <div className="flex items-center gap-1.5 font-bold text-purple-950">
-                      <Sparkles className="h-4 w-4 text-purple-600 shrink-0" />
+                      <Lightbulb className="h-4 w-4 text-purple-600 shrink-0" />
                       <span>Sugestão de Reativação</span>
                     </div>
                     <p className="text-[11px] text-purple-900 font-medium leading-relaxed">
@@ -817,8 +872,8 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
                 </div>
               )}
 
-            {/* Botão de Ativação/Desativação do Filtro de Histórico (Foco em UI/UX) */}
-            <div className="flex items-center justify-between">
+            {/* Botão de Ativação/Desativação do Filtro de Histórico (Item 7: extremidade a outra) */}
+            <div className="w-full space-y-1.5">
               <button
                 type="button"
                 onClick={() => {
@@ -828,7 +883,7 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
                   }
                   setShowHistoryFilter(!showHistoryFilter)
                 }}
-                className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
                   showHistoryFilter || historyStartDate || historyEndDate
                     ? 'bg-purple-100/70 text-[#4A3F5C] border-[#B8A9D9]'
                     : 'bg-gray-50 hover:bg-gray-100 text-gray-600 border-gray-200'
@@ -842,16 +897,18 @@ export default function ClientListClient({ initialClients }: ClientListClientPro
               </button>
 
               {(historyStartDate || historyEndDate) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setHistoryStartDate('')
-                    setHistoryEndDate('')
-                  }}
-                  className="text-[11px] font-bold text-[#8675A9] hover:underline cursor-pointer"
-                >
-                  Limpar filtro
-                </button>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHistoryStartDate('')
+                      setHistoryEndDate('')
+                    }}
+                    className="text-[11px] font-bold text-[#8675A9] hover:underline cursor-pointer"
+                  >
+                    Limpar filtro
+                  </button>
+                </div>
               )}
             </div>
 

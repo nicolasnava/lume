@@ -5,6 +5,16 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import BookingDetailModal from '@/components/dashboard/BookingDetailModal'
 import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Cell,
+  CartesianGrid,
+} from 'recharts'
+import {
   DollarSign,
   TrendingUp,
   CreditCard,
@@ -22,17 +32,8 @@ import {
   Clock,
   ChevronDown,
   Check,
+  UserCheck,
 } from 'lucide-react'
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from 'recharts'
 import PaymentIcon from '@/components/common/PaymentIcon'
 import CustomSelect from '@/components/ui/CustomSelect'
 import CustomDatePicker from '@/components/ui/CustomDatePicker'
@@ -132,6 +133,14 @@ export default function FinancialDashboard({
   const [selectedFormaPagamento, setSelectedFormaPagamento] = useState<string>('todas')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedBookingForDetail, setSelectedBookingForDetail] = useState<FinancialBookingRow | null>(null)
+  const [selectedMetricDetail, setSelectedMetricDetail] = useState<{
+    type: 'service' | 'client'
+    name: string
+    count: number
+    total: number
+    extraInsightLabel: string
+    extraInsightValue: string
+  } | null>(null)
 
   // Estado do dropdown rico de serviços
   const [isServiceFilterOpen, setIsServiceFilterOpen] = useState(false)
@@ -316,34 +325,46 @@ export default function FinancialDashboard({
 
   // 5. Item 5: Card 1 - Ranking dos Serviços Mais Vendidos
   const topServices = useMemo(() => {
-    const map: Record<string, { name: string; total: number; count: number }> = {}
+    const map: Record<string, { name: string; total: number; count: number; clientIds: Set<string> }> = {}
 
     completedBookings.forEach((b) => {
       const serviceName = b.servicos?.nome || 'Serviço Personalizado'
       const val = getBookingValue(b)
+      const clientId = b.cliente_id || b.clientes?.nome || 'anon'
 
       if (!map[serviceName]) {
-        map[serviceName] = { name: serviceName, total: 0, count: 0 }
+        map[serviceName] = { name: serviceName, total: 0, count: 0, clientIds: new Set() }
       }
       map[serviceName].total += val
       map[serviceName].count += 1
+      map[serviceName].clientIds.add(clientId)
     })
 
     return Object.values(map)
+      .map((item) => ({
+        name: item.name,
+        total: item.total,
+        count: item.count,
+        uniqueClients: item.clientIds.size,
+      }))
       .sort((a, b) => b.total - a.total)
       .slice(0, 5)
   }, [completedBookings])
 
   // 6. Item 5: Card 2 - Ranking dos Top Clientes no Período
   const topClients = useMemo(() => {
-    const map: Record<string, { name: string; total: number; count: number }> = {}
+    const map: Record<string, { name: string; total: number; count: number; lastVisitDate: string | null }> = {}
 
     completedBookings.forEach((b) => {
       const clientName = b.clientes?.nome || 'Cliente sem nome'
       const val = getBookingValue(b)
 
       if (!map[clientName]) {
-        map[clientName] = { name: clientName, total: 0, count: 0 }
+        map[clientName] = { name: clientName, total: 0, count: 0, lastVisitDate: b.data_hora_inicio }
+      } else {
+        if (!map[clientName].lastVisitDate || new Date(b.data_hora_inicio) > new Date(map[clientName].lastVisitDate!)) {
+          map[clientName].lastVisitDate = b.data_hora_inicio
+        }
       }
       map[clientName].total += val
       map[clientName].count += 1
@@ -719,26 +740,47 @@ export default function FinancialDashboard({
           </div>
         </div>
 
-        {/* Intervalo Customizado no mesmo horizonte */}
+        {/* Intervalo Customizado: De (card: Icone + "Data") até (card: Icone + "Data") */}
         {period === 'custom' && (
-          <div className="flex flex-row flex-nowrap items-center gap-2 sm:gap-3 pt-2 border-t border-gray-100 overflow-x-auto">
-            <div className="flex items-center gap-1.5 text-xs shrink-0 flex-1 min-w-[130px] sm:min-w-[160px]">
-              <span className="text-gray-500 font-semibold shrink-0">De:</span>
-              <CustomDatePicker
-                value={customStart}
-                onChange={setCustomStart}
-                placeholder="Data inicial"
-                className="w-full"
-              />
-            </div>
-            <div className="flex items-center gap-1.5 text-xs shrink-0 flex-1 min-w-[130px] sm:min-w-[160px]">
-              <span className="text-gray-500 font-semibold shrink-0">Até:</span>
-              <CustomDatePicker
-                value={customEnd}
-                onChange={setCustomEnd}
-                placeholder="Data final"
-                className="w-full"
-              />
+          <div className="pt-3 border-t border-gray-100 animate-in fade-in duration-200">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+              <span className="text-xs font-bold text-[#4A3F5C] shrink-0">De</span>
+              <div className="flex-1 min-w-0">
+                <CustomDatePicker
+                  value={customStart}
+                  onChange={setCustomStart}
+                  placeholder="Data inicial"
+                  dateFormat="short"
+                  showAlterarButton={false}
+                  className="w-full"
+                />
+              </div>
+
+              <span className="text-xs font-bold text-[#4A3F5C] shrink-0 sm:px-1">até</span>
+              <div className="flex-1 min-w-0">
+                <CustomDatePicker
+                  value={customEnd}
+                  onChange={setCustomEnd}
+                  placeholder="Data final"
+                  dateFormat="short"
+                  showAlterarButton={false}
+                  className="w-full"
+                />
+              </div>
+
+              {(customStart || customEnd) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomStart('')
+                    setCustomEnd('')
+                  }}
+                  className="text-xs font-bold text-[#8675A9] hover:text-rose-600 transition self-end sm:self-auto px-2 py-1.5 cursor-pointer whitespace-nowrap"
+                  title="Limpar datas customizadas"
+                >
+                  Limpar
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -796,8 +838,8 @@ export default function FinancialDashboard({
         </div>
       </div>
 
-      {/* Item 5: CARDS DE DETALHAMENTO REORDENADOS (Serviços → Clientes → Formas de Pagamento) SEM FILTROS INDIVIDUAIS */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      {/* Cards de Detalhamento: Serviços Mais Vendidos e Principais Clientes */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Card 1: Serviços Mais Vendidos */}
         <div className="rounded-3xl bg-white p-6 shadow-xs border border-gray-100 space-y-4">
           <h3 className="text-sm font-bold text-[#4A3F5C] flex items-center gap-2">
@@ -815,12 +857,26 @@ export default function FinancialDashboard({
                 const percent = totalFaturado > 0 ? (item.total / totalFaturado) * 100 : 0
 
                 return (
-                  <div key={item.name} className="space-y-1 text-xs">
+                  <div
+                    key={item.name}
+                    onClick={() =>
+                      setSelectedMetricDetail({
+                        type: 'service',
+                        name: item.name,
+                        count: item.count,
+                        total: item.total,
+                        extraInsightLabel: 'Clientes Atendidas',
+                        extraInsightValue: `${item.uniqueClients} ${item.uniqueClients === 1 ? 'cliente' : 'clientes'}`,
+                      })
+                    }
+                    className="space-y-1 text-xs cursor-pointer group p-1.5 -mx-1.5 rounded-xl hover:bg-purple-50/60 transition"
+                    title="Clique para ver detalhes e estatísticas deste serviço"
+                  >
                     <div className="flex justify-between font-semibold text-[#4A3F5C]">
-                      <span className="truncate max-w-[160px]">
-                        {idx + 1}. {item.name} ({item.count}x)
+                      <span className="truncate max-w-[170px] group-hover:text-purple-900 group-hover:underline transition underline-offset-2">
+                        {idx + 1}. {item.name}
                       </span>
-                      <span className="font-bold text-emerald-700">R$ {item.total.toFixed(2)}</span>
+                      <span className="font-bold text-emerald-700 shrink-0">R$ {item.total.toFixed(2)}</span>
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
                       <div
@@ -852,12 +908,33 @@ export default function FinancialDashboard({
                 const percent = totalFaturado > 0 ? (client.total / totalFaturado) * 100 : 0
 
                 return (
-                  <div key={client.name} className="space-y-1 text-xs">
+                  <div
+                    key={client.name}
+                    onClick={() => {
+                      const lastDate = client.lastVisitDate
+                        ? new Date(client.lastVisitDate).toLocaleDateString('pt-BR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                          })
+                        : 'Não registrada'
+                      setSelectedMetricDetail({
+                        type: 'client',
+                        name: client.name,
+                        count: client.count,
+                        total: client.total,
+                        extraInsightLabel: 'Última Visita',
+                        extraInsightValue: lastDate,
+                      })
+                    }}
+                    className="space-y-1 text-xs cursor-pointer group p-1.5 -mx-1.5 rounded-xl hover:bg-purple-50/60 transition"
+                    title="Clique para ver detalhes e estatísticas desta cliente"
+                  >
                     <div className="flex justify-between font-semibold text-[#4A3F5C]">
-                      <span className="truncate max-w-[160px]">
-                        {idx + 1}. {client.name} ({client.count}x)
+                      <span className="truncate max-w-[170px] group-hover:text-purple-900 group-hover:underline transition underline-offset-2">
+                        {idx + 1}. {client.name}
                       </span>
-                      <span className="font-bold text-emerald-700">R$ {client.total.toFixed(2)}</span>
+                      <span className="font-bold text-emerald-700 shrink-0">R$ {client.total.toFixed(2)}</span>
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
                       <div
@@ -871,20 +948,48 @@ export default function FinancialDashboard({
             </div>
           )}
         </div>
+      </div>
 
-        {/* Card 3: Recebimento por Forma de Pagamento */}
-        <div className="rounded-3xl bg-white p-6 shadow-xs border border-gray-100 space-y-4">
-          <h3 className="text-sm font-bold text-[#4A3F5C] flex items-center gap-2">
-            <CreditCard className="h-4 w-4 text-[#B8A9D9]" />
-            <span>Formas de Pagamento</span>
-          </h3>
+      {/* Card 3: Recebimento por Forma de Pagamento */}
+      <div className="rounded-3xl bg-white p-6 shadow-xs border border-gray-100 space-y-4">
+        <h3 className="text-sm font-bold text-[#4A3F5C] flex items-center gap-2">
+          <CreditCard className="h-4 w-4 text-[#B8A9D9]" />
+          <span>Formas de Pagamento</span>
+        </h3>
 
-          {chartPaymentData.length === 0 ? (
-            <div className="flex h-44 items-center justify-center text-xs text-gray-400 font-medium">
-              Nenhum recebimento no período.
+        {chartPaymentData.length === 0 ? (
+          <div className="flex h-44 items-center justify-center text-xs text-gray-400 font-medium">
+            Nenhum recebimento no período.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+            <div className="space-y-3">
+              {chartPaymentData.map((item) => {
+                const percent = totalFaturado > 0 ? (item.value / totalFaturado) * 100 : 0
+                return (
+                  <div key={item.key} className="space-y-1.5 text-xs">
+                    <div className="flex justify-between items-center font-semibold text-[#4A3F5C]">
+                      <span className="flex items-center gap-2">
+                        <PaymentIcon method={item.key} className="h-4 w-4 shrink-0" />
+                        <span>{item.name}</span>
+                      </span>
+                      <span className="font-bold text-emerald-700">R$ {item.value.toFixed(2)}</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${percent}%`, backgroundColor: item.color }}
+                      />
+                    </div>
+                    <div className="flex justify-end text-[10px] text-gray-400 font-medium">
+                      {percent.toFixed(1)}% do faturamento
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-          ) : (
-            <div className="h-52 w-full pt-1">
+
+            <div className="h-52 w-full md:col-span-2 pt-1">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartPaymentData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
@@ -902,8 +1007,8 @@ export default function FinancialDashboard({
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Detalhamento dos Atendimentos com Busca, Padronização e Modal de Detalhes */}
@@ -1066,6 +1171,142 @@ export default function FinancialDashboard({
             router.refresh()
           }}
         />
+      )}
+
+      {/* Modal de Detalhes da Métrica (Serviço ou Cliente) - Item 23 */}
+      {selectedMetricDetail && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in"
+          onClick={() => setSelectedMetricDetail(null)}
+        >
+          <div
+            className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full space-y-5 border border-gray-200/80 shadow-2xl animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cabeçalho */}
+            <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-[#B8A9D9]/20 text-[#4A3F5C] border border-[#B8A9D9]/30 flex items-center justify-center shrink-0">
+                  {selectedMetricDetail.type === 'service' ? (
+                    <Scissors className="h-5 w-5" />
+                  ) : (
+                    <Users className="h-5 w-5" />
+                  )}
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#8675A9]">
+                    {selectedMetricDetail.type === 'service' ? 'Detalhes do Serviço' : 'Detalhes da Cliente'}
+                  </span>
+                  <h3 className="text-base sm:text-lg font-bold text-[#4A3F5C] line-clamp-1">
+                    {selectedMetricDetail.name}
+                  </h3>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedMetricDetail(null)}
+                className="h-8 w-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition cursor-pointer"
+                title="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Grid com as métricas detalhadas */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Faturamento Total */}
+              <div className="rounded-2xl bg-gray-50/80 border border-gray-100 p-3.5 space-y-1">
+                <div className="flex items-center gap-1.5 text-gray-500 text-[11px] font-medium">
+                  <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Faturamento</span>
+                </div>
+                <div className="text-base sm:text-lg font-extrabold text-emerald-700">
+                  R$ {selectedMetricDetail.total.toFixed(2)}
+                </div>
+              </div>
+
+              {/* Total de Atendimentos */}
+              <div className="rounded-2xl bg-gray-50/80 border border-gray-100 p-3.5 space-y-1">
+                <div className="flex items-center gap-1.5 text-gray-500 text-[11px] font-medium">
+                  <Calendar className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                  <span>Atendimentos</span>
+                </div>
+                <div className="text-base sm:text-lg font-extrabold text-[#4A3F5C]">
+                  {selectedMetricDetail.count}{' '}
+                  <span className="text-xs font-semibold text-gray-400">
+                    {selectedMetricDetail.count === 1 ? 'sessão' : 'sessões'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Ticket Médio */}
+              <div className="rounded-2xl bg-gray-50/80 border border-gray-100 p-3.5 space-y-1">
+                <div className="flex items-center gap-1.5 text-gray-500 text-[11px] font-medium">
+                  <TrendingUp className="h-3.5 w-3.5 text-purple-600" />
+                  <span>Ticket Médio</span>
+                </div>
+                <div className="text-base sm:text-lg font-extrabold text-[#4A3F5C]">
+                  R${' '}
+                  {selectedMetricDetail.count > 0
+                    ? (selectedMetricDetail.total / selectedMetricDetail.count).toFixed(2)
+                    : '0.00'}
+                </div>
+              </div>
+
+              {/* 4º Card: Insight dinâmico (Clientes Atendidas para serviço, Última Visita para cliente) */}
+              <div className="rounded-2xl bg-gray-50/80 border border-gray-100 p-3.5 space-y-1">
+                <div className="flex items-center gap-1.5 text-gray-500 text-[11px] font-medium">
+                  {selectedMetricDetail.type === 'service' ? (
+                    <UserCheck className="h-3.5 w-3.5 text-purple-600" />
+                  ) : (
+                    <Clock className="h-3.5 w-3.5 text-purple-600" />
+                  )}
+                  <span>{selectedMetricDetail.extraInsightLabel}</span>
+                </div>
+                <div className="text-base sm:text-lg font-extrabold text-[#4A3F5C] truncate">
+                  {selectedMetricDetail.extraInsightValue}
+                </div>
+              </div>
+            </div>
+
+            {/* Barra de progresso visual */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex justify-between text-xs text-gray-500 font-medium">
+                <span>Participação no total do período:</span>
+                <span className="font-bold text-[#4A3F5C]">
+                  {totalFaturado > 0
+                    ? ((selectedMetricDetail.total / totalFaturado) * 100).toFixed(1)
+                    : '0.0'}
+                  %
+                </span>
+              </div>
+              <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
+                <div
+                  className="h-full rounded-full bg-[#B8A9D9] transition-all duration-500"
+                  style={{
+                    width: `${
+                      totalFaturado > 0
+                        ? Math.min(100, (selectedMetricDetail.total / totalFaturado) * 100)
+                        : 0
+                    }%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Botão Fechar */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setSelectedMetricDetail(null)}
+                className="w-full py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#4A3F5C] text-xs font-bold transition cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

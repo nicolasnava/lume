@@ -52,6 +52,9 @@ export default async function DisponibilidadePage() {
 
       <AvailabilityManager initialDisponibilidades={formattedDisponibilidades} />
 
+      {/* Linha ultra fina padrão estilo Lumê entre os horários da semana e o bloqueio de datas específicas */}
+      <div className="border-t border-gray-200/80 my-4" />
+
       {/* Seção de Bloqueio de Datas Especiais (Item 18) */}
       <DateBlockManager initialBlocks={initialBlocks} />
     </div>

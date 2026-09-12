@@ -16,7 +16,15 @@ import {
   Loader2,
   AlertCircle,
   Pin,
+  Lock,
+  Unlock,
+  ShieldAlert,
+  ShieldCheck,
 } from 'lucide-react'
+import {
+  toggleLockAgendaAction,
+  checkIsAgendaLockedAction,
+} from '@/app/actions/blockedDates'
 
 export interface DisponibilidadeRow {
   id?: string
@@ -118,6 +126,28 @@ export default function AvailabilityManager({
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' } | null>(null)
+
+  // Item 21: Bloqueio Geral da Agenda
+  const [isAgendaLocked, setIsAgendaLocked] = useState(false)
+  const [lockingAgenda, setLockingAgenda] = useState(false)
+
+  useEffect(() => {
+    checkIsAgendaLockedAction().then((locked) => setIsAgendaLocked(locked))
+  }, [])
+
+  const handleToggleLockAgenda = async () => {
+    const nextState = !isAgendaLocked
+    setLockingAgenda(true)
+    const res = await toggleLockAgendaAction(nextState)
+    setLockingAgenda(false)
+    if (res.success) {
+      setIsAgendaLocked(res.isLocked)
+      setToast({ show: true, message: res.message || '', type: 'success' })
+      router.refresh()
+    } else {
+      setToast({ show: true, message: res.message || 'Erro ao alterar bloqueio da agenda.', type: 'error' })
+    }
+  }
 
   const isMountedRef = useRef(false)
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -438,6 +468,29 @@ export default function AvailabilityManager({
     })
   }
 
+  const handleUnpinPausaFromOtherDays = (pausa: BreakTime, sourceDiaSemana: number) => {
+    const updated = schedules.map((s) => {
+      if (s.dia_semana === sourceDiaSemana) return s
+      const filteredPausas = s.pausas.filter(
+        (p) => !(p.pausa_inicio === pausa.pausa_inicio && p.pausa_fim === pausa.pausa_fim)
+      )
+      return {
+        ...s,
+        pausas: filteredPausas,
+      }
+    })
+
+    setSchedules(updated)
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+    executeSave(updated)
+    const diaNome = DIAS_SEMANA.find((d) => d.dia === sourceDiaSemana)?.nome || 'este dia'
+    setToast({
+      show: true,
+      message: `Pausa desfixada! Horário mantido apenas para ${diaNome}.`,
+      type: 'success',
+    })
+  }
+
   return (
     <div className="space-y-6">
       {/* Cabeçalho com Indicador Discreto de Autosave */}
@@ -471,6 +524,78 @@ export default function AvailabilityManager({
         </div>
       )}
 
+      {/* Item 21: Card de Bloqueio Geral de Agendamentos */}
+      <div
+        className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 ${
+          isAgendaLocked
+            ? 'bg-rose-50/80 border-rose-200 shadow-sm'
+            : 'bg-white border-gray-200 shadow-xs'
+        }`}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div
+              className={`flex h-10 w-10 items-center justify-center rounded-xl font-bold text-xs shrink-0 mt-0.5 ${
+                isAgendaLocked
+                  ? 'bg-rose-100 text-rose-700'
+                  : 'bg-[#B8A9D9]/20 text-[#4A3F5C]'
+              }`}
+            >
+              {isAgendaLocked ? <ShieldAlert className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm font-bold text-[#4A3F5C]">
+                  Bloqueio Geral da Agenda
+                </h3>
+              </div>
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed max-w-xl">
+                {isAgendaLocked
+                  ? 'Todo e qualquer agendamento está bloqueado. Nenhuma cliente conseguirá agendar horários na sua vitrine enquanto esta opção estiver ativa.'
+                  : 'Permite bloquear instantaneamente toda e qualquer nova reserva de horário, mantendo apenas os agendamentos já confirmados.'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={lockingAgenda}
+            onClick={handleToggleLockAgenda}
+            className={`inline-flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl text-xs font-bold border transition cursor-pointer shrink-0 sm:min-w-[200px] disabled:opacity-50 ${
+              isAgendaLocked
+                ? 'bg-rose-600 text-white border-rose-600 hover:bg-rose-700'
+                : 'bg-white text-[#4A3F5C] border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            <span className="shrink-0 flex items-center gap-1.5">
+              {lockingAgenda ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : isAgendaLocked ? (
+                <Lock className="h-3.5 w-3.5" />
+              ) : (
+                <Unlock className="h-3.5 w-3.5 text-gray-400" />
+              )}
+              <span>{isAgendaLocked ? 'Desbloquear Agenda' : 'Bloquear Toda a Agenda'}</span>
+            </span>
+
+            <div
+              className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors ml-auto ${
+                isAgendaLocked ? 'bg-rose-300' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                  isAgendaLocked ? 'translate-x-3.5' : 'translate-x-0.5'
+                }`}
+              />
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Linha ultra fina entre o card de bloqueio geral e os horários da semana */}
+      <div className="border-t border-gray-200/70 my-2" />
+
       {/* Grade de Atendimento por Dia da Semana */}
       <div className="space-y-4">
         {DIAS_SEMANA.map((dia) => {
@@ -479,8 +604,12 @@ export default function AvailabilityManager({
           return (
             <div
               key={dia.dia}
-              className={`rounded-2xl bg-white p-4 sm:p-5 border shadow-xs transition w-full max-w-full ${
-                schedule.ativo ? 'border-gray-200 shadow-sm' : 'border-gray-100 bg-gray-50/50'
+              className={`rounded-2xl p-4 sm:p-5 border shadow-xs transition-all w-full max-w-full ${
+                isAgendaLocked
+                  ? 'bg-gray-50/75 border-gray-200/60 opacity-60 pointer-events-none select-none'
+                  : schedule.ativo
+                  ? 'bg-white border-gray-200 shadow-sm'
+                  : 'border-gray-100 bg-gray-50/50'
               }`}
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -497,13 +626,17 @@ export default function AvailabilityManager({
                   <div>
                     <h3 className="text-sm font-bold text-[#4A3F5C]">{dia.nome}</h3>
                     {/* Copy de atendimento */}
-                    {schedule.ativo ? (
+                    {isAgendaLocked ? (
+                      <span className="text-[11px] text-rose-600/80 font-medium block mt-0.5">
+                        Agenda bloqueada globalmente
+                      </span>
+                    ) : schedule.ativo ? (
                       <div className="space-y-0.5 mt-0.5">
                         <span className="text-[11px] text-gray-500 block leading-tight">
                           Atendimento contínuo das {schedule.hora_inicio} às {schedule.hora_fim}
                         </span>
                         {schedule.pausas.length > 0 && (
-                          <span className="text-[11px] text-purple-800 font-semibold block leading-tight">
+                          <span className="text-[11px] text-[#4A3F5C] font-semibold block leading-tight">
                             Com {schedule.pausas.length} {schedule.pausas.length === 1 ? 'pausa' : 'pausas'}
                           </span>
                         )}
@@ -517,8 +650,9 @@ export default function AvailabilityManager({
                 {/* Item 9: Interruptor na extremidade direita máxima do botão */}
                 <button
                   type="button"
+                  disabled={isAgendaLocked}
                   onClick={() => handleToggleDiaAtivo(dia.dia)}
-                  className={`inline-flex items-center justify-between gap-3 px-3.5 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer shrink-0 sm:min-w-[180px] ${
+                  className={`inline-flex items-center justify-between gap-3 px-3.5 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer shrink-0 sm:min-w-[180px] disabled:opacity-50 ${
                     schedule.ativo
                       ? 'bg-[#4A3F5C] text-white border-[#4A3F5C]'
                       : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
@@ -539,8 +673,8 @@ export default function AvailabilityManager({
                 </button>
               </div>
 
-              {/* Configurações do Dia Ativo */}
-              {schedule.ativo && (
+              {/* Configurações do Dia Ativo (fecham ao bloquear agenda) */}
+              {schedule.ativo && !isAgendaLocked && (
                 <div className="mt-4 pt-4 border-t border-gray-100 space-y-4 w-full max-w-full">
                   {/* Item 2 (Prompt 30): Janela Principal de Atendimento sempre em 1 linha sem quebrar */}
                   <div className="flex items-center justify-between gap-2 bg-[#FAF7F5] p-2.5 sm:p-3 rounded-xl border border-gray-100 w-full max-w-full flex-wrap sm:flex-nowrap">
@@ -597,36 +731,67 @@ export default function AvailabilityManager({
 
                     {schedule.pausas.length > 0 && (
                       <div className="space-y-2">
-                        {schedule.pausas.map((pausa, pIdx) => (
-                          <div
-                            key={pausa.id}
-                            className="bg-amber-50/60 p-3 rounded-xl border border-amber-200/60 space-y-2 w-full max-w-full"
-                          >
-                            {/* Linha 1: Ícone + Horário de pausa à esquerda, Ações (Alfinete + Lixeira) alinhadas à direita */}
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
-                                <Coffee className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-                                <span>Horário de pausa {schedule.pausas.length > 1 ? `#${pIdx + 1}` : ''}:</span>
+                        {schedule.pausas.map((pausa, pIdx) => {
+                          const activeDaysWithWindow = schedules.filter(
+                            (s) => s.ativo && pausa.pausa_inicio > s.hora_inicio && pausa.pausa_fim < s.hora_fim
+                          )
+                          const isPinnedAcrossDays =
+                            activeDaysWithWindow.length > 1 &&
+                            activeDaysWithWindow.every((s) =>
+                              s.pausas.some(
+                                (p) => p.pausa_inicio === pausa.pausa_inicio && p.pausa_fim === pausa.pausa_fim
+                              )
+                            )
+
+                          return (
+                            <div
+                              key={pausa.id}
+                              className={`p-3 rounded-xl border space-y-2 w-full max-w-full transition ${
+                                isPinnedAcrossDays
+                                  ? 'bg-purple-50/50 border-purple-200/80 shadow-2xs'
+                                  : 'bg-amber-50/60 border-amber-200/60'
+                              }`}
+                            >
+                              {/* Linha 1: Ícone + Horário de pausa à esquerda, Ações (Alfinete + Lixeira) alinhadas à direita */}
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 text-xs font-bold text-[#4A3F5C]">
+                                  <Coffee className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                                  <span>Horário de pausa {schedule.pausas.length > 1 ? `#${pIdx + 1}` : ''}:</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (isPinnedAcrossDays) {
+                                        handleUnpinPausaFromOtherDays(pausa, dia.dia)
+                                      } else {
+                                        handlePinPausaToAllDays(pausa, dia.dia)
+                                      }
+                                    }}
+                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer shrink-0 ${
+                                      isPinnedAcrossDays
+                                        ? 'bg-[#4A3F5C] text-white shadow-xs hover:bg-[#393047]'
+                                        : 'text-amber-800 hover:text-[#4A3F5C] hover:bg-amber-200/70'
+                                    }`}
+                                    title={
+                                      isPinnedAcrossDays
+                                        ? 'Pausa fixada em todos os dias ativos. Clique para desfixar.'
+                                        : 'Fixar e replicar este horário de pausa em todos os dias de atendimento ativos'
+                                    }
+                                  >
+                                    <Pin className={`h-3.5 w-3.5 ${isPinnedAcrossDays ? 'fill-current rotate-45' : ''}`} />
+                                    {isPinnedAcrossDays && <span>Fixada</span>}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemovePausa(dia.dia, pausa.id)}
+                                    className="p-1 text-red-600 hover:bg-red-100/70 rounded-lg transition cursor-pointer shrink-0"
+                                    title="Remover esta pausa"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handlePinPausaToAllDays(pausa, dia.dia)}
-                                  className="p-1 text-amber-800 hover:text-[#4A3F5C] hover:bg-amber-200/70 rounded-lg transition cursor-pointer shrink-0"
-                                  title="Fixar e replicar este horário de pausa em todos os dias de atendimento ativos"
-                                >
-                                  <Pin className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemovePausa(dia.dia, pausa.id)}
-                                  className="p-1 text-red-600 hover:bg-red-100/70 rounded-lg transition cursor-pointer shrink-0"
-                                  title="Remover esta pausa"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            </div>
 
                             {/* Linha 2: Das [09:00] até [13:00] filtradas estritamente pela janela de atendimento do dia */}
                             <div className="flex items-center gap-2 text-xs font-medium text-amber-900 flex-wrap sm:flex-nowrap">
@@ -664,9 +829,10 @@ export default function AvailabilityManager({
                               </div>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
+                        )
+                      })}
+                    </div>
+                  )}
                   </div>
                 </div>
               )}

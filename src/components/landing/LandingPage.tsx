@@ -4,7 +4,9 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
-  Sparkles,
+  LayoutGrid,
+  Eye,
+  Link2,
   ArrowRight,
   CreditCard,
   Clock,
@@ -174,7 +176,7 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
                     onClick={() => setDropdownOpen(false)}
                     className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium text-[#3D2E4D] hover:bg-[#FAF8F5] transition"
                   >
-                    <Sparkles className="h-4 w-4 text-[#8C5383]" />
+                    <LayoutGrid className="h-4 w-4 text-[#8C5383]" />
                     <div>
                       <span className="font-bold block">Funcionalidades</span>
                       <span className="text-[10px] text-[#6B5E7A]">Vitrine, agenda e Google Sync</span>
@@ -435,7 +437,7 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
                     <Scissors className="h-3.5 w-3.5" />
                   </span>
                   <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#FAF0F5] text-[#8C5383] ring-2 ring-white shadow-2xs">
-                    <Sparkles className="h-3.5 w-3.5" />
+                    <Eye className="h-3.5 w-3.5" />
                   </span>
                   <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#F5F0FA] text-[#3D2E4D] ring-2 ring-white shadow-2xs">
                     <Heart className="h-3.5 w-3.5" />
@@ -950,7 +952,7 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
               <div className="w-full bg-[#FAF8F5] rounded-3xl border border-[#E8DFD8] p-5 shadow-xs hover:border-[#8C5383] transition group text-left space-y-3 relative z-10">
                 <div className="flex items-center justify-between">
                   <div className="h-11 w-11 rounded-2xl bg-white border border-[#E8DFD8] group-hover:border-[#8C5383] shadow-xs flex items-center justify-center text-[#8C5383] transition-transform duration-300 group-hover:scale-105 shrink-0">
-                    <Sparkles className="h-5 w-5 text-[#8C5383]" />
+                    <Link2 className="h-5 w-5 text-[#8C5383]" />
                   </div>
                   <span className="text-xs font-extrabold text-[#8C5383] bg-white px-3 py-1 rounded-full border border-[#E8DFD8]">
                     Passo 01
@@ -1049,7 +1051,7 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="h-14 w-14 rounded-2xl bg-white border-2 border-[#E8DFD8] group-hover:border-[#8C5383] shadow-xs flex items-center justify-center text-[#8C5383] transition-transform duration-300 group-hover:scale-110">
-                      <Sparkles className="h-6 w-6 text-[#8C5383]" />
+                      <Link2 className="h-6 w-6 text-[#8C5383]" />
                     </div>
                     <span className="text-xs font-extrabold text-[#8C5383] bg-white px-2.5 py-1 rounded-full border border-[#E8DFD8]">
                       Passo 01

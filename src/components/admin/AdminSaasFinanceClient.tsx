@@ -22,7 +22,6 @@ import {
   Plus,
   Loader2,
   Send,
-  Sparkles,
   Ticket,
   Trash2,
   Download,
@@ -356,7 +355,7 @@ export default function AdminSaasFinanceClient({
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-[#9C9C9F]">Conversão & Churn</span>
                 <div className="h-8 w-8 rounded-xl bg-[#B8942F]/15 text-[#D4AF37] flex items-center justify-center border border-[#B8942F]/30">
-                  <Sparkles className="h-4 w-4" />
+                  <TrendingUp className="h-4 w-4" />
                 </div>
               </div>
               <div className="flex items-center justify-between pt-2">
@@ -753,7 +752,7 @@ export default function AdminSaasFinanceClient({
           {/* Coluna 3: Criar Novo Cupom */}
           <div className="bg-[#1A1A1C] p-6 rounded-2xl border border-white/[0.06] shadow-[0_4px_24px_-4px_rgba(0,0,0,0.4)] space-y-4">
             <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3">
-              <Sparkles className="h-4 w-4 text-[#D4AF37]" />
+              <Ticket className="h-4 w-4 text-[#D4AF37]" />
               <h3 className="text-sm font-bold text-[#F5F5F4]">Criar Novo Cupom</h3>
             </div>
 

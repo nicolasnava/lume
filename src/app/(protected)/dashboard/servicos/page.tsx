@@ -28,20 +28,27 @@ export default async function ServicosPage() {
       .select('*')
       .eq('profissional_id', user.id)
       .order('created_at', { ascending: false }),
-    adminSupabase
-      .from('agendamentos')
-      .select('servico_id')
+    (adminSupabase
+      .from('agendamentos') as any)
+      .select('id, servico_id, data_hora_inicio, data_hora_fim, status, valor_cobrado, clientes(nome, telefone)')
       .eq('profissional_id', user.id)
       .eq('status', 'confirmado')
       .gte('data_hora_inicio', nowIso),
     getCombosProfissionalAction(user.id),
   ])
 
-  const pendingCounts: Record<string, number> = {}
+  const pendingBookingsByService: Record<string, any[]> = {}
   if (pendingBookings) {
-    for (const b of pendingBookings) {
+    for (const b of (pendingBookings as any[])) {
       if (b.servico_id) {
-        pendingCounts[b.servico_id] = (pendingCounts[b.servico_id] || 0) + 1
+        if (!pendingBookingsByService[b.servico_id]) {
+          pendingBookingsByService[b.servico_id] = []
+        }
+        pendingBookingsByService[b.servico_id].push({
+          ...b,
+          cliente_nome: b.clientes?.nome || 'Cliente',
+          cliente_telefone: b.clientes?.telefone || null,
+        })
       }
     }
   }
@@ -49,7 +56,8 @@ export default async function ServicosPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const formattedServices = (servicos || []).map((s: any) => ({
     ...s,
-    pending_bookings_count: pendingCounts[s.id] || 0,
+    pending_bookings_count: (pendingBookingsByService[s.id] || []).length,
+    pending_bookings: pendingBookingsByService[s.id] || [],
   })) as ServiceRow[]
 
   return (

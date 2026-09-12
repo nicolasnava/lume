@@ -10,10 +10,13 @@ import {
   User,
   Scissors,
   CheckCircle,
+  Circle,
   XCircle,
-  Sparkles,
+  CalendarCheck,
   TrendingUp,
   DollarSign,
+  AlertTriangle,
+  Ban,
 } from 'lucide-react'
 
 interface AgendaCalendarProps {
@@ -88,9 +91,12 @@ export default function AgendaCalendar({ initialBookings, onRefresh }: AgendaCal
     return periodBookings
       .filter((b) => b.status === 'confirmado' || b.status === 'concluido')
       .reduce((sum, b) => {
+        const hasMultiple = Boolean(b.agendamento_servicos && b.agendamento_servicos.length > 0)
         const val =
-          b.valor_cobrado !== null && b.valor_cobrado !== undefined
+          b.valor_cobrado !== null && b.valor_cobrado !== undefined && Number(b.valor_cobrado) > 0
             ? Number(b.valor_cobrado)
+            : hasMultiple
+            ? (b.agendamento_servicos?.reduce((acc: number, as: any) => acc + Number(as.preco_no_momento || as.servicos?.preco || 0), 0) ?? 0)
             : Number(b.servicos?.preco || 0)
         return sum + val
       }, 0)
@@ -193,8 +199,9 @@ export default function AgendaCalendar({ initialBookings, onRefresh }: AgendaCal
       <div className="space-y-3">
         {/* Seletor de Período dos Indicadores */}
         <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#4A3F5C]/70">
-            Resumo dos Indicadores
+          <span className="text-xs font-bold uppercase tracking-wider text-[#4A3F5C]/70 leading-tight">
+            <span className="block sm:inline">Resumo dos</span>{' '}
+            <span className="block sm:inline">Indicadores</span>
           </span>
 
           <div className="flex items-center rounded-2xl bg-white p-1 border border-gray-200/80 shadow-2xs">
@@ -332,7 +339,7 @@ export default function AgendaCalendar({ initialBookings, onRefresh }: AgendaCal
           </div>
           <div className="pt-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FAF7F5] border border-[#B8A9D9]/40 text-xs font-semibold text-[#4A3F5C]">
-              <Sparkles className="h-3.5 w-3.5 text-[#B8A9D9]" />
+              <CalendarCheck className="h-3.5 w-3.5 text-[#B8A9D9]" />
               Agenda livre e pronta para novos atendimentos
             </span>
           </div>
@@ -361,13 +368,18 @@ export default function AgendaCalendar({ initialBookings, onRefresh }: AgendaCal
               ? b.agendamento_servicos!.map((as) => as.servicos?.nome).filter(Boolean).join(' + ')
               : (b.servicos?.nome || 'Serviço')
 
-            const precoValor = b.valor_cobrado !== null && b.valor_cobrado !== undefined
-              ? Number(b.valor_cobrado)
-              : hasMultipleServices
-              ? b.agendamento_servicos!.reduce((acc, as) => acc + Number(as.preco_no_momento || as.servicos?.preco || 0), 0)
-              : b.servicos?.preco !== undefined && b.servicos?.preco !== null
-              ? Number(b.servicos.preco)
-              : null
+            const isAnyServiceDeactivated =
+              b.servicos?.ativo === false ||
+              (b.agendamento_servicos && b.agendamento_servicos.some((as) => as.servicos?.ativo === false))
+
+            const precoValor =
+              b.valor_cobrado !== null && b.valor_cobrado !== undefined && Number(b.valor_cobrado) > 0
+                ? Number(b.valor_cobrado)
+                : hasMultipleServices
+                ? b.agendamento_servicos!.reduce((acc, as) => acc + Number(as.preco_no_momento || as.servicos?.preco || 0), 0)
+                : b.servicos?.preco !== undefined && b.servicos?.preco !== null
+                ? Number(b.servicos.preco)
+                : null
 
             return (
               <div
@@ -376,7 +388,7 @@ export default function AgendaCalendar({ initialBookings, onRefresh }: AgendaCal
                 className="group cursor-pointer rounded-2xl bg-white p-4 sm:p-5 border border-gray-100 shadow-xs hover:shadow-md hover:border-[#B8A9D9]/50 transition flex flex-col justify-between"
               >
                 <div>
-                  {/* Cabeçalho do Card: Horário & Status */}
+                  {/* Cabeçalho do Card: Horário & Status (com ícone de perigo caso serviço esteja desativado) */}
                   <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                     <div className="flex items-center gap-2 text-xs font-bold text-[#4A3F5C]">
                       <Clock className="h-4 w-4 text-[#B8A9D9]" />
@@ -385,21 +397,34 @@ export default function AgendaCalendar({ initialBookings, onRefresh }: AgendaCal
                       </span>
                     </div>
 
-                    <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold capitalize ${
-                        b.status === 'confirmado'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : b.status === 'concluido'
-                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                          : b.status === 'cancelado'
-                          ? 'bg-red-50 text-red-700 border border-red-200 line-through'
-                          : 'bg-amber-50 text-amber-700 border border-amber-200'
-                      }`}
-                    >
-                      {b.status === 'confirmado' && <CheckCircle className="h-3 w-3" />}
-                      {b.status === 'cancelado' && <XCircle className="h-3 w-3" />}
-                      <span>{b.status}</span>
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {isAnyServiceDeactivated && (
+                        <div
+                          className="h-5 w-5 rounded-full bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 animate-pulse shrink-0"
+                          title="Serviço desativado no catálogo"
+                        >
+                          <AlertTriangle className="h-3 w-3" />
+                        </div>
+                      )}
+
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold capitalize ${
+                          b.status === 'confirmado'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : b.status === 'concluido'
+                            ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                            : b.status === 'cancelado'
+                            ? 'bg-red-50 text-red-700 border border-red-200 line-through'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        }`}
+                      >
+                        {b.status === 'confirmado' && <Circle className="h-3 w-3 shrink-0 text-emerald-600" />}
+                        {b.status === 'concluido' && <CheckCircle className="h-3 w-3" />}
+                        {b.status === 'cancelado' && <XCircle className="h-3 w-3" />}
+                        {b.status === 'no_show' && <Ban className="h-3 w-3" />}
+                        <span>{b.status === 'no_show' ? 'Faltou' : b.status}</span>
+                      </span>
+                    </div>
                   </div>
 
                   {/* Informações do Cliente e Serviço */}
@@ -421,11 +446,6 @@ export default function AgendaCalendar({ initialBookings, onRefresh }: AgendaCal
                           <p className="text-xs text-gray-600 font-medium leading-relaxed line-clamp-2 pr-1" title={servicosNome}>
                             {servicosNome}
                           </p>
-                          {b.servicos?.ativo === false && (
-                            <span className="inline-block mt-1 text-[9px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">
-                              Desativado
-                            </span>
-                          )}
                         </div>
                       </div>
 

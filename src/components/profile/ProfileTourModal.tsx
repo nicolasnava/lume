@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import {
-  Sparkles,
   Camera,
   User,
   ExternalLink,
@@ -36,7 +35,7 @@ const PROFILE_TOUR_STEPS: TourStep[] = [
     title: 'Personalização Completa no Lumê',
     description:
       'Organizamos tudo em 3 abas práticas: Perfil (seus dados e contatos), Vitrine (sua identidade visual e página pública) e Assinatura (seu plano e suporte).',
-    icon: Sparkles,
+    icon: Palette,
   },
   {
     targetId: 'profile-tour-avatar',

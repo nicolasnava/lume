@@ -561,6 +561,7 @@ export interface CompleteBookingPayload {
   valor_cobrado: number
   pago: boolean
   observacao_pagamento?: string | null
+  servicos_precos?: { id: string; preco: number }[]
 }
 
 /**
@@ -596,8 +597,21 @@ export async function completeBookingAction(
       throw updateError
     }
 
+    // Atualizar os valores individuais de cada serviço na tabela agendamento_servicos, se informados
+    if (payload.servicos_precos && payload.servicos_precos.length > 0) {
+      for (const sp of payload.servicos_precos) {
+        if (sp.id && !isNaN(Number(sp.preco))) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase.from('agendamento_servicos') as any)
+            .update({ preco_no_momento: Number(sp.preco) })
+            .eq('id', sp.id)
+        }
+      }
+    }
+
     revalidatePath('/dashboard')
     revalidatePath('/dashboard/financeiro')
+    revalidatePath('/dashboard/agenda')
     return { success: true }
   } catch (error) {
     console.error('Erro ao concluir agendamento:', error)
