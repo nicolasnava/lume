@@ -19,6 +19,7 @@ export interface ComboItem {
     duracao_minutos: number
     preco: number
     foto_url?: string | null
+    ativo?: boolean
   }>
   duracaoTotalMinutos: number
   precoOriginalTotal: number
@@ -93,6 +94,7 @@ export async function getCombosProfissionalAction(profissionalId?: string): Prom
         duracao_minutos: Number(item.servicos.duracao_minutos || 60),
         preco: Number(item.servicos.preco || 0),
         foto_url: item.servicos.foto_url,
+        ativo: item.servicos.ativo !== false,
       })
     })
 

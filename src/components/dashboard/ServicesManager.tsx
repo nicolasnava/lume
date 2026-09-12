@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -89,6 +89,16 @@ export default function ServicesManager({ initialServices, initialCombos, profis
   const [services, setServices] = useState<ServiceRow[]>(initialServices)
   const [combos, setCombos] = useState<ComboItem[]>(initialCombos || [])
   const [expandedComboId, setExpandedComboId] = useState<string | null>(null)
+
+  // Ordenar serviços: ativos no topo, desativados descem para o fim da lista
+  const sortedServices = useMemo(() => {
+    return [...services].sort((a, b) => {
+      const aAtivo = a.ativo !== false ? 1 : 0
+      const bAtivo = b.ativo !== false ? 1 : 0
+      if (aAtivo !== bAtivo) return bAtivo - aAtivo
+      return a.nome.localeCompare(b.nome)
+    })
+  }, [services])
 
   const [showModal, setShowModal] = useState(false)
   const [editingService, setEditingService] = useState<ServiceRow | null>(null)
@@ -739,17 +749,18 @@ export default function ServicesManager({ initialServices, initialCombos, profis
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {services.map((s) => {
+              {sortedServices.map((s) => {
                 const isAtivo = s.ativo !== false
                 return (
                   <div
                     key={s.id}
                     className={`rounded-3xl bg-white p-4 shadow-xs border transition flex flex-col justify-between h-full space-y-4 ${
-                      isAtivo ? 'border-gray-200/80 hover:border-[#B8A9D9]' : 'border-gray-200 opacity-60 bg-gray-50/50'
+                      isAtivo ? 'border-gray-200/80 hover:border-[#B8A9D9]' : 'border-gray-200/90 bg-gray-50/40'
                     }`}
                   >
                 <div className="space-y-3 flex-1 flex flex-col justify-between">
-                  <div>
+                  {/* Bloco de informações do serviço (atenua se desativado) */}
+                  <div className={!isAtivo ? 'opacity-65' : ''}>
                     {/* Foto Banner Ampliada (Item 15) */}
                     <div className="relative h-40 w-full shrink-0 rounded-2xl overflow-hidden border border-gray-100 bg-purple-50/60 mb-3 shadow-2xs">
                       {s.foto_url ? (

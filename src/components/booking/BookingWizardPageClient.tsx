@@ -20,6 +20,7 @@ import {
   Clock,
   CheckCircle2,
   ChevronLeft,
+  ChevronDown,
   Loader2,
   AlertCircle,
   Scissors,
@@ -60,7 +61,7 @@ export default function BookingWizardPageClient({
   initialServicoId,
   studioContext,
 }: BookingWizardPageClientProps) {
-  const initialServico = allServicos.find((s) => s.id === initialServicoId) || null
+  const initialServico = allServicos.find((s) => s.id === initialServicoId && s.ativo !== false) || null
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(() => (initialServico ? 2 : 1))
 
@@ -73,6 +74,18 @@ export default function BookingWizardPageClient({
   )
 
   const [selectedCombo, setSelectedCombo] = useState<ComboItem | null>(null)
+
+  // Estados para expansão de pacotes e serviços
+  const [expandedComboIds, setExpandedComboIds] = useState<Record<string, boolean>>({})
+  const [isStep2ServicesExpanded, setIsStep2ServicesExpanded] = useState(false)
+  const [isStep4ServicesExpanded, setIsStep4ServicesExpanded] = useState(false)
+
+  const toggleComboExpanded = (comboId: string) => {
+    setExpandedComboIds((prev) => ({
+      ...prev,
+      [comboId]: !prev[comboId],
+    }))
+  }
 
   const [workingDays, setWorkingDays] = useState<WorkingDayInfo[]>([])
   const [loadingDays, setLoadingDays] = useState(false)
@@ -141,6 +154,7 @@ export default function BookingWizardPageClient({
   }, [step, profissional.id, profissional.janela_agendamento_dias])
 
   const handleAddServico = (servico: ServicoRow) => {
+    if (servico.ativo === false) return
     if (!selectedServicos.some((s) => s.id === servico.id)) {
       setSelectedServicos((prev) => [...prev, servico])
     }
@@ -156,6 +170,18 @@ export default function BookingWizardPageClient({
 
   // Prompt 61: Adicionar combo completo ao atendimento
   const handleAddCombo = (combo: ComboItem) => {
+    const hasInactive = combo.servicos.some(
+      (s) => s.ativo === false || allServicos.some((as) => as.id === s.id && as.ativo === false)
+    )
+    if (hasInactive) {
+      setToast({
+        show: true,
+        message: 'Este pacote contém serviços desativados e não pode ser selecionado.',
+        type: 'error',
+      })
+      return
+    }
+
     setSelectedCombo(combo)
 
     // Converte os serviços do combo em objetos ServicoRow compatíveis
@@ -254,7 +280,7 @@ export default function BookingWizardPageClient({
   }
 
   const servicosSugeridos = allServicos.filter(
-    (s) => !selectedServicos.some((sel) => sel.id === s.id)
+    (s) => s.ativo !== false && !selectedServicos.some((sel) => sel.id === s.id)
   )
 
   const formatDuracaoTotal = (mins: number) => {
@@ -567,44 +593,36 @@ export default function BookingWizardPageClient({
                   </div>
                 )}
 
-                {/* Prompt 61: Seção de Combos Promocionais (só aparece se houver pelo menos 1 combo ativo) */}
+                {/* Seção de Pacotes (só aparece se houver pelo menos 1 combo ativo) */}
                 {allCombos && allCombos.length > 0 && (
                   <div className="space-y-3 pt-4 border-t border-gray-100">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-bold uppercase tracking-wider text-[#4A3F5C] flex items-center gap-1.5">
                         <Package className="h-4 w-4 text-[#8675A9]" />
-                        <span>Combos e Pacotes Especiais</span>
+                        <span>Pacotes</span>
                       </h4>
-                      <span className="text-[10px] font-bold text-purple-700 bg-purple-100/70 px-2 py-0.5 rounded-full">
-                        Preço promocional
-                      </span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                       {allCombos.map((combo) => {
                         const isSelected = selectedCombo?.id === combo.id
+                        const hasInactiveService = combo.servicos.some(
+                          (s) => s.ativo === false || allServicos.some((as) => as.id === s.id && as.ativo === false)
+                        )
+                        const isExpanded = !!expandedComboIds[combo.id]
+
                         return (
                           <div
                             key={combo.id}
                             className={`flex flex-col justify-between bg-white p-4 rounded-2xl border transition space-y-3 group shadow-2xs ${
-                              isSelected
+                              hasInactiveService
+                                ? 'opacity-60 border-gray-200 bg-gray-50/50'
+                                : isSelected
                                 ? 'border-purple-400 ring-2 ring-purple-300/40 bg-purple-50/20'
                                 : 'border-gray-200 hover:border-[#B8A9D9]'
                             }`}
                           >
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-[#8675A9] text-white">
-                                  <Package className="h-2.5 w-2.5" />
-                                  Combo
-                                </span>
-                                {combo.descontoEconomia > 0 && (
-                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                                    Economize R$ {combo.descontoEconomia.toFixed(2)}
-                                  </span>
-                                )}
-                              </div>
-
+                            <div className="space-y-2.5">
                               {combo.foto_url && (
                                 <div className="relative h-28 w-full overflow-hidden rounded-xl bg-purple-50 border border-gray-100">
                                   <Image
@@ -628,21 +646,58 @@ export default function BookingWizardPageClient({
                                 )}
                               </div>
 
-                              {/* Lista de serviços inclusos */}
-                              <div className="bg-gray-50/80 rounded-xl p-2.5 border border-gray-100 space-y-1">
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
-                                  Serviços inclusos ({combo.servicos.length}):
-                                </span>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {combo.servicos.map((s) => (
-                                    <span
-                                      key={s.id}
-                                      className="text-[11px] font-medium bg-white px-2 py-0.5 rounded-md border border-gray-200 text-gray-700 shadow-3xs"
-                                    >
-                                      ✓ {s.nome}
-                                    </span>
-                                  ))}
-                                </div>
+                              {/* Lista de serviços inclusos com expansão e mini-cards */}
+                              <div className="bg-gray-50/80 rounded-xl p-2.5 border border-gray-100 space-y-2">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleComboExpanded(combo.id)}
+                                  className="w-full flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-gray-500 hover:text-[#4A3F5C] transition cursor-pointer"
+                                >
+                                  <span>Serviços inclusos ({combo.servicos.length})</span>
+                                  <ChevronDown
+                                    className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
+                                      isExpanded ? 'rotate-180' : ''
+                                    }`}
+                                  />
+                                </button>
+
+                                {isExpanded && (
+                                  <div className="space-y-1.5 pt-1">
+                                    {combo.servicos.map((s) => (
+                                      <div
+                                        key={s.id}
+                                        className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-gray-200/80 shadow-3xs"
+                                      >
+                                        <div className="relative h-10 w-10 rounded-lg bg-purple-50 border border-purple-100 overflow-hidden shrink-0 flex items-center justify-center">
+                                          {s.foto_url ? (
+                                            <Image
+                                              src={s.foto_url}
+                                              alt={s.nome}
+                                              fill
+                                              className="object-cover"
+                                              unoptimized
+                                            />
+                                          ) : (
+                                            <Scissors className="h-4 w-4 text-[#8675A9]" />
+                                          )}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                          <p className="text-xs font-bold text-[#4A3F5C] truncate">{s.nome}</p>
+                                          <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-gray-500 font-medium">
+                                            <span className="font-bold text-emerald-700">
+                                              R$ {Number(s.preco).toFixed(2)}
+                                            </span>
+                                            <span>•</span>
+                                            <span className="flex items-center gap-1 text-[10px] text-gray-400">
+                                              <Clock className="h-3 w-3" />
+                                              {s.duracao_minutos} min
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             </div>
 
@@ -664,27 +719,38 @@ export default function BookingWizardPageClient({
                                 </div>
                               </div>
 
-                              <button
-                                type="button"
-                                onClick={() => (isSelected ? handleRemoveCombo() : handleAddCombo(combo))}
-                                className={`py-2 px-3.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
-                                  isSelected
-                                    ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs'
-                                    : 'bg-[#B8A9D9]/20 text-[#4A3F5C] border border-[#B8A9D9]/40 hover:bg-[#B8A9D9]/30'
-                                }`}
-                              >
-                                {isSelected ? (
-                                  <>
-                                    <CheckCircle2 className="h-3.5 w-3.5" />
-                                    <span>Combo Selecionado</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Plus className="h-3.5 w-3.5" />
-                                    <span>Adicionar Combo</span>
-                                  </>
-                                )}
-                              </button>
+                              {hasInactiveService ? (
+                                <button
+                                  type="button"
+                                  disabled
+                                  className="py-2 px-3.5 rounded-xl text-xs font-bold bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed flex items-center gap-1.5 shrink-0"
+                                >
+                                  <AlertCircle className="h-3.5 w-3.5 text-gray-400" />
+                                  <span>Indisponível</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => (isSelected ? handleRemoveCombo() : handleAddCombo(combo))}
+                                  className={`py-2 px-3.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                                    isSelected
+                                      ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs'
+                                      : 'bg-[#B8A9D9]/20 text-[#4A3F5C] border border-[#B8A9D9]/40 hover:bg-[#B8A9D9]/30'
+                                  }`}
+                                >
+                                  {isSelected ? (
+                                    <>
+                                      <CheckCircle2 className="h-3.5 w-3.5" />
+                                      <span>Pacote Selecionado</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Plus className="h-3.5 w-3.5" />
+                                      <span>Adicionar Pacote</span>
+                                    </>
+                                  )}
+                                </button>
+                              )}
                             </div>
                           </div>
                         )
@@ -746,16 +812,69 @@ export default function BookingWizardPageClient({
                 </div>
 
                 {selectedServicos.length > 0 && (
-                  <div className="flex items-center justify-between bg-purple-50/70 p-3 rounded-2xl border border-[#B8A9D9]/40 text-xs shadow-2xs">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Scissors className="h-4 w-4 text-[#4A3F5C] shrink-0" />
-                      <span className="font-bold text-[#4A3F5C] truncate">
-                        {selectedServicos.map((s) => s.nome).join(' + ')}
+                  <div className="bg-purple-50/70 rounded-2xl border border-[#B8A9D9]/40 text-xs shadow-2xs overflow-hidden transition">
+                    <button
+                      type="button"
+                      onClick={() => setIsStep2ServicesExpanded(!isStep2ServicesExpanded)}
+                      className="w-full flex items-center justify-between p-3 hover:bg-purple-100/40 transition cursor-pointer text-left"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {selectedCombo ? (
+                          <Package className="h-4 w-4 text-[#8675A9] shrink-0" />
+                        ) : (
+                          <Scissors className="h-4 w-4 text-[#4A3F5C] shrink-0" />
+                        )}
+                        <span className="font-bold text-[#4A3F5C] truncate">
+                          {selectedCombo ? selectedCombo.nome : `Serviços inclusos (${selectedServicos.length})`}
+                        </span>
+                        <ChevronDown
+                          className={`h-4 w-4 text-[#4A3F5C] shrink-0 transition-transform duration-200 ${
+                            isStep2ServicesExpanded ? 'rotate-180' : ''
+                          }`}
+                        />
+                      </div>
+                      <span className="font-black text-emerald-700 shrink-0 ml-2">
+                        R$ {totalPreco.toFixed(2)}
                       </span>
-                    </div>
-                    <span className="font-black text-emerald-700 shrink-0 ml-2">
-                      R$ {totalPreco.toFixed(2)}
-                    </span>
+                    </button>
+
+                    {isStep2ServicesExpanded && (
+                      <div className="px-3 pb-3 pt-1 space-y-2 border-t border-[#B8A9D9]/30">
+                        {selectedServicos.map((s) => (
+                          <div
+                            key={s.id}
+                            className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-gray-200/80 shadow-3xs"
+                          >
+                            <div className="relative h-10 w-10 rounded-lg bg-purple-50 border border-purple-100 overflow-hidden shrink-0 flex items-center justify-center">
+                              {s.foto_url ? (
+                                <Image
+                                  src={s.foto_url}
+                                  alt={s.nome}
+                                  fill
+                                  className="object-cover"
+                                  unoptimized
+                                />
+                              ) : (
+                                <Scissors className="h-4 w-4 text-[#8675A9]" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-bold text-[#4A3F5C] truncate">{s.nome}</p>
+                              <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-gray-500 font-medium">
+                                <span className="font-bold text-emerald-700">
+                                  R$ {Number(s.preco).toFixed(2)}
+                                </span>
+                                <span>•</span>
+                                <span className="flex items-center gap-1 text-[10px] text-gray-400">
+                                  <Clock className="h-3 w-3" />
+                                  {s.duracao_minutos} min
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -883,23 +1002,74 @@ export default function BookingWizardPageClient({
 
                   {/* Linhas de Detalhes: Serviços e Data */}
                   <div className="space-y-3 text-xs sm:text-sm font-medium">
-                    {selectedCombo && (
-                      <div className="flex items-center gap-2 text-xs font-bold text-purple-800 bg-purple-50 px-3 py-2 rounded-xl border border-purple-200">
-                        <Package className="h-4 w-4 text-purple-600 shrink-0" />
-                        <span>Combo: {selectedCombo.nome} (Preço especial aplicado)</span>
-                      </div>
-                    )}
-
                     <div className="flex items-start gap-3">
-                      <Scissors className="h-4 w-4 sm:h-5 sm:w-5 text-[#B8A9D9] shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <span className="text-xs text-gray-500 font-semibold block uppercase tracking-wider">Serviços:</span>
+                      {selectedCombo ? (
+                        <Package className="h-4 w-4 sm:h-5 sm:w-5 text-[#8675A9] shrink-0 mt-0.5" />
+                      ) : (
+                        <Scissors className="h-4 w-4 sm:h-5 sm:w-5 text-[#B8A9D9] shrink-0 mt-0.5" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+                            {selectedCombo ? 'Pacote:' : 'Serviços:'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setIsStep4ServicesExpanded(!isStep4ServicesExpanded)}
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-[#8675A9] hover:text-[#4A3F5C] transition cursor-pointer"
+                          >
+                            <span>{isStep4ServicesExpanded ? 'Recolher' : 'Ver serviços'}</span>
+                            <ChevronDown
+                              className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                                isStep4ServicesExpanded ? 'rotate-180' : ''
+                              }`}
+                            />
+                          </button>
+                        </div>
                         <strong className="text-sm sm:text-base font-extrabold text-[#4A3F5C] block leading-tight mt-0.5">
-                          {selectedServicos.map((s) => s.nome).join(' + ')}
+                          {selectedCombo ? selectedCombo.nome : selectedServicos.map((s) => s.nome).join(' + ')}
                         </strong>
                         <span className="text-xs text-gray-500 block mt-1 font-semibold">
                           Duração: {formatDuracaoTotal(totalDuracaoMinutos)}
                         </span>
+
+                        {isStep4ServicesExpanded && (
+                          <div className="mt-2.5 space-y-2 pt-2 border-t border-gray-200/60">
+                            {selectedServicos.map((s) => (
+                              <div
+                                key={s.id}
+                                className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-gray-200/80 shadow-3xs"
+                              >
+                                <div className="relative h-10 w-10 rounded-lg bg-purple-50 border border-purple-100 overflow-hidden shrink-0 flex items-center justify-center">
+                                  {s.foto_url ? (
+                                    <Image
+                                      src={s.foto_url}
+                                      alt={s.nome}
+                                      fill
+                                      className="object-cover"
+                                      unoptimized
+                                    />
+                                  ) : (
+                                    <Scissors className="h-4 w-4 text-[#8675A9]" />
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-bold text-[#4A3F5C] truncate">{s.nome}</p>
+                                  <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-gray-500 font-medium">
+                                    <span className="font-bold text-emerald-700">
+                                      R$ {Number(s.preco).toFixed(2)}
+                                    </span>
+                                    <span>•</span>
+                                    <span className="flex items-center gap-1 text-[10px] text-gray-400">
+                                      <Clock className="h-3 w-3" />
+                                      {s.duracao_minutos} min
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
 

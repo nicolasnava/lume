@@ -44,18 +44,18 @@ export default function StoriesShareModal({
     ctx.fillRect(0, 0, 1080, 1920)
 
     // 2. Avatar da Profissional (com sombra elegante e anel branco)
-    const avatarY = 360
-    const avatarRadius = 130
+    const avatarY = 320
+    const avatarRadius = 175
 
     // Sombra do Avatar
     ctx.save()
     ctx.shadowColor = 'rgba(74, 63, 92, 0.18)'
-    ctx.shadowBlur = 35
-    ctx.shadowOffsetY = 12
+    ctx.shadowBlur = 40
+    ctx.shadowOffsetY = 14
 
     // Anel externo branco
     ctx.beginPath()
-    ctx.arc(540, avatarY, avatarRadius + 6, 0, Math.PI * 2)
+    ctx.arc(540, avatarY, avatarRadius + 8, 0, Math.PI * 2)
     ctx.fillStyle = '#FFFFFF'
     ctx.fill()
     ctx.restore()
@@ -92,7 +92,7 @@ export default function StoriesShareModal({
       ctx.fill()
 
       ctx.fillStyle = '#4A3F5C'
-      ctx.font = 'bold 88px sans-serif'
+      ctx.font = 'bold 110px sans-serif'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       const initials = nomeProfissional
@@ -107,44 +107,44 @@ export default function StoriesShareModal({
     // 3. Nome da Profissional e Frase de Destaque
     ctx.save()
     ctx.textAlign = 'center'
-    ctx.font = '800 54px sans-serif'
+    ctx.font = '800 68px sans-serif'
     ctx.fillStyle = '#4A3F5C'
-    ctx.fillText(nomeProfissional, 540, 560)
+    ctx.fillText(nomeProfissional, 540, 545)
 
-    ctx.font = '500 25px sans-serif'
+    ctx.font = '600 30px sans-serif'
     ctx.fillStyle = '#7A6E89'
     const subText = mode === 'indicacao'
       ? 'Convite especial para o Lumê'
       : tagline?.trim() || 'Reserve seu horário online com facilidade'
-    ctx.fillText(subText, 540, 615)
+    ctx.fillText(subText, 540, 605)
     ctx.restore()
 
     // 4. Textos de Chamada para Agendamento / Indicação (Direto na tela lisa pastel)
     ctx.save()
     ctx.textAlign = 'center'
-    ctx.font = '700 32px sans-serif'
+    ctx.font = '700 38px sans-serif'
     ctx.fillStyle = '#4A3F5C'
     const callTitle = mode === 'indicacao' ? 'Aponte a câmera e cadastre-se' : 'Aponte a câmera e agende'
-    ctx.fillText(callTitle, 540, 740)
+    ctx.fillText(callTitle, 540, 710)
 
-    ctx.font = '500 22px sans-serif'
+    ctx.font = '500 26px sans-serif'
     ctx.fillStyle = '#8E8299'
     const callSub = mode === 'indicacao'
       ? 'Gerencie sua agenda de beleza com inteligência'
       : 'Escolha o serviço e horário desejado em instantes'
-    ctx.fillText(callSub, 540, 785)
+    ctx.fillText(callSub, 540, 755)
     ctx.restore()
 
     // 5. Base Branca Delicada para o QR Code (Garante escaneamento perfeito em qualquer ângulo)
-    const qrPlateSize = 560
+    const qrPlateSize = 670
     const qrPlateX = 540 - qrPlateSize / 2
-    const qrPlateY = 840
-    const qrPlateRadius = 40
+    const qrPlateY = 815
+    const qrPlateRadius = 48
 
     ctx.save()
     ctx.shadowColor = 'rgba(74, 63, 92, 0.12)'
-    ctx.shadowBlur = 40
-    ctx.shadowOffsetY = 14
+    ctx.shadowBlur = 45
+    ctx.shadowOffsetY = 16
     ctx.beginPath()
     ctx.roundRect(qrPlateX, qrPlateY, qrPlateSize, qrPlateSize, qrPlateRadius)
     ctx.fillStyle = '#FFFFFF'
@@ -153,7 +153,7 @@ export default function StoriesShareModal({
 
     ctx.save()
     ctx.strokeStyle = 'rgba(232, 223, 238, 0.8)'
-    ctx.lineWidth = 1.5
+    ctx.lineWidth = 2
     ctx.beginPath()
     ctx.roundRect(qrPlateX, qrPlateY, qrPlateSize, qrPlateSize, qrPlateRadius)
     ctx.stroke()
@@ -162,11 +162,11 @@ export default function StoriesShareModal({
     // 6. Gerar QR Code com Logo Oficial no Centro
     try {
       const qrCanvas = document.createElement('canvas')
-      qrCanvas.width = 600
-      qrCanvas.height = 600
+      qrCanvas.width = 650
+      qrCanvas.height = 650
 
       await QRCode.toCanvas(qrCanvas, url, {
-        width: 600,
+        width: 650,
         margin: 1,
         color: {
           dark: '#4A3F5C',
@@ -186,16 +186,16 @@ export default function StoriesShareModal({
             lumeIcon.src = '/assets/lume_icon.webp'
           })
 
-          const qrCenter = 300
-          const badgeSize = 130
-          const badgeRadius = 26
+          const qrCenter = 325
+          const badgeSize = 145
+          const badgeRadius = 30
           const badgeX = qrCenter - badgeSize / 2
           const badgeY = qrCenter - badgeSize / 2
 
           // Badge branco central
           qrCtx.save()
           qrCtx.shadowColor = 'rgba(74, 63, 92, 0.2)'
-          qrCtx.shadowBlur = 12
+          qrCtx.shadowBlur = 14
           qrCtx.fillStyle = '#FFFFFF'
           qrCtx.beginPath()
           qrCtx.roundRect(badgeX, badgeY, badgeSize, badgeSize, badgeRadius)
@@ -212,14 +212,14 @@ export default function StoriesShareModal({
           qrCtx.restore()
 
           // Ícone Lume no centro
-          const pad = 16
+          const pad = 18
           const iconSize = badgeSize - pad * 2
           const iconX = badgeX + pad
           const iconY = badgeY + pad
 
           qrCtx.save()
           qrCtx.beginPath()
-          qrCtx.roundRect(iconX, iconY, iconSize, iconSize, 18)
+          qrCtx.roundRect(iconX, iconY, iconSize, iconSize, 20)
           qrCtx.clip()
           qrCtx.drawImage(lumeIcon, iconX, iconY, iconSize, iconSize)
           qrCtx.restore()
@@ -229,7 +229,7 @@ export default function StoriesShareModal({
       }
 
       // Desenha o QR Code sobre a base branca
-      const qrDisplaySize = 480
+      const qrDisplaySize = 580
       ctx.drawImage(qrCanvas, 540 - qrDisplaySize / 2, qrPlateY + (qrPlateSize - qrDisplaySize) / 2, qrDisplaySize, qrDisplaySize)
     } catch (qrErr) {
       console.error('Erro ao renderizar QR code no Story:', qrErr)
@@ -239,42 +239,43 @@ export default function StoriesShareModal({
     ctx.save()
     ctx.textAlign = 'center'
     const cleanUrl = url.replace(/^https?:\/\//, '')
-    const pillY = 1460
-    ctx.font = '700 23px sans-serif'
+    const pillY = 1530
+    const pillHeight = 72
+    ctx.font = '700 30px sans-serif'
     const textWidth = ctx.measureText(cleanUrl).width
-    const pillWidth = Math.min(Math.max(textWidth + 70, 420), 640)
+    const pillWidth = Math.min(Math.max(textWidth + 90, 500), 760)
     const pillX = 540 - pillWidth / 2
 
     ctx.save()
     ctx.shadowColor = 'rgba(74, 63, 92, 0.08)'
-    ctx.shadowBlur = 20
-    ctx.shadowOffsetY = 6
+    ctx.shadowBlur = 24
+    ctx.shadowOffsetY = 8
     ctx.fillStyle = '#FFFFFF'
     ctx.beginPath()
-    ctx.roundRect(pillX, pillY, pillWidth, 58, 29)
+    ctx.roundRect(pillX, pillY, pillWidth, pillHeight, pillHeight / 2)
     ctx.fill()
     ctx.restore()
 
     ctx.strokeStyle = '#E8DFEE'
-    ctx.lineWidth = 1.5
+    ctx.lineWidth = 2
     ctx.beginPath()
-    ctx.roundRect(pillX, pillY, pillWidth, 58, 29)
+    ctx.roundRect(pillX, pillY, pillWidth, pillHeight, pillHeight / 2)
     ctx.stroke()
 
     ctx.fillStyle = '#4A3F5C'
     ctx.textBaseline = 'middle'
-    ctx.fillText(cleanUrl, 540, pillY + 29)
+    ctx.fillText(cleanUrl, 540, pillY + pillHeight / 2)
     ctx.restore()
 
     // 8. Chamada de Agilidade
     ctx.save()
     ctx.textAlign = 'center'
-    ctx.font = '600 20px sans-serif'
+    ctx.font = '600 24px sans-serif'
     ctx.fillStyle = '#8E8299'
-    ctx.fillText('Disponibilidade e confirmação instantânea', 540, 1550)
+    ctx.fillText('Disponibilidade e confirmação instantânea', 540, 1640)
     ctx.restore()
 
-    // 7. Rodapé com Logo Oficial da Lumê (/assets/lume_logo.webp)
+    // 9. Rodapé com Logo Oficial da Lumê (/assets/lume_logo.webp)
     try {
       const lumeLogo = new Image()
       lumeLogo.crossOrigin = 'anonymous'
@@ -285,10 +286,10 @@ export default function StoriesShareModal({
       })
 
       // Proporção do logo
-      const logoTargetWidth = 230
+      const logoTargetWidth = 280
       const logoAspectRatio = lumeLogo.naturalHeight / (lumeLogo.naturalWidth || 1)
       const logoTargetHeight = logoTargetWidth * logoAspectRatio
-      const logoY = 1630
+      const logoY = 1700
 
       ctx.save()
       ctx.drawImage(
@@ -303,7 +304,7 @@ export default function StoriesShareModal({
       // Subtítulo do rodapé
       ctx.save()
       ctx.textAlign = 'center'
-      ctx.font = '500 19px sans-serif'
+      ctx.font = '500 22px sans-serif'
       ctx.fillStyle = '#8E8299'
       ctx.fillText('Plataforma de Gestão & Agendamento Exclusivo', 540, logoY + logoTargetHeight + 35)
       ctx.restore()
@@ -311,12 +312,12 @@ export default function StoriesShareModal({
       // Fallback textual elegante caso logo falhe
       ctx.save()
       ctx.textAlign = 'center'
-      ctx.font = '700 32px sans-serif'
+      ctx.font = '700 36px sans-serif'
       ctx.fillStyle = '#4A3F5C'
-      ctx.fillText('L U M Ê', 540, 1680)
-      ctx.font = '500 20px sans-serif'
+      ctx.fillText('L U M Ê', 540, 1720)
+      ctx.font = '500 22px sans-serif'
       ctx.fillStyle = '#8E8299'
-      ctx.fillText('Plataforma de Gestão & Agendamento Exclusivo', 540, 1720)
+      ctx.fillText('Plataforma de Gestão & Agendamento Exclusivo', 540, 1765)
       ctx.restore()
     }
 
@@ -421,7 +422,7 @@ export default function StoriesShareModal({
 
         {/* Preview do Story (9:16) */}
         <div className="flex-1 min-h-0 flex items-center justify-center py-1">
-          <div className="relative aspect-[9/16] h-[50vh] max-h-[440px] rounded-2xl overflow-hidden shadow-lg border border-gray-100 bg-[#FAF7F5] flex items-center justify-center">
+          <div className="relative aspect-[9/16] h-[56vh] max-h-[500px] rounded-3xl overflow-hidden shadow-xl border border-gray-100 bg-[#FAF7F5] flex items-center justify-center">
             {generating || !previewUrl ? (
               <div className="flex flex-col items-center gap-2 text-xs text-gray-500 font-semibold p-4">
                 <Loader2 className="h-7 w-7 animate-spin text-[#4A3F5C]" />

@@ -43,22 +43,24 @@ export default function StudioAnyMemberButton({
         type="button"
         disabled={isLoading}
         onClick={handleClick}
-        className="w-full py-4 px-6 rounded-2xl font-black text-sm shadow-lg transition transform hover:-translate-y-0.5 active:translate-y-0 hover:shadow-xl flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-60 group"
+        className="w-full py-4 px-6 rounded-2xl font-black text-sm shadow-lg transition transform hover:-translate-y-0.5 active:translate-y-0 hover:shadow-xl flex items-center justify-between cursor-pointer disabled:opacity-60 group"
         style={{
           backgroundColor: corPrimaria,
           color: textColor,
         }}
       >
         {isLoading ? (
-          <>
+          <div className="flex items-center justify-center gap-2.5 w-full">
             <Loader2 className="h-5 w-5 animate-spin" />
             <span>Encontrando profissional disponível...</span>
-          </>
+          </div>
         ) : (
           <>
-            <Users className="h-5 w-5 transition-transform group-hover:scale-110" />
-            <span>Qualquer profissional disponível</span>
-            <ArrowRight className="h-4 w-4 opacity-70 group-hover:translate-x-1 transition-transform" />
+            <span className="truncate">Qualquer profissional disponível</span>
+            <div className="flex items-center gap-2 shrink-0 ml-3">
+              <Users className="h-4.5 w-4.5 opacity-80" />
+              <ArrowRight className="h-4 w-4 opacity-80 group-hover:translate-x-1 transition-transform" />
+            </div>
           </>
         )}
       </button>

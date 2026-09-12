@@ -154,7 +154,7 @@ export async function createBookingAction(formData: {
     // 2. Buscar informações de todos os serviços selecionados
     const { data: servicosList, error: servicosError } = await supabase
       .from('servicos')
-      .select('id, duracao_minutos, nome, preco')
+      .select('id, duracao_minutos, nome, preco, ativo')
       .in('id', servicoIdsList)
 
     if (servicosError || !servicosList || servicosList.length === 0) {
@@ -162,6 +162,16 @@ export async function createBookingAction(formData: {
         success: false,
         errorType: 'SERVICE_NOT_FOUND',
         message: 'Um ou mais serviços selecionados não foram encontrados ou foram removidos.',
+      }
+    }
+
+    // Bloquear agendamento caso qualquer serviço selecionado tenha sido desativado pela profissional
+    const inactiveService = servicosList.find((s) => s.ativo === false)
+    if (inactiveService) {
+      return {
+        success: false,
+        errorType: 'VALIDATION_ERROR',
+        message: `O serviço "${inactiveService.nome}" está temporariamente desativado pela profissional e não pode ser agendado.`,
       }
     }
 
@@ -482,7 +492,7 @@ export async function rescheduleBookingAction(
     // 1. Buscar agendamento com os relacionamentos do cliente e serviço
     const { data: agendamento, error: fetchError } = await supabase
       .from('agendamentos')
-      .select('*, clientes(nome, telefone), servicos(nome, duracao_minutos)')
+      .select('*, clientes(nome, telefone), servicos(nome, duracao_minutos, ativo)')
       .eq('id', agendamentoId)
       .single()
 
@@ -494,6 +504,13 @@ export async function rescheduleBookingAction(
     const servicoObj = agendamento.servicos as any
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const clienteObj = agendamento.clientes as any
+
+    if (servicoObj.ativo === false) {
+      return {
+        success: false,
+        message: 'O serviço associado a este agendamento foi desativado e não pode ser remarcado.',
+      }
+    }
 
     const duracaoMinutos = servicoObj.duracao_minutos || 60
     const inicioDate = new Date(novaDataHoraInicio)

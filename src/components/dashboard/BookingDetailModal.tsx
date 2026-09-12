@@ -238,8 +238,11 @@ export default function BookingDetailModal({
           : booking.forma_pagamento
       setFormaPagamento(normPay as 'pix' | 'dinheiro' | 'cartao' | 'outro')
     }
-    if (booking?.pago !== undefined && booking?.pago !== null) {
+    // Pré-assinalar automaticamente como pago ao concluir atendimento, permitindo desmarcar se desejado
+    if (booking?.status === 'concluido' && booking?.pago !== undefined && booking?.pago !== null) {
       setPago(booking.pago)
+    } else {
+      setPago(true)
     }
     if (booking?.observacao_pagamento) {
       setObservacaoPagamento(booking.observacao_pagamento)

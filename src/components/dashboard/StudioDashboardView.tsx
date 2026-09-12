@@ -1166,21 +1166,21 @@ function OwnerStudioSection({
             </div>
           </div>
 
-          {/* Dados Principais do Studio */}
-          <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-6">
-            <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#B8A9D9]/20 text-[#4A3F5C] border border-[#B8A9D9]/30">
-                <Building2 className="h-5 w-5" />
+          <form onSubmit={handleSaveEdit} className="space-y-6">
+            {/* CARD 1: Identificação & Apresentação do Studio */}
+            <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-6">
+              <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#B8A9D9]/20 text-[#4A3F5C] border border-[#B8A9D9]/30">
+                  <Building2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-[#4A3F5C]">Identificação do Studio</h2>
+                  <p className="text-xs text-gray-500">
+                    Personalize o nome comercial, link da vitrine e apresentação do seu espaço
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-base sm:text-lg font-bold text-[#4A3F5C]">Informações do Studio</h2>
-                <p className="text-xs text-gray-500">
-                  Personalize o nome, link, redes e apresentação do seu studio
-                </p>
-              </div>
-            </div>
 
-            <form onSubmit={handleSaveEdit} className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {/* Nome */}
                 <div className="space-y-2">
@@ -1213,8 +1213,39 @@ function OwnerStudioSection({
                     />
                   </div>
                 </div>
+              </div>
 
-                {/* Instagram do Studio (Item 18) */}
+              {/* Bio */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-700 block">
+                  Biografia / Apresentação do Studio
+                </label>
+                <textarea
+                  rows={4}
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="Descreva o conceito do espaço, especialidades da equipe ou diferenciais..."
+                  className="w-full rounded-2xl border border-gray-200 bg-gray-50/50 p-3 text-xs text-[#4A3F5C] focus:border-[#B8A9D9] focus:bg-white focus:outline-hidden resize-none leading-relaxed font-medium"
+                />
+              </div>
+            </div>
+
+            {/* CARD 2: Contato & Localização do Studio */}
+            <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-6">
+              <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#B8A9D9]/20 text-[#4A3F5C] border border-[#B8A9D9]/30">
+                  <MapPin className="h-5 w-5 text-[#4A3F5C]" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-[#4A3F5C]">Contato & Localização</h2>
+                  <p className="text-xs text-gray-500">
+                    Canais de contato direto e endereço completo para suas clientes
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* Instagram do Studio */}
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
                     <Instagram className="h-3.5 w-3.5 text-[#B8A9D9]" />
@@ -1232,7 +1263,7 @@ function OwnerStudioSection({
                   </div>
                 </div>
 
-                {/* WhatsApp do Studio (Item 18) */}
+                {/* WhatsApp do Studio */}
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
                     <Phone className="h-3.5 w-3.5 text-[#B8A9D9]" />
@@ -1247,7 +1278,7 @@ function OwnerStudioSection({
                   />
                 </div>
 
-                {/* Endereço / Localização do Studio (Item 18) */}
+                {/* Endereço / Localização do Studio */}
                 <div className="space-y-2 sm:col-span-2">
                   <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5 text-[#B8A9D9]" />
@@ -1263,21 +1294,7 @@ function OwnerStudioSection({
                 </div>
               </div>
 
-              {/* Bio */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-700 block">
-                  Biografia / Apresentação do Studio
-                </label>
-                <textarea
-                  rows={4}
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  placeholder="Descreva o conceito do espaço, especialidades da equipe ou diferenciais..."
-                  className="w-full rounded-2xl border border-gray-200 bg-gray-50/50 p-3 text-xs text-[#4A3F5C] focus:border-[#B8A9D9] focus:bg-white focus:outline-hidden resize-none leading-relaxed font-medium"
-                />
-              </div>
-
-              {/* Rodapé com botão Salvar */}
+              {/* Rodapé com feedback e botão Salvar */}
               <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
                 {saveSuccess ? (
                   <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 animate-in fade-in">
@@ -1297,8 +1314,8 @@ function OwnerStudioSection({
                   <span>Salvar Alterações</span>
                 </button>
               </div>
-            </form>
-          </div>
+            </div>
+          </form>
         </div>
       )}
 

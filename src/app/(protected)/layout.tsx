@@ -5,6 +5,7 @@ import { getOrCreateProfissional } from '@/lib/profissionais/getOrCreateProfissi
 import { recordLoginLog, getActiveAvisoPlataforma } from '@/app/actions/adminPrompt34'
 import DashboardNav from '@/components/dashboard/DashboardNav'
 import PlatformAnnouncementBanner from '@/components/dashboard/PlatformAnnouncementBanner'
+import MobileNotificationBell from '@/components/dashboard/MobileNotificationBell'
 import NpsSurveyModal from '@/components/dashboard/NpsSurveyModal'
 import { getContrastingTextColor, getLightTint } from '@/lib/utils/contrast'
 import { ExternalLink, User as UserIcon, AlertTriangle, ShieldAlert, LogOut, Smartphone } from 'lucide-react'
@@ -155,6 +156,9 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Ícone Sino de Principais Avisos no Mobile */}
+            <MobileNotificationBell aviso={ativoAviso} statusConta={profissional?.status_conta} />
+
             {profissional && (
               <Link
                 id="tour-public-link-mobile"
