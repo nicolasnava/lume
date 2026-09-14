@@ -256,6 +256,21 @@ export default function ProductTourModal({ isOpen, onClose }: ProductTourModalPr
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
+  // Sincronizar estado ativo do tutorial para ocultar modais secundários (ex: avaliação/NPS)
+  useEffect(() => {
+    if (isOpen) {
+      document.documentElement.setAttribute('data-tour-active', 'true')
+      window.dispatchEvent(new CustomEvent('lume-tour-state', { detail: { active: true } }))
+    } else {
+      document.documentElement.removeAttribute('data-tour-active')
+      window.dispatchEvent(new CustomEvent('lume-tour-state', { detail: { active: false } }))
+    }
+    return () => {
+      document.documentElement.removeAttribute('data-tour-active')
+      window.dispatchEvent(new CustomEvent('lume-tour-state', { detail: { active: false } }))
+    }
+  }, [isOpen])
+
   // Selecionar conjunto de passos de acordo com o dispositivo
   const activeSteps = useMemo(() => {
     return isMobile ? MOBILE_TOUR_STEPS : DESKTOP_TOUR_STEPS

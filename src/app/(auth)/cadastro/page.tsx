@@ -103,6 +103,15 @@ function CadastroForm() {
   // Controle de Etapa (1 a 4)
   const [step, setStep] = useState(1)
   const [isCompleted, setIsCompleted] = useState(false)
+  const formTopRef = useRef<HTMLDivElement>(null)
+
+  // Rolar suavemente para o topo do formulário ao avançar ou voltar de etapa
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [step])
 
   // Etapa 1: Acesso & Dados Principais
   const [nome, setNome] = useState('')
@@ -422,7 +431,7 @@ function CadastroForm() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#FAF7F5] px-4 py-8 sm:px-6 lg:px-8 transition-colors duration-300">
-      <div className="w-full max-w-2xl rounded-3xl bg-white p-6 sm:p-10 shadow-xl border border-[#B8A9D9]/30 backdrop-blur-md">
+      <div ref={formTopRef} className="w-full max-w-2xl rounded-3xl bg-white p-6 sm:p-10 shadow-xl border border-[#B8A9D9]/30 backdrop-blur-md">
         
         {/* CABEÇALHO & LOGO */}
         <div className="text-center">

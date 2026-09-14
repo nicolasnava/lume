@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -8,59 +8,69 @@ import {
   Building2,
   Users,
   Link2,
-  Mail,
   Copy,
   Check,
   Trash2,
   ShieldCheck,
   UserCheck,
-  UserMinus,
-  UserPlus,
   AlertTriangle,
   ExternalLink,
   Plus,
   Loader2,
   Eye,
+  EyeOff,
   Info,
   CheckCircle2,
   LogOut,
   Upload,
   Clock,
-  Search,
-  Palette,
-  Camera,
   Store,
   Crown,
   User,
   Instagram,
   MapPin,
   Phone,
+  TrendingUp,
+  Calendar,
+  DollarSign,
+  SlidersHorizontal,
+  Scissors,
+  Share2,
+  X,
 } from 'lucide-react'
 import {
   StudioUserStatus,
+  StudioMember,
+  StudioData,
   criarEstudio,
   atualizarEstudio,
   alternarAtivoNoEstudio,
   alternarDonaComoAtendente,
   gerarConviteLink,
   cancelarConvite,
-  buscarProfissionalPorEmail,
-  enviarConviteEmail,
   removerMembroEstudio,
   sairDoEstudio,
+  obterMetricasStudioAction,
+  StudioMetricsData,
+  MemberPerformance,
+  obterAgendamentosStudioAction,
+  StudioBookingItem,
+  atualizarStatusAgendamentoStudioAction,
+  atualizarRegraMembroStudioAction,
+  atualizarPermissoesPrivacidadeMembroAction,
 } from '@/app/actions/estudio'
 import { createClient } from '@/lib/supabase/client'
 import { getContrastingTextColor, getLightTint } from '@/lib/utils/contrast'
 import { parseCategorias, getCategoryLabel } from '@/lib/utils/categories'
 import CustomColorPickerModal from '@/components/ui/CustomColorPickerModal'
+import CustomDatePicker from '@/components/ui/CustomDatePicker'
+import StudioNewBookingModal from './StudioNewBookingModal'
 
 interface StudioDashboardViewProps {
   status: StudioUserStatus
 }
 
 export default function StudioDashboardView({ status }: StudioDashboardViewProps) {
-  const router = useRouter()
-
   // --------------------------------------------------------------------------
   // ESTADO 1: SEM STUDIO
   // --------------------------------------------------------------------------
@@ -78,6 +88,9 @@ export default function StudioDashboardView({ status }: StudioDashboardViewProps
         dona={status.dona}
         ativoNoEstudio={status.ativoNoEstudio}
         userSlug={status.userSlug}
+        initialCompartilharFaturamento={status.compartilhar_faturamento}
+        initialCompartilharAgendamentos={status.compartilhar_agendamentos}
+        initialPermitirAgendamentoDona={status.permitir_agendamento_dona}
       />
     )
   }
@@ -134,7 +147,9 @@ function CreateStudioSection({ defaultSlug }: { defaultSlug: string }) {
     setErrorMessage(null)
     try {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (!user) throw new Error('Usuário não autenticado.')
 
       const ext = file.name.split('.').pop() || 'jpg'
@@ -145,10 +160,13 @@ function CreateStudioSection({ defaultSlug }: { defaultSlug: string }) {
 
       if (uploadError) throw uploadError
 
-      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
-      setFotoCapaUrl(data.publicUrl)
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('avatars').getPublicUrl(filePath)
+
+      setFotoCapaUrl(publicUrl)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao enviar foto.'
+      const msg = err instanceof Error ? err.message : 'Erro ao fazer upload da imagem.'
       setErrorMessage(msg)
     } finally {
       setIsUploading(false)
@@ -157,295 +175,97 @@ function CreateStudioSection({ defaultSlug }: { defaultSlug: string }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setErrorMessage(null)
     setIsSubmitting(true)
+    setErrorMessage(null)
 
     try {
       await criarEstudio({
         nome,
         slug,
         bio,
-        foto_capa_url: fotoCapaUrl,
+        foto_capa_url: fotoCapaUrl || undefined,
         cor_primaria: corPrimaria,
         cor_secundaria: corSecundaria,
       })
       router.refresh()
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro ao criar o studio.'
+      const msg = err instanceof Error ? err.message : 'Erro ao criar studio.'
       setErrorMessage(msg)
-    } finally {
       setIsSubmitting(false)
     }
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-12 animate-in fade-in duration-300">
-      {/* Banner de Apresentação */}
-      <div className="rounded-3xl bg-gradient-to-br from-[#4A3F5C] to-[#2D2638] text-white p-6 sm:p-10 shadow-xl relative overflow-hidden">
-        <div className="absolute -right-10 -bottom-10 h-64 w-64 rounded-full bg-[#B8A9D9]/10 blur-2xl pointer-events-none" />
-        <div className="relative z-10 max-w-2xl space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-bold text-[#B8A9D9] backdrop-blur-xs">
-            <Building2 className="h-4 w-4" />
-            <span>Studios com Equipe</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Crie sua Vitrine Coletiva no Lumê
-          </h1>
-          <p className="text-sm text-gray-200 leading-relaxed">
-            Reúna várias profissionais em um único espaço estilo barbearia ou salão de beleza.
-            Cada profissional mantém sua própria conta, agenda e financeiro independentes, enquanto
-            suas clientes escolhem facilmente com quem desejam agendar.
-          </p>
+    <div className="max-w-4xl mx-auto space-y-8 pb-12 animate-in fade-in duration-300 text-left">
+      <div className="text-center space-y-2 max-w-xl mx-auto">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#B8A9D9]/20 text-[#4A3F5C] text-xs font-bold">
+          <Building2 className="h-4 w-4" />
+          <span>Gestão & Vitrine Coletiva</span>
         </div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#4A3F5C] tracking-tight">
+          Crie o seu Studio no Lumê
+        </h1>
+        <p className="text-xs sm:text-sm text-gray-600 leading-relaxed font-medium">
+          Reúna profissionais parceiras, compartilhe uma vitrine coletiva com link único e gerencie
+          agendamentos e repasses em um único painel.
+        </p>
       </div>
 
-      {/* Formulário de Criação */}
-      <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs">
-        <h2 className="text-lg font-bold text-[#4A3F5C] mb-6 flex items-center gap-2">
-          <Building2 className="h-5 w-5 text-[#B8A9D9]" />
-          <span>Informações do seu Studio</span>
-        </h2>
-
-        {errorMessage && (
-          <div className="mb-6 rounded-2xl bg-rose-50 border border-rose-200 p-4 text-xs font-semibold text-rose-800 flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
-            <span>{errorMessage}</span>
-          </div>
-        )}
-
+      <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-10 shadow-xs">
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {/* Nome */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-700 block">
-                Nome do Studio <span className="text-rose-500">*</span>
-              </label>
+          {errorMessage && (
+            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800 flex items-center gap-2.5">
+              <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-gray-700 block">
+              Nome do Studio <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={nome}
+              onChange={(e) => handleNomeChange(e.target.value)}
+              placeholder="Ex: Studio Bella Donna Concept"
+              className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-[#4A3F5C] focus:ring-1 focus:ring-[#4A3F5C] outline-hidden text-sm font-semibold text-[#4A3F5C] transition"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-gray-700 block">
+              Link da Vitrine (URL) <span className="text-rose-500">*</span>
+            </label>
+            <div className="flex items-center rounded-2xl border border-gray-200 bg-gray-50/50 px-3.5 py-2.5 text-xs text-gray-500 focus-within:border-[#4A3F5C] focus-within:ring-1 focus-within:ring-[#4A3F5C] focus-within:bg-white transition">
+              <span className="shrink-0 font-medium text-gray-400">/studio/</span>
               <input
                 type="text"
                 required
-                value={nome}
-                onChange={(e) => handleNomeChange(e.target.value)}
-                placeholder="Ex: Espaço Divas & Beleza"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#4A3F5C] focus:ring-1 focus:ring-[#4A3F5C] outline-hidden text-sm"
+                value={slug}
+                onChange={(e) =>
+                  setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))
+                }
+                placeholder="seu-studio"
+                className="w-full bg-transparent px-1 outline-hidden font-bold text-gray-900 text-sm font-mono"
               />
-            </div>
-
-            {/* Slug */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-700 block">
-                Link do Studio (slug) <span className="text-rose-500">*</span>
-              </label>
-              <div className="flex items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs text-gray-500 focus-within:border-[#4A3F5C] focus-within:ring-1 focus-within:ring-[#4A3F5C] focus-within:bg-white">
-                <span className="shrink-0 font-medium">/studio/</span>
-                <input
-                  type="text"
-                  required
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  placeholder="meu-studio"
-                  className="w-full bg-transparent px-1 outline-hidden font-bold text-gray-900 text-sm"
-                />
-              </div>
             </div>
           </div>
 
-          {/* Bio */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-gray-700 block">
-              Bio / Descrição do Studio
+              Apresentação / Conceito do Studio
             </label>
             <textarea
               rows={3}
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="Descreva o conceito do espaço, especialidades da equipe ou diferenciais..."
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#4A3F5C] focus:ring-1 focus:ring-[#4A3F5C] outline-hidden text-sm resize-none"
+              className="w-full rounded-2xl border border-gray-200 bg-gray-50/50 p-3.5 text-xs text-[#4A3F5C] focus:border-[#B8A9D9] focus:bg-white focus:outline-hidden resize-none leading-relaxed font-medium transition"
             />
           </div>
 
-          {/* Capa */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-gray-700 block">Foto de Capa do Studio</label>
-              <span className="text-[11px] text-gray-400 font-medium">Recomendado 1200x400px (3:1)</span>
-            </div>
-
-            <div className="w-full relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 aspect-[16/9] sm:aspect-[3/1] flex items-center justify-center group shadow-inner">
-              {fotoCapaUrl ? (
-                <>
-                  <Image src={fotoCapaUrl} alt="Capa do Studio" fill className="object-cover" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2 sm:gap-3">
-                    <label className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/90 hover:bg-white text-xs font-bold text-[#4A3F5C] shadow-md transition cursor-pointer backdrop-blur-xs">
-                      {isUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5 text-[#B8A9D9]" />}
-                      <span>Trocar Imagem</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        disabled={isUploading}
-                        className="hidden"
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setFotoCapaUrl('')}
-                      className="p-2 bg-rose-600/90 text-white rounded-xl hover:bg-rose-700 transition cursor-pointer shadow-md backdrop-blur-xs"
-                      title="Remover capa"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <label className="flex flex-col items-center justify-center w-full h-full border-2 border-dashed border-gray-300 hover:border-[#B8A9D9] rounded-2xl cursor-pointer bg-gray-50/50 hover:bg-purple-50/20 transition p-6 text-center">
-                  <div className="h-11 w-11 rounded-2xl bg-white shadow-2xs border border-gray-100 flex items-center justify-center text-[#4A3F5C] mb-2">
-                    {isUploading ? (
-                      <Loader2 className="h-5 w-5 animate-spin text-[#B8A9D9]" />
-                    ) : (
-                      <Upload className="h-5 w-5 text-[#B8A9D9]" />
-                    )}
-                  </div>
-                  <span className="text-xs font-bold text-gray-700">
-                    {isUploading ? 'Enviando imagem de capa...' : 'Escolher Imagem de Capa do Studio'}
-                  </span>
-                  <p className="text-[11px] text-gray-400 mt-1">Formato JPG, PNG ou WEBP até 5MB</p>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    disabled={isUploading}
-                    className="hidden"
-                  />
-                </label>
-              )}
-            </div>
-          </div>
-
-          {/* Cores Primária e Secundária lado a lado (Círculos) */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-6 pt-2">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-700 block">Cor Primária (Destaque)</label>
-              <div className="flex items-center gap-2 sm:gap-3">
-                <button
-                  type="button"
-                  onClick={() => setColorModalTarget('primaria')}
-                  className="h-10 w-10 sm:w-11 rounded-full border-2 border-white shadow-md ring-2 ring-gray-200 cursor-pointer shrink-0 transition-transform duration-150 hover:scale-110 active:scale-95"
-                  style={{ backgroundColor: corPrimaria }}
-                  title="Clique para escolher a cor primária"
-                />
-                <input
-                  type="text"
-                  value={corPrimaria}
-                  onChange={(e) => setCorPrimaria(e.target.value)}
-                  maxLength={7}
-                  className="w-full max-w-[120px] px-2.5 sm:px-3 py-2 rounded-xl border border-gray-200 text-xs font-mono uppercase font-bold text-[#4A3F5C] bg-white focus:border-[#B8A9D9] focus:outline-hidden"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-700 block">Cor Secundária (Fundo)</label>
-              <div className="flex items-center gap-2 sm:gap-3">
-                <button
-                  type="button"
-                  onClick={() => setColorModalTarget('secundaria')}
-                  className="h-10 w-10 sm:w-11 rounded-full border-2 border-white shadow-md ring-2 ring-gray-200 cursor-pointer shrink-0 transition-transform duration-150 hover:scale-110 active:scale-95"
-                  style={{ backgroundColor: corSecundaria }}
-                  title="Clique para escolher a cor secundária"
-                />
-                <input
-                  type="text"
-                  value={corSecundaria}
-                  onChange={(e) => setCorSecundaria(e.target.value)}
-                  maxLength={7}
-                  className="w-full max-w-[120px] px-2.5 sm:px-3 py-2 rounded-xl border border-gray-200 text-xs font-mono uppercase font-bold text-[#4A3F5C] bg-white focus:border-[#B8A9D9] focus:outline-hidden"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Prévia da Vitrine Coletiva com as Cores */}
-          <div className="space-y-2 pt-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                <Eye className="h-3.5 w-3.5 text-[#B8A9D9]" />
-                <span>Prévia da Vitrine com suas Cores</span>
-              </label>
-            </div>
-
-            <div
-              className="rounded-2xl p-4 sm:p-5 border transition-all duration-300 shadow-xs space-y-4"
-              style={{
-                backgroundColor: corSecundaria,
-                borderColor: getLightTint(corPrimaria, 40),
-              }}
-            >
-              {/* Header mockup da vitrine */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-black/5">
-                <div className="space-y-1">
-                  <div
-                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold"
-                    style={{
-                      backgroundColor: getLightTint(corPrimaria, 20),
-                      color: corPrimaria,
-                      border: `1px solid ${getLightTint(corPrimaria, 35)}`,
-                    }}
-                  >
-                    <span>Studio</span>
-                  </div>
-                  <h3 className="text-base sm:text-lg font-extrabold text-[#4A3F5C]">
-                    {nome || 'Nome do seu Studio'}
-                  </h3>
-                  <p className="text-xs text-gray-600 max-w-md line-clamp-2 font-medium">
-                    {bio || 'Descreva aqui o conceito do seu espaço, especialidades da equipe ou diferenciais de atendimento.'}
-                  </p>
-                </div>
-
-                <div className="text-xs font-mono text-gray-500 bg-white/80 px-2.5 py-1 rounded-lg border border-gray-200/60 shrink-0">
-                  /studio/{slug || 'seu-studio'}
-                </div>
-              </div>
-
-              {/* Mock cards de membros da equipe */}
-              <div className="space-y-2">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                  Nossa Equipe
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div className="bg-white/90 p-3 rounded-xl border border-gray-200/70 flex items-center gap-3 shadow-2xs">
-                    <div
-                      className="h-9 w-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
-                      style={{
-                        backgroundColor: getLightTint(corPrimaria, 25),
-                        color: corPrimaria,
-                      }}
-                    >
-                      EP
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-[#4A3F5C] truncate">Exemplo Profissional</p>
-                      <p className="text-[10px] text-gray-500 truncate">Especialista & Atendente</p>
-                    </div>
-                    <span
-                      className="px-2 py-1 rounded-lg text-[10px] font-bold shrink-0"
-                      style={{
-                        backgroundColor: corPrimaria,
-                        color: getContrastingTextColor(corPrimaria),
-                      }}
-                    >
-                      Ver Perfil
-                    </span>
-                  </div>
-
-                  <div className="bg-white/50 border border-dashed border-gray-300 p-3 rounded-xl flex items-center justify-center text-xs text-gray-400 font-medium">
-                    + Novas Profissionais da Equipe
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Botão Salvar */}
           <div className="pt-4 border-t border-gray-100 flex justify-end">
             <button
               type="submit"
@@ -460,21 +280,6 @@ function CreateStudioSection({ defaultSlug }: { defaultSlug: string }) {
               <span>Criar meu Studio</span>
             </button>
           </div>
-          {/* Modal Customizado de Cores da Vitrine do Studio */}
-          <CustomColorPickerModal
-            isOpen={colorModalTarget !== null}
-            onClose={() => setColorModalTarget(null)}
-            currentColor={colorModalTarget === 'primaria' ? corPrimaria : corSecundaria}
-            title={
-              colorModalTarget === 'primaria'
-                ? 'Cor Primária da Vitrine'
-                : 'Cor Secundária (Fundo) da Vitrine'
-            }
-            onSelectColor={(hex) => {
-              if (colorModalTarget === 'primaria') setCorPrimaria(hex)
-              else if (colorModalTarget === 'secundaria') setCorSecundaria(hex)
-            }}
-          />
         </form>
       </div>
     </div>
@@ -489,17 +294,30 @@ function MemberStudioSection({
   dona,
   ativoNoEstudio,
   userSlug,
+  initialCompartilharFaturamento,
+  initialCompartilharAgendamentos,
+  initialPermitirAgendamentoDona,
 }: {
-  estudio: StudioUserStatus & { papel: 'membro' } extends { estudio: infer T } ? T : never
+  estudio: StudioData
   dona: { nome: string; foto_url: string | null }
   ativoNoEstudio: boolean
   userSlug: string
+  initialCompartilharFaturamento: boolean
+  initialCompartilharAgendamentos: boolean
+  initialPermitirAgendamentoDona: boolean
 }) {
   const router = useRouter()
   const [isLeaving, setIsLeaving] = useState(false)
   const [isTogglingAtivo, setIsTogglingAtivo] = useState(false)
   const [ativoState, setAtivoState] = useState(ativoNoEstudio)
   const [showLeaveModal, setShowLeaveModal] = useState(false)
+
+  // Estados de Privacidade da Profissional Membro
+  const [compartilharFaturamento, setCompartilharFaturamento] = useState(initialCompartilharFaturamento)
+  const [compartilharAgendamentos, setCompartilharAgendamentos] = useState(initialCompartilharAgendamentos)
+  const [permitirAgendamentoDona, setPermitirAgendamentoDona] = useState(initialPermitirAgendamentoDona)
+  const [isSavingPrivacy, setIsSavingPrivacy] = useState(false)
+  const [privacySaved, setPrivacySaved] = useState(false)
 
   const handleToggleAtivo = async () => {
     setIsTogglingAtivo(true)
@@ -512,6 +330,31 @@ function MemberStudioSection({
       console.error(err)
     } finally {
       setIsTogglingAtivo(false)
+    }
+  }
+
+  const handleUpdatePrivacy = async (field: 'faturamento' | 'agendamentos' | 'agendamento_dona', val: boolean) => {
+    const nextFaturamento = field === 'faturamento' ? val : compartilharFaturamento
+    const nextAgendamentos = field === 'agendamentos' ? val : compartilharAgendamentos
+    const nextAgendamentoDona = field === 'agendamento_dona' ? val : permitirAgendamentoDona
+
+    if (field === 'faturamento') setCompartilharFaturamento(val)
+    if (field === 'agendamentos') setCompartilharAgendamentos(val)
+    if (field === 'agendamento_dona') setPermitirAgendamentoDona(val)
+
+    setIsSavingPrivacy(true)
+    try {
+      await atualizarPermissoesPrivacidadeMembroAction({
+        compartilhar_faturamento: nextFaturamento,
+        compartilhar_agendamentos: nextAgendamentos,
+        permitir_agendamento_dona: nextAgendamentoDona,
+      })
+      setPrivacySaved(true)
+      setTimeout(() => setPrivacySaved(false), 2500)
+    } catch (err) {
+      console.error('Erro ao salvar privacidade:', err)
+    } finally {
+      setIsSavingPrivacy(false)
     }
   }
 
@@ -529,7 +372,7 @@ function MemberStudioSection({
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-12 animate-in fade-in duration-300">
+    <div className="max-w-4xl mx-auto space-y-8 pb-12 animate-in fade-in duration-300 text-left">
       {/* Header do Studio */}
       <div className="rounded-3xl bg-white border border-gray-200/80 overflow-hidden shadow-xs">
         {estudio.foto_capa_url && (
@@ -574,7 +417,7 @@ function MemberStudioSection({
               </span>
               <p className="text-[11px] text-gray-500">
                 {ativoState
-                  ? 'Você está aparecendo como profissional disponível para agendamento no studio.'
+                  ? 'Você está visível para agendamento na vitrine do studio.'
                   : 'Você está temporariamente oculta da lista de atendentes do studio.'}
               </p>
             </div>
@@ -596,6 +439,90 @@ function MemberStudioSection({
               )}
               <span>{ativoState ? 'Atendendo Atualmente' : 'Em Pausa / Oculta'}</span>
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* NOVO CARD: MINHA PRIVACIDADE & PERMISSÕES NO STUDIO */}
+      <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 space-y-5 shadow-xs">
+        <div className="flex items-center justify-between border-b border-gray-100 pb-3.5">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-xl bg-purple-50 text-[#4A3F5C] flex items-center justify-center">
+              <ShieldCheck className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-[#4A3F5C]">
+                Minha Privacidade & Compartilhamento
+              </h3>
+              <p className="text-[11px] text-gray-500">
+                Você escolhe exatamente o que a dona do studio pode visualizar e fazer
+              </p>
+            </div>
+          </div>
+          {privacySaved && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
+              <Check className="h-3.5 w-3.5" />
+              <span>Salvo</span>
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          {/* Opção 1: Faturamento */}
+          <div className="flex items-start justify-between gap-4 p-3.5 rounded-2xl bg-gray-50/60 border border-gray-200/60">
+            <div className="space-y-0.5">
+              <span className="text-xs font-bold text-gray-800 block">
+                Compartilhar valores de faturamento
+              </span>
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                Permite que a administradora visualize seus valores de atendimento para cálculo de comissões e repasses. Se desativar, seus valores aparecerão como &quot;Privado&quot;.
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={compartilharFaturamento}
+              disabled={isSavingPrivacy}
+              onChange={(e) => handleUpdatePrivacy('faturamento', e.target.checked)}
+              className="mt-1 rounded border-gray-300 text-[#4A3F5C] focus:ring-[#B8A9D9] h-4 w-4 cursor-pointer"
+            />
+          </div>
+
+          {/* Opção 2: Agendamentos na Agenda Geral */}
+          <div className="flex items-start justify-between gap-4 p-3.5 rounded-2xl bg-gray-50/60 border border-gray-200/60">
+            <div className="space-y-0.5">
+              <span className="text-xs font-bold text-gray-800 block">
+                Exibir horários na agenda geral do studio
+              </span>
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                Permite que seus horários marcados apareçam na visualização unificada de atendimentos do studio.
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={compartilharAgendamentos}
+              disabled={isSavingPrivacy}
+              onChange={(e) => handleUpdatePrivacy('agendamentos', e.target.checked)}
+              className="mt-1 rounded border-gray-300 text-[#4A3F5C] focus:ring-[#B8A9D9] h-4 w-4 cursor-pointer"
+            />
+          </div>
+
+          {/* Opção 3: Agendamento pela dona */}
+          <div className="flex items-start justify-between gap-4 p-3.5 rounded-2xl bg-gray-50/60 border border-gray-200/60">
+            <div className="space-y-0.5">
+              <span className="text-xs font-bold text-gray-800 block">
+                Permitir agendamento assistido pela administradora
+              </span>
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                A administradora poderá marcar clientes no seu horário livre caso procurem o WhatsApp ou recepção central do studio.
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={permitirAgendamentoDona}
+              disabled={isSavingPrivacy}
+              onChange={(e) => handleUpdatePrivacy('agendamento_dona', e.target.checked)}
+              className="mt-1 rounded border-gray-300 text-[#4A3F5C] focus:ring-[#B8A9D9] h-4 w-4 cursor-pointer"
+            />
           </div>
         </div>
       </div>
@@ -656,7 +583,7 @@ function MemberStudioSection({
 }
 
 // ============================================================================
-// COMPONENTE: DONA / GESTÃO DO STUDIO
+// COMPONENTE: DONA / CENTRAL DE GESTÃO DO STUDIO (4 ABAS)
 // ============================================================================
 function OwnerStudioSection({
   estudio,
@@ -665,18 +592,58 @@ function OwnerStudioSection({
   ativoNoEstudio,
   donaNaEquipe,
 }: {
-  estudio: StudioUserStatus & { papel: 'dona' } extends { estudio: infer T } ? T : never
-  membros: StudioUserStatus & { papel: 'dona' } extends { membros: infer T } ? T : never
-  convites: StudioUserStatus & { papel: 'dona' } extends { convites: infer T } ? T : never
+  estudio: StudioData
+  membros: StudioMember[]
+  convites: any[]
   ativoNoEstudio: boolean
   donaNaEquipe: boolean
 }) {
   const router = useRouter()
 
-  // Aba ativa: studio, equipe ou vitrine (igual ao /perfil)
-  const [activeTab, setActiveTab] = useState<'studio' | 'equipe' | 'vitrine'>('studio')
+  // 4 Abas: Visão Geral (Métricas), Agendamentos, Equipe, Vitrine & Dados
+  const [activeTab, setActiveTab] = useState<'visao_geral' | 'agendamentos' | 'equipe' | 'vitrine'>('visao_geral')
 
-  // Estados de edição do studio
+  // Modo de operação do Studio
+  const [tipoGestao, setTipoGestao] = useState<'aluguel_cadeira' | 'gestao_completa'>(
+    estudio.tipo_gestao || 'gestao_completa'
+  )
+  const [comissaoPadraoPct, setComissaoPadraoPct] = useState(estudio.comissao_padrao_pct ?? 30)
+  const [aluguelPadraoFixo, setAluguelPadraoFixo] = useState(estudio.aluguel_padrao_fixo ?? 0)
+  const [isSavingMode, setIsSavingMode] = useState(false)
+  const [modeSaved, setModeSaved] = useState(false)
+
+  // Estados da Aba 1: Visão Geral & Métricas
+  const [periodo, setPeriodo] = useState<'mes_atual' | 'mes_anterior' | 'hoje' | 'ultimos_30_dias'>('mes_atual')
+  const [metrics, setMetrics] = useState<StudioMetricsData | null>(null)
+  const [isLoadingMetrics, setIsLoadingMetrics] = useState(true)
+
+  // Estados da Aba 2: Agendamentos Consolidados
+  const [bookings, setBookings] = useState<StudioBookingItem[]>([])
+  const [isLoadingBookings, setIsLoadingBookings] = useState(false)
+  const [bookingFilterProf, setBookingFilterProf] = useState<string>('todos')
+  const [bookingFilterStatus, setBookingFilterStatus] = useState<string>('todos')
+  const [isNewBookingModalOpen, setIsNewBookingModalOpen] = useState(false)
+  const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null)
+
+  // Estados de convite por link
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  // Modal de edição de regra financeira individual de membro
+  const [editingMemberRule, setEditingMemberRule] = useState<StudioMember | null>(null)
+  const [customComissaoInput, setCustomComissaoInput] = useState<string>('')
+  const [customAluguelInput, setCustomAluguelInput] = useState<string>('')
+  const [isSavingRule, setIsSavingRule] = useState(false)
+
+  // Remover membro
+  const [memberToRemove, setMemberToRemove] = useState<{ id: string; nome: string; isOwner: boolean } | null>(null)
+  const [isRemovingMember, setIsRemovingMember] = useState(false)
+
+  // Alternar dona atendendo
+  const [isTogglingAtivo, setIsTogglingAtivo] = useState(false)
+  const [isAtendendo, setIsAtendendo] = useState(donaNaEquipe)
+
+  // Dados cadastrais / vitrine
   const [nome, setNome] = useState(estudio.nome)
   const [slug, setSlug] = useState(estudio.slug)
   const [bio, setBio] = useState(estudio.bio || '')
@@ -689,193 +656,52 @@ function OwnerStudioSection({
   const [corSecundaria, setCorSecundaria] = useState(estudio.cor_secundaria || '#FAF7F5')
   const [ownerColorModalTarget, setOwnerColorModalTarget] = useState<'primaria' | 'secundaria' | null>(null)
   const [fotosEspaco, setFotosEspaco] = useState<string[]>(estudio.fotos_espaco || [])
-  const [isUploadingEspaco, setIsUploadingEspaco] = useState(false)
-  const [isUploadingPerfil, setIsUploadingPerfil] = useState(false)
   const [isSavingEdit, setIsSavingEdit] = useState(false)
-  const [isUploadingEdit, setIsUploadingEdit] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [showStudioSlugModal, setShowStudioSlugModal] = useState(false)
-  const [expandedMemberIds, setExpandedMemberIds] = useState<string[]>([])
 
-  const toggleExpandMember = (id: string) => {
-    setExpandedMemberIds((prev) =>
-      prev.includes(id) ? prev.filter((mId) => mId !== id) : [...prev, id]
-    )
-  }
-
-  // Auto-salvar alterações da vitrine (fotos, capa e cores)
-  const handleAutoSaveVitrine = async (updatedFields: {
-    cor_primaria?: string
-    cor_secundaria?: string
-    fotos_espaco?: string[]
-    foto_capa_url?: string | null
-    foto_perfil_url?: string | null
-    instagram?: string | null
-    whatsapp?: string | null
-    endereco?: string | null
-  }) => {
-    try {
-      await atualizarEstudio({
-        id: estudio.id,
-        nome,
-        slug,
-        bio,
-        foto_capa_url: updatedFields.foto_capa_url !== undefined ? updatedFields.foto_capa_url : fotoCapaUrl,
-        foto_perfil_url: updatedFields.foto_perfil_url !== undefined ? updatedFields.foto_perfil_url : fotoPerfilUrl,
-        instagram: updatedFields.instagram !== undefined ? updatedFields.instagram : instagram,
-        whatsapp: updatedFields.whatsapp !== undefined ? updatedFields.whatsapp : whatsapp,
-        endereco: updatedFields.endereco !== undefined ? updatedFields.endereco : endereco,
-        cor_primaria: updatedFields.cor_primaria ?? corPrimaria,
-        cor_secundaria: updatedFields.cor_secundaria ?? corSecundaria,
-        fotos_espaco: updatedFields.fotos_espaco ?? fotosEspaco,
+  // 1. Carregar métricas quando periodo ou tab visao_geral mudar
+  useEffect(() => {
+    let isMounted = true
+    setIsLoadingMetrics(true)
+    obterMetricasStudioAction(estudio.id, periodo)
+      .then((data) => {
+        if (!isMounted) return
+        setMetrics(data)
       })
-      setSaveSuccess(true)
-      setTimeout(() => setSaveSuccess(false), 3000)
-      router.refresh()
-    } catch (err) {
-      console.error('Erro no auto-save da vitrine:', err)
+      .catch((err) => console.error('Erro ao carregar métricas:', err))
+      .finally(() => {
+        if (isMounted) setIsLoadingMetrics(false)
+      })
+
+    return () => {
+      isMounted = false
     }
-  }
+  }, [estudio.id, periodo, activeTab])
 
-  const handleUploadFotoPerfil = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setIsUploadingPerfil(true)
-    try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Usuário não autenticado.')
+  // 2. Carregar agendamentos quando tab agendamentos ou filtros mudarem
+  useEffect(() => {
+    if (activeTab !== 'agendamentos') return
 
-      const ext = file.name.split('.').pop() || 'jpg'
-      const filePath = `${user.id}/estudio-perfil-${Date.now()}.${ext}`
-      await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true })
-      const { data } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath)
-      setFotoPerfilUrl(data.publicUrl)
-      await handleAutoSaveVitrine({ foto_perfil_url: data.publicUrl })
-    } catch (err) {
-      console.error('Erro ao enviar foto de perfil do studio:', err)
-      alert('Erro ao enviar imagem de perfil.')
-    } finally {
-      setIsUploadingPerfil(false)
+    let isMounted = true
+    setIsLoadingBookings(true)
+    obterAgendamentosStudioAction(estudio.id, {
+      profissionalId: bookingFilterProf === 'todos' ? undefined : bookingFilterProf,
+      status: bookingFilterStatus === 'todos' ? undefined : bookingFilterStatus,
+    })
+      .then((data) => {
+        if (!isMounted) return
+        setBookings(data)
+      })
+      .catch((err) => console.error('Erro ao carregar agendamentos:', err))
+      .finally(() => {
+        if (isMounted) setIsLoadingBookings(false)
+      })
+
+    return () => {
+      isMounted = false
     }
-  }
-
-  const handleUploadFotoEspaco = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
-
-    const remainingSlots = 6 - fotosEspaco.length
-    if (remainingSlots <= 0) {
-      alert('Você já atingiu o limite de 6 fotos do seu espaço.')
-      return
-    }
-
-    const filesToUpload = Array.from(files).slice(0, remainingSlots)
-    setIsUploadingEspaco(true)
-    try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Usuário não autenticado.')
-
-      const newUrls: string[] = []
-
-      for (let i = 0; i < filesToUpload.length; i++) {
-        const file = filesToUpload[i]
-        const ext = file.name.split('.').pop() || 'jpg'
-        const filePath = `${user.id}/espaco-${Date.now()}-${i}.${ext}`
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(filePath, file, { upsert: true })
-
-        if (!uploadError) {
-          const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
-          if (data?.publicUrl) {
-            newUrls.push(data.publicUrl)
-          }
-        } else {
-          console.error('Erro no upload de foto do espaço:', uploadError)
-        }
-      }
-
-      if (newUrls.length > 0) {
-        const updatedFotos = [...fotosEspaco, ...newUrls]
-        setFotosEspaco(updatedFotos)
-        await handleAutoSaveVitrine({ fotos_espaco: updatedFotos })
-      }
-    } catch (err: unknown) {
-      console.error('Erro ao enviar foto do espaço:', err)
-      alert('Erro ao enviar foto do espaço.')
-    } finally {
-      setIsUploadingEspaco(false)
-      e.target.value = ''
-    }
-  }
-
-  const handleRemoveFotoEspaco = async (indexToRemove: number) => {
-    const updatedFotos = fotosEspaco.filter((_, idx) => idx !== indexToRemove)
-    setFotosEspaco(updatedFotos)
-    await handleAutoSaveVitrine({ fotos_espaco: updatedFotos })
-  }
-
-  // Toggle de atendimento
-  const [isTogglingAtivo, setIsTogglingAtivo] = useState(false)
-  const [ativoState, setAtivoState] = useState(ativoNoEstudio)
-  const [isJoiningTeam, setIsJoiningTeam] = useState(false)
-
-  // Convite por Link
-  const [isGeneratingLink, setIsGeneratingLink] = useState(false)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
-
-  // Convite por Email
-  const [emailInput, setEmailInput] = useState('')
-  const [isSearchingEmail, setIsSearchingEmail] = useState(false)
-  const [isSendingEmail, setIsSendingEmail] = useState(false)
-  const [emailFeedback, setEmailFeedback] = useState<{
-    type: 'success' | 'error' | 'info'
-    message: string
-  } | null>(null)
-  const [foundProf, setFoundProf] = useState<{
-    nome: string
-    foto_url: string | null
-    email: string
-  } | null>(null)
-
-  // Remoção de membro ou desvinculação da dona
-  const [memberToRemove, setMemberToRemove] = useState<{
-    id: string
-    nome: string
-    isOwner?: boolean
-  } | null>(null)
-  const [isRemovingMember, setIsRemovingMember] = useState(false)
-
-  // Status unificado de atendimento da dona
-  const isAtendendo = donaNaEquipe && ativoState
-
-  // Alternar atendimento da dona de forma simplificada e direta
-  const handleToggleAtendimentoDona = async () => {
-    setIsTogglingAtivo(true)
-    try {
-      if (isAtendendo) {
-        await alternarAtivoNoEstudio(false)
-        setAtivoState(false)
-      } else {
-        if (!donaNaEquipe) {
-          await alternarDonaComoAtendente(true)
-        }
-        await alternarAtivoNoEstudio(true)
-        setAtivoState(true)
-      }
-      router.refresh()
-    } catch (err) {
-      console.error('Erro ao alternar status de atendimento:', err)
-    } finally {
-      setIsTogglingAtivo(false)
-    }
-  }
+  }, [estudio.id, activeTab, bookingFilterProf, bookingFilterStatus])
 
   // Gerar link de convite
   const handleGenerateLink = async () => {
@@ -884,24 +710,34 @@ function OwnerStudioSection({
       await gerarConviteLink()
       router.refresh()
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Erro ao gerar link.')
+      alert(err instanceof Error ? err.message : 'Erro ao gerar link de convite.')
     } finally {
       setIsGeneratingLink(false)
     }
   }
 
-  // Copiar link
-  const handleCopyLink = (codigo: string, id: string) => {
+  // Copiar link de convite
+  const handleCopyLink = (code: string, id: string) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
-    const url = `${origin}/convite-estudio/${codigo}`
+    const url = `${origin}/convite-estudio/${code}`
     navigator.clipboard.writeText(url)
     setCopiedId(id)
     setTimeout(() => setCopiedId(null), 2500)
   }
 
+  // Compartilhar link no WhatsApp
+  const handleShareWhatsapp = (code: string) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const url = `${origin}/convite-estudio/${code}`
+    const text = encodeURIComponent(
+      `Olá! Gostaria de convidar você para fazer parte da equipe do ${estudio.nome} no Lumê. Acesse o link para conhecer e aceitar: ${url}`
+    )
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank')
+  }
+
   // Cancelar convite
   const handleCancelInvite = async (inviteId: string) => {
-    if (!confirm('Deseja cancelar este convite?')) return
+    if (!confirm('Deseja cancelar este link de convite?')) return
     try {
       await cancelarConvite(inviteId)
       router.refresh()
@@ -910,69 +746,83 @@ function OwnerStudioSection({
     }
   }
 
-  // Buscar profissional por email
-  const handleSearchEmail = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!emailInput || !emailInput.includes('@')) return
-
-    setIsSearchingEmail(true)
-    setEmailFeedback(null)
-    setFoundProf(null)
-
+  // Atualizar status de agendamento (concluir / cancelar)
+  const handleUpdateBookingStatus = async (
+    bookingId: string,
+    novoStatus: 'confirmado' | 'concluido' | 'cancelado' | 'no_show',
+    statusPagamento?: string
+  ) => {
+    setUpdatingBookingId(bookingId)
     try {
-      const res = await buscarProfissionalPorEmail(emailInput)
-      if (res.exists && res.profissional) {
-        if (res.profissional.jaNoEstudio) {
-          setEmailFeedback({
-            type: 'info',
-            message: `${res.profissional.nome} já faz parte da equipe deste studio!`,
-          })
-        } else {
-          setFoundProf({
-            nome: res.profissional.nome,
-            foto_url: res.profissional.foto_url,
-            email: res.profissional.email || emailInput,
-          })
-        }
-      } else {
-        setEmailFeedback({
-          type: 'error',
-          message:
-            'Nenhuma conta encontrada com este email no Lumê. A profissional precisa ter uma conta criada.',
-        })
-      }
+      await atualizarStatusAgendamentoStudioAction(bookingId, novoStatus, statusPagamento)
+      // Atualizar lista local
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === bookingId
+            ? { ...b, status: novoStatus, statusPagamento: statusPagamento || b.statusPagamento }
+            : b
+        )
+      )
     } catch (err: unknown) {
-      setEmailFeedback({
-        type: 'error',
-        message: err instanceof Error ? err.message : 'Erro ao buscar email.',
-      })
+      alert(err instanceof Error ? err.message : 'Erro ao atualizar agendamento.')
     } finally {
-      setIsSearchingEmail(false)
+      setUpdatingBookingId(null)
     }
   }
 
-  // Enviar convite por email
-  const handleSendEmailInvite = async () => {
-    if (!emailInput) return
-    setIsSendingEmail(true)
-    setEmailFeedback(null)
-
+  // Salvar modo de gestão e regras padrão
+  const handleSaveMode = async () => {
+    setIsSavingMode(true)
+    setModeSaved(false)
     try {
-      const res = await enviarConviteEmail(emailInput)
-      setEmailFeedback({
-        type: 'success',
-        message: `Convite enviado com sucesso para ${res.nomeProfissional}! Ela verá o convite no painel dela.`,
+      await atualizarEstudio({
+        id: estudio.id,
+        nome,
+        slug,
+        tipo_gestao: tipoGestao,
+        comissao_padrao_pct: Number(comissaoPadraoPct),
+        aluguel_padrao_fixo: Number(aluguelPadraoFixo),
       })
-      setEmailInput('')
-      setFoundProf(null)
+      setModeSaved(true)
+      setTimeout(() => setModeSaved(false), 3000)
       router.refresh()
     } catch (err: unknown) {
-      setEmailFeedback({
-        type: 'error',
-        message: err instanceof Error ? err.message : 'Erro ao enviar convite.',
-      })
+      alert(err instanceof Error ? err.message : 'Erro ao salvar modo do studio.')
     } finally {
-      setIsSendingEmail(false)
+      setIsSavingMode(false)
+    }
+  }
+
+  // Abrir modal de edição de regra para membro individual
+  const handleOpenEditMemberRule = (m: StudioMember) => {
+    setEditingMemberRule(m)
+    setCustomComissaoInput(
+      m.comissao_personalizada_pct != null ? String(m.comissao_personalizada_pct) : ''
+    )
+    setCustomAluguelInput(
+      m.aluguel_personalizado_fixo != null ? String(m.aluguel_personalizado_fixo) : ''
+    )
+  }
+
+  // Salvar regra individual de membro
+  const handleSaveMemberRule = async () => {
+    if (!editingMemberRule) return
+    setIsSavingRule(true)
+    try {
+      const comissaoVal = customComissaoInput.trim() ? Number(customComissaoInput) : null
+      const aluguelVal = customAluguelInput.trim() ? Number(customAluguelInput) : null
+
+      await atualizarRegraMembroStudioAction(estudio.id, editingMemberRule.id, {
+        comissao_personalizada_pct: comissaoVal,
+        aluguel_personalizado_fixo: aluguelVal,
+      })
+
+      setEditingMemberRule(null)
+      router.refresh()
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Erro ao salvar regra da profissional.')
+    } finally {
+      setIsSavingRule(false)
     }
   }
 
@@ -991,7 +841,22 @@ function OwnerStudioSection({
     }
   }
 
-  // Salvar edição do studio
+  // Alternar atendimento da dona
+  const handleToggleAtendimentoDona = async () => {
+    setIsTogglingAtivo(true)
+    try {
+      const next = !isAtendendo
+      await alternarDonaComoAtendente(next)
+      setIsAtendendo(next)
+      router.refresh()
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setIsTogglingAtivo(false)
+    }
+  }
+
+  // Salvar edição cadastral da vitrine
   const handleSaveEdit = async (e?: React.FormEvent, force = false) => {
     if (e) e.preventDefault()
     if (!force && slug !== estudio.slug) {
@@ -1014,26 +879,29 @@ function OwnerStudioSection({
         cor_primaria: corPrimaria,
         cor_secundaria: corSecundaria,
         fotos_espaco: fotosEspaco,
+        tipo_gestao: tipoGestao,
+        comissao_padrao_pct: Number(comissaoPadraoPct),
+        aluguel_padrao_fixo: Number(aluguelPadraoFixo),
       })
       setSaveSuccess(true)
       setShowStudioSlugModal(false)
       setTimeout(() => setSaveSuccess(false), 4000)
       router.refresh()
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Erro ao salvar alterações.')
+      alert(err instanceof Error ? err.message : 'Erro ao salvar alterações do studio.')
     } finally {
       setIsSavingEdit(false)
     }
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 pb-16 animate-in fade-in duration-300">
+    <div className="max-w-5xl mx-auto space-y-8 pb-16 animate-in fade-in duration-300 text-left">
       {/* 1. Header do Studio */}
       <div className="rounded-3xl bg-white border border-gray-200/80 overflow-hidden shadow-xs">
         {estudio.foto_capa_url ? (
-          <div className="relative h-44 sm:h-60 w-full">
+          <div className="relative h-44 sm:h-56 w-full">
             <Image src={estudio.foto_capa_url} alt={estudio.nome} fill className="object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
             <div className="absolute bottom-4 left-6 sm:bottom-6 sm:left-8 right-6 sm:right-8 z-10 text-white flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-bold uppercase tracking-wider mb-2">
@@ -1050,7 +918,7 @@ function OwnerStudioSection({
                 className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-white/30 bg-white/20 backdrop-blur-md text-xs font-semibold text-white hover:bg-white/30 transition cursor-pointer self-start sm:self-auto shadow-sm"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
-                <span>Ver vitrine</span>
+                <span>Ver vitrine pública</span>
               </Link>
             </div>
           </div>
@@ -1071,37 +939,50 @@ function OwnerStudioSection({
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition cursor-pointer self-start sm:self-auto shadow-2xs"
             >
               <ExternalLink className="h-3.5 w-3.5 text-[#B8A9D9]" />
-              <span>Ver vitrine</span>
+              <span>Ver vitrine pública</span>
             </Link>
           </div>
         )}
       </div>
 
-      {/* 2. Abas de Navegação (Igualmente distribuídas preenchendo o espaço, idêntico a /perfil) */}
-      <div className="grid grid-cols-3 border-b border-gray-200/80 pb-px w-full">
+      {/* 2. Abas de Navegação (4 Abas Distribuidas) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 border-b border-gray-200/80 pb-px w-full gap-1">
         <button
           type="button"
-          onClick={() => setActiveTab('studio')}
-          className={`flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer text-center w-full ${
-            activeTab === 'studio'
-              ? 'border-purple-600 text-[#4A3F5C]'
+          onClick={() => setActiveTab('visao_geral')}
+          className={`flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-2 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer text-center w-full ${
+            activeTab === 'visao_geral'
+              ? 'border-[#4A3F5C] text-[#4A3F5C]'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
         >
-          <Building2 className={`h-4 w-4 shrink-0 ${activeTab === 'studio' ? 'text-purple-600' : 'text-gray-400'}`} />
-          <span className="truncate">Studio</span>
+          <TrendingUp className={`h-4 w-4 shrink-0 ${activeTab === 'visao_geral' ? 'text-[#4A3F5C]' : 'text-gray-400'}`} />
+          <span className="truncate">Visão Geral</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('agendamentos')}
+          className={`flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-2 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer text-center w-full ${
+            activeTab === 'agendamentos'
+              ? 'border-[#4A3F5C] text-[#4A3F5C]'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          <Calendar className={`h-4 w-4 shrink-0 ${activeTab === 'agendamentos' ? 'text-[#4A3F5C]' : 'text-gray-400'}`} />
+          <span className="truncate">Agendamentos</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('equipe')}
-          className={`flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer text-center w-full ${
+          className={`flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-2 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer text-center w-full ${
             activeTab === 'equipe'
-              ? 'border-purple-600 text-[#4A3F5C]'
+              ? 'border-[#4A3F5C] text-[#4A3F5C]'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
         >
-          <Users className={`h-4 w-4 shrink-0 ${activeTab === 'equipe' ? 'text-purple-600' : 'text-gray-400'}`} />
+          <Users className={`h-4 w-4 shrink-0 ${activeTab === 'equipe' ? 'text-[#4A3F5C]' : 'text-gray-400'}`} />
           <span className="truncate">Equipe</span>
           <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 shrink-0">
             {membros.length}
@@ -1111,311 +992,829 @@ function OwnerStudioSection({
         <button
           type="button"
           onClick={() => setActiveTab('vitrine')}
-          className={`flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer text-center w-full ${
+          className={`flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-2 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer text-center w-full ${
             activeTab === 'vitrine'
-              ? 'border-purple-600 text-[#4A3F5C]'
+              ? 'border-[#4A3F5C] text-[#4A3F5C]'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
           }`}
         >
-          <Store className={`h-4 w-4 shrink-0 ${activeTab === 'vitrine' ? 'text-purple-600' : 'text-gray-400'}`} />
-          <span className="truncate">Vitrine</span>
+          <Store className={`h-4 w-4 shrink-0 ${activeTab === 'vitrine' ? 'text-[#4A3F5C]' : 'text-gray-400'}`} />
+          <span className="truncate">Vitrine & Dados</span>
         </button>
       </div>
 
-      {/* ABA 1: STUDIO */}
-      {activeTab === 'studio' && (
+      {/* ==================================================================== */}
+      {/* ABA 1: VISÃO GERAL (MÉTRICAS & REPASSES) */}
+      {/* ==================================================================== */}
+      {activeTab === 'visao_geral' && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          {/* Card Participação nos atendimentos (Simplificado com Toggle Único) */}
-          <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-purple-50/40 border border-purple-100/80">
-              <div className="space-y-1">
-                <span className="text-sm font-bold text-[#4A3F5C]">
-                  Atendimento de Clientes no Studio
-                </span>
-                <p className="text-xs text-gray-500 max-w-xl leading-relaxed">
-                  {isAtendendo
-                    ? 'Você está disponível na equipe e visível para receber agendamentos na vitrine pública do studio.'
-                    : 'Você está atuando apenas na administração do studio e da equipe, sem receber agendamentos na vitrine.'}
-                </p>
+          {/* Banner do Modo Atual */}
+          <div className="rounded-2xl bg-white border border-gray-200/80 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-purple-50 text-[#4A3F5C] flex items-center justify-center shrink-0">
+                <SlidersHorizontal className="h-5 w-5" />
               </div>
-
-              <div className="flex items-center gap-3 shrink-0">
-                <div className="flex items-center gap-3 bg-white px-3.5 py-2 rounded-2xl border border-gray-200/80 shadow-2xs">
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={isAtendendo}
-                    disabled={isTogglingAtivo}
-                    onClick={handleToggleAtendimentoDona}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50 ${
-                      isAtendendo ? 'bg-emerald-600' : 'bg-gray-300'
-                    }`}
-                    title={isAtendendo ? 'Clique para pausar seus atendimentos no studio' : 'Clique para ativar seus atendimentos no studio'}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                        isAtendendo ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                  <span className="text-xs font-bold text-[#4A3F5C] min-w-[145px]">
-                    {isTogglingAtivo ? 'Atualizando...' : isAtendendo ? 'Atendendo no Studio' : 'Apenas Administrando'}
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-900">Modo de Operação:</span>
+                  <span className="text-xs font-black text-[#4A3F5C]">
+                    {tipoGestao === 'gestao_completa'
+                      ? 'Gestão Completa (Dona do Studio)'
+                      : 'Aluguel de Cadeira (Coworking)'}
                   </span>
                 </div>
+                <p className="text-[11px] text-gray-500">
+                  {tipoGestao === 'gestao_completa'
+                    ? `Comissão padrão do estúdio em ${comissaoPadraoPct}% sobre os procedimentos.`
+                    : `Aluguel mensal padrão de R$ ${aluguelPadraoFixo.toLocaleString('pt-BR')} por cadeira.`}
+                </p>
               </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('vitrine')}
+              className="text-xs font-bold text-[#8675A9] hover:text-[#4A3F5C] transition cursor-pointer self-start sm:self-auto"
+            >
+              Configurar modo na aba Vitrine →
+            </button>
+          </div>
+
+          {/* Seletor de Período */}
+          <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1">
+            <span className="text-xs font-bold text-gray-500 shrink-0">Período:</span>
+            <div className="flex items-center gap-1.5 bg-gray-100/70 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setPeriodo('hoje')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  periodo === 'hoje' ? 'bg-white text-[#4A3F5C] shadow-xs' : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Hoje
+              </button>
+              <button
+                type="button"
+                onClick={() => setPeriodo('mes_atual')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  periodo === 'mes_atual' ? 'bg-white text-[#4A3F5C] shadow-xs' : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Este Mês
+              </button>
+              <button
+                type="button"
+                onClick={() => setPeriodo('mes_anterior')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  periodo === 'mes_anterior' ? 'bg-white text-[#4A3F5C] shadow-xs' : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Mês Anterior
+              </button>
+              <button
+                type="button"
+                onClick={() => setPeriodo('ultimos_30_dias')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  periodo === 'ultimos_30_dias' ? 'bg-white text-[#4A3F5C] shadow-xs' : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Últimos 30 Dias
+              </button>
             </div>
           </div>
 
-          <form onSubmit={handleSaveEdit} className="space-y-6">
-            {/* CARD 1: Identificação & Apresentação do Studio */}
-            <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-6">
-              <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#B8A9D9]/20 text-[#4A3F5C] border border-[#B8A9D9]/30">
-                  <Building2 className="h-5 w-5" />
-                </div>
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold text-[#4A3F5C]">Identificação do Studio</h2>
-                  <p className="text-xs text-gray-500">
-                    Personalize o nome comercial, link da vitrine e apresentação do seu espaço
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {/* Nome */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-700 block">
-                    Nome do Studio <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={nome}
-                    onChange={(e) => setNome(e.target.value)}
-                    placeholder="Ex: Maison Lumière Concept"
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-[#4A3F5C] focus:ring-1 focus:ring-[#4A3F5C] outline-hidden text-sm font-semibold text-[#4A3F5C]"
-                  />
-                </div>
-
-                {/* Slug */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-700 block">
-                    Link do Studio (slug) <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="flex items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs text-gray-500 focus-within:border-[#4A3F5C] focus-within:ring-1 focus-within:ring-[#4A3F5C] focus-within:bg-white">
-                    <span className="shrink-0 font-medium">/studio/</span>
-                    <input
-                      type="text"
-                      required
-                      value={slug}
-                      onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                      className="w-full bg-transparent px-1 outline-hidden font-bold text-gray-900 text-sm font-mono"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Bio */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-700 block">
-                  Biografia / Apresentação do Studio
-                </label>
-                <textarea
-                  rows={4}
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  placeholder="Descreva o conceito do espaço, especialidades da equipe ou diferenciais..."
-                  className="w-full rounded-2xl border border-gray-200 bg-gray-50/50 p-3 text-xs text-[#4A3F5C] focus:border-[#B8A9D9] focus:bg-white focus:outline-hidden resize-none leading-relaxed font-medium"
-                />
-              </div>
+          {/* KPI Cards */}
+          {isLoadingMetrics ? (
+            <div className="py-12 text-center text-gray-400 space-y-2">
+              <Loader2 className="h-6 w-6 animate-spin mx-auto text-[#B8A9D9]" />
+              <p className="text-xs font-medium">Calculando métricas do studio...</p>
             </div>
-
-            {/* CARD 2: Contato & Localização do Studio */}
-            <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-6">
-              <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#B8A9D9]/20 text-[#4A3F5C] border border-[#B8A9D9]/30">
-                  <MapPin className="h-5 w-5 text-[#4A3F5C]" />
+          ) : !metrics ? (
+            <div className="p-6 text-center text-xs text-gray-500">
+              Nenhuma métrica disponível para o período selecionado.
+            </div>
+          ) : tipoGestao === 'gestao_completa' ? (
+            <div className="space-y-6">
+              {/* 4 Cards Principais */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* 1. Faturamento Bruto */}
+                <div className="rounded-3xl bg-white border border-gray-200/80 p-5 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between text-gray-500">
+                    <span className="text-xs font-bold text-gray-600">Faturamento Bruto</span>
+                    <TrendingUp className="h-4 w-4 text-[#4A3F5C]" />
+                  </div>
+                  <div className="text-2xl font-black text-[#4A3F5C]">
+                    R$&nbsp;{metrics.faturamentoBrutoTotal.toLocaleString('pt-BR')}
+                  </div>
+                  <p className="text-[11px] text-gray-400">Total gerado no espaço</p>
                 </div>
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold text-[#4A3F5C]">Contato & Localização</h2>
-                  <p className="text-xs text-gray-500">
-                    Canais de contato direto e endereço completo para suas clientes
+
+                {/* 2. Comissão Retida do Studio */}
+                <div className="rounded-3xl bg-white border border-emerald-200/80 p-5 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between text-emerald-800">
+                    <span className="text-xs font-bold text-emerald-900">Comissão do Studio</span>
+                    <DollarSign className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <div className="text-2xl font-black text-emerald-700">
+                    R$&nbsp;{metrics.faturamentoStudioTotal.toLocaleString('pt-BR')}
+                  </div>
+                  <p className="text-[11px] text-emerald-800/70">Receita retida pelo estúdio</p>
+                </div>
+
+                {/* 3. Repasses Líquidos da Equipe */}
+                <div className="rounded-3xl bg-white border border-purple-200/80 p-5 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between text-purple-800">
+                    <span className="text-xs font-bold text-purple-900">Repasses da Equipe</span>
+                    <Users className="h-4 w-4 text-purple-600" />
+                  </div>
+                  <div className="text-2xl font-black text-[#4A3F5C]">
+                    R$&nbsp;{metrics.repassesEquipeTotal.toLocaleString('pt-BR')}
+                  </div>
+                  <p className="text-[11px] text-purple-800/70">A repassar para as profissionais</p>
+                </div>
+
+                {/* 4. Total de Agendamentos */}
+                <div className="rounded-3xl bg-white border border-gray-200/80 p-5 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between text-gray-500">
+                    <span className="text-xs font-bold text-gray-600">Agendamentos</span>
+                    <Calendar className="h-4 w-4 text-[#B8A9D9]" />
+                  </div>
+                  <div className="text-2xl font-black text-gray-900">
+                    {metrics.totalAgendamentos}
+                  </div>
+                  <p className="text-[11px] text-gray-400">
+                    {metrics.agendamentosConcluidos} concluídos · {metrics.agendamentosConfirmados} confirmados
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {/* Instagram do Studio */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                    <Instagram className="h-3.5 w-3.5 text-[#B8A9D9]" />
-                    <span>Instagram do Studio</span>
-                  </label>
-                  <div className="flex items-center rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs text-gray-500 focus-within:border-[#4A3F5C] focus-within:ring-1 focus-within:ring-[#4A3F5C] focus-within:bg-white">
-                    <span className="shrink-0 font-semibold text-gray-400">@</span>
-                    <input
-                      type="text"
-                      value={instagram}
-                      onChange={(e) => setInstagram(e.target.value.replace(/^@/, ''))}
-                      placeholder="seustudio"
-                      className="w-full bg-transparent px-1 outline-hidden font-semibold text-gray-900 text-xs"
-                    />
+              {/* Tabela de Desempenho e Repasses por Profissional */}
+              <div className="rounded-3xl bg-white border border-gray-200/80 overflow-hidden shadow-xs space-y-4 p-5 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-bold text-[#4A3F5C]">
+                      Desempenho & Repasses por Profissional
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Valores apurados com base nos atendimentos concluídos e regras de comissão
+                    </p>
                   </div>
-                </div>
-
-                {/* WhatsApp do Studio */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                    <Phone className="h-3.5 w-3.5 text-[#B8A9D9]" />
-                    <span>WhatsApp do Studio</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={whatsapp}
-                    onChange={(e) => setWhatsapp(e.target.value)}
-                    placeholder="(11) 99999-9999"
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:border-[#4A3F5C] focus:ring-1 focus:ring-[#4A3F5C] outline-hidden text-xs font-semibold text-[#4A3F5C]"
-                  />
-                </div>
-
-                {/* Endereço / Localização do Studio */}
-                <div className="space-y-2 sm:col-span-2">
-                  <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5 text-[#B8A9D9]" />
-                    <span>Endereço / Localização do Studio</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={endereco}
-                    onChange={(e) => setEndereco(e.target.value)}
-                    placeholder="Ex: Av. Paulista, 1000 - Sala 42, Bela Vista, São Paulo - SP"
-                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:border-[#4A3F5C] focus:ring-1 focus:ring-[#4A3F5C] outline-hidden text-xs font-semibold text-[#4A3F5C]"
-                  />
-                </div>
-              </div>
-
-              {/* Rodapé com feedback e botão Salvar */}
-              <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
-                {saveSuccess ? (
-                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 animate-in fade-in">
-                    <Check className="h-4 w-4" />
-                    <span>Informações do Studio salvas com sucesso!</span>
+                  <span className="text-xs font-bold text-gray-400">
+                    {metrics.membrosDesempenho.length} profissionais
                   </span>
-                ) : (
-                  <span />
-                )}
+                </div>
 
-                <button
-                  type="submit"
-                  disabled={isSavingEdit}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#4A3F5C] hover:bg-[#3d334d] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-xs"
-                >
-                  {isSavingEdit && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  <span>Salvar Alterações</span>
-                </button>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-[11px] text-gray-400 font-bold uppercase tracking-wider">
+                        <th className="py-3 px-2">Profissional</th>
+                        <th className="py-3 px-2 text-center">Atendimentos</th>
+                        <th className="py-3 px-2 text-right">Faturamento Bruto</th>
+                        <th className="py-3 px-2 text-right">Comissão Studio</th>
+                        <th className="py-3 px-2 text-right">Repasse Líquido</th>
+                        <th className="py-3 px-2 text-center">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {metrics.membrosDesempenho.map((m) => (
+                        <tr key={m.id} className="hover:bg-gray-50/50 transition">
+                          <td className="py-3 px-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className="relative h-8 w-8 rounded-full bg-purple-100 overflow-hidden shrink-0 flex items-center justify-center font-bold text-xs text-purple-900">
+                                {m.foto_url ? (
+                                  <Image src={m.foto_url} alt={m.nome} fill className="object-cover" />
+                                ) : (
+                                  m.nome.charAt(0)
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-bold text-gray-900 truncate">{m.nome}</span>
+                                  {m.isOwner && (
+                                    <span title="Dona" className="text-amber-500">
+                                      <Crown className="h-3.5 w-3.5 fill-amber-400/25" />
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-gray-400 block truncate">
+                                  {m.categoria.join(', ') || 'Atendente'}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="py-3 px-2 text-center font-semibold text-gray-700">
+                            {m.agendamentosConcluidos}
+                            <span className="text-[10px] text-gray-400 block">
+                              de {m.totalAgendamentos}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-2 text-right">
+                            {m.faturamentoBruto !== null ? (
+                              <span className="font-bold text-gray-900">
+                                R$&nbsp;{m.faturamentoBruto.toLocaleString('pt-BR')}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-gray-400 italic">
+                                Oculto pela profissional
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-2 text-right">
+                            {m.comissaoStudio !== null ? (
+                              <span className="font-bold text-emerald-700">
+                                R$&nbsp;{m.comissaoStudio.toLocaleString('pt-BR')}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-gray-400 italic">—</span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-2 text-right">
+                            {m.repasseLiquido !== null ? (
+                              <span className="font-black text-[#4A3F5C]">
+                                R$&nbsp;{m.repasseLiquido.toLocaleString('pt-BR')}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-gray-400 italic">—</span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const fullMember = membros.find((x) => x.id === m.id)
+                                if (fullMember) handleOpenEditMemberRule(fullMember)
+                              }}
+                              className="px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-100 text-[11px] font-bold text-gray-700 transition cursor-pointer"
+                            >
+                              Ajustar Regra
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
-          </form>
+          ) : (
+            // Layout Modo: Aluguel de Cadeira (Coworking)
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="rounded-3xl bg-white border border-gray-200/80 p-5 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between text-gray-500">
+                    <span className="text-xs font-bold text-gray-600">Profissionais Ativas</span>
+                    <Users className="h-4 w-4 text-[#4A3F5C]" />
+                  </div>
+                  <div className="text-2xl font-black text-[#4A3F5C]">
+                    {metrics.totalProfissionaisAtivas}
+                  </div>
+                  <p className="text-[11px] text-gray-400">Cadeiras ocupadas no espaço</p>
+                </div>
+
+                <div className="rounded-3xl bg-white border border-emerald-200/80 p-5 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between text-emerald-800">
+                    <span className="text-xs font-bold text-emerald-900">Aluguel Previsto</span>
+                    <DollarSign className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <div className="text-2xl font-black text-emerald-700">
+                    R$&nbsp;{metrics.faturamentoStudioTotal.toLocaleString('pt-BR')}
+                  </div>
+                  <p className="text-[11px] text-emerald-800/70">Receita fixa mensal de cadeiras</p>
+                </div>
+
+                <div className="rounded-3xl bg-white border border-gray-200/80 p-5 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between text-gray-500">
+                    <span className="text-xs font-bold text-gray-600">Total de Atendimentos</span>
+                    <Calendar className="h-4 w-4 text-[#B8A9D9]" />
+                  </div>
+                  <div className="text-2xl font-black text-gray-900">
+                    {metrics.totalAgendamentos}
+                  </div>
+                  <p className="text-[11px] text-gray-400">Clientes atendidas no espaço</p>
+                </div>
+              </div>
+
+              {/* Tabela de Cadeiras / Profissionais */}
+              <div className="rounded-3xl bg-white border border-gray-200/80 overflow-hidden shadow-xs space-y-4 p-5 sm:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-bold text-[#4A3F5C]">Profissionais & Cadeiras</h3>
+                    <p className="text-xs text-gray-500">
+                      Controle das parceiras autônomas e valor fixo de aluguel estipulado
+                    </p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-[11px] text-gray-400 font-bold uppercase tracking-wider">
+                        <th className="py-3 px-2">Profissional</th>
+                        <th className="py-3 px-2 text-center">Status</th>
+                        <th className="py-3 px-2 text-right">Aluguel Fixo da Cadeira</th>
+                        <th className="py-3 px-2 text-center">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {metrics.membrosDesempenho.map((m) => (
+                        <tr key={m.id} className="hover:bg-gray-50/50 transition">
+                          <td className="py-3 px-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className="relative h-8 w-8 rounded-full bg-purple-100 overflow-hidden shrink-0 flex items-center justify-center font-bold text-xs text-purple-900">
+                                {m.foto_url ? (
+                                  <Image src={m.foto_url} alt={m.nome} fill className="object-cover" />
+                                ) : (
+                                  m.nome.charAt(0)
+                                )}
+                              </div>
+                              <div>
+                                <span className="font-bold text-gray-900">{m.nome}</span>
+                                <span className="text-[10px] text-gray-400 block">
+                                  {m.categoria.join(', ') || 'Parceira Autônoma'}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="py-3 px-2 text-center">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                m.ativo_no_estudio
+                                  ? 'bg-emerald-50 text-emerald-700'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}
+                            >
+                              {m.ativo_no_estudio ? 'Atendendo' : 'Em Pausa'}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-2 text-right font-bold text-emerald-700">
+                            R$&nbsp;{(m.aluguelFixo || aluguelPadraoFixo).toLocaleString('pt-BR')}
+                            <span className="text-[10px] text-gray-400 font-normal block">/mês</span>
+                          </td>
+
+                          <td className="py-3 px-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const fullMember = membros.find((x) => x.id === m.id)
+                                if (fullMember) handleOpenEditMemberRule(fullMember)
+                              }}
+                              className="px-2.5 py-1 rounded-lg border border-gray-200 hover:bg-gray-100 text-[11px] font-bold text-gray-700 transition cursor-pointer"
+                            >
+                              Editar Aluguel
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* ABA 2: EQUIPE */}
+      {/* ==================================================================== */}
+      {/* ABA 2: AGENDAMENTOS CONSOLIDADOS DO STUDIO */}
+      {/* ==================================================================== */}
+      {activeTab === 'agendamentos' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Header & Ação de Novo Agendamento */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-3xl bg-white border border-gray-200/80 shadow-xs">
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-[#4A3F5C]">
+                Agenda Integrada do Studio
+              </h2>
+              <p className="text-xs text-gray-500">
+                Centralize o fluxo de atendimentos de todas as profissionais do seu espaço
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsNewBookingModalOpen(true)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#4A3F5C] hover:bg-[#3b324a] text-white text-xs font-bold transition shadow-xs cursor-pointer self-start sm:self-auto"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Novo Agendamento</span>
+            </button>
+          </div>
+
+          {/* Barra de Filtros */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-4 rounded-2xl bg-white border border-gray-200/80 shadow-2xs">
+            {/* Filtro por Profissional */}
+            <div className="flex-1 space-y-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
+                Profissional:
+              </label>
+              <select
+                value={bookingFilterProf}
+                onChange={(e) => setBookingFilterProf(e.target.value)}
+                className="w-full px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-medium text-gray-800 focus:outline-none focus:border-[#4A3F5C]"
+              >
+                <option value="todos">Todas as profissionais</option>
+                {membros.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.nome} {m.isOwner ? '(Dona)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filtro por Status */}
+            <div className="flex-1 space-y-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
+                Status:
+              </label>
+              <select
+                value={bookingFilterStatus}
+                onChange={(e) => setBookingFilterStatus(e.target.value)}
+                className="w-full px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-medium text-gray-800 focus:outline-none focus:border-[#4A3F5C]"
+              >
+                <option value="todos">Todos os status</option>
+                <option value="confirmado">Confirmados</option>
+                <option value="concluido">Concluídos</option>
+                <option value="cancelado">Cancelados</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Lista / Tabela de Agendamentos */}
+          <div className="rounded-3xl bg-white border border-gray-200/80 overflow-hidden shadow-xs">
+            {isLoadingBookings ? (
+              <div className="py-16 text-center text-gray-400 space-y-2">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto text-[#B8A9D9]" />
+                <p className="text-xs">Carregando agendamentos da equipe...</p>
+              </div>
+            ) : bookings.length === 0 ? (
+              <div className="py-16 text-center text-gray-400 space-y-2">
+                <Calendar className="h-8 w-8 text-gray-300 mx-auto" />
+                <p className="text-xs font-medium">Nenhum agendamento encontrado para este filtro.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-100 text-[11px] text-gray-400 font-bold uppercase tracking-wider bg-gray-50/50">
+                      <th className="py-3 px-4">Data & Horário</th>
+                      <th className="py-3 px-4">Profissional</th>
+                      <th className="py-3 px-4">Cliente</th>
+                      <th className="py-3 px-4">Serviço</th>
+                      <th className="py-3 px-4 text-right">Valor</th>
+                      <th className="py-3 px-4 text-center">Status</th>
+                      <th className="py-3 px-4 text-center">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {bookings.map((b) => {
+                      const dataInicio = new Date(b.dataHoraInicio)
+                      const diaStr = dataInicio.toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                      })
+                      const horaStr = dataInicio.toLocaleTimeString('pt-BR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+
+                      const isUpdating = updatingBookingId === b.id
+
+                      return (
+                        <tr key={b.id} className="hover:bg-gray-50/60 transition">
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className="font-bold text-gray-900 block">{diaStr}</span>
+                            <span className="text-[11px] text-gray-500 font-mono">{horaStr}</span>
+                          </td>
+
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <div className="relative h-7 w-7 rounded-full bg-purple-100 overflow-hidden shrink-0 flex items-center justify-center font-bold text-xs text-purple-900">
+                                {b.profissionalFoto ? (
+                                  <Image src={b.profissionalFoto} alt={b.profissionalNome} fill className="object-cover" />
+                                ) : (
+                                  b.profissionalNome.charAt(0)
+                                )}
+                              </div>
+                              <span className="font-semibold text-gray-800">{b.profissionalNome}</span>
+                            </div>
+                          </td>
+
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className="font-bold text-gray-900 block">{b.clienteNome}</span>
+                            {b.clienteTelefone && (
+                              <a
+                                href={`https://api.whatsapp.com/send?phone=55${b.clienteTelefone.replace(/\D/g, '')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-emerald-700 hover:underline flex items-center gap-1 mt-0.5"
+                              >
+                                <Phone className="h-2.5 w-2.5" />
+                                <span>{b.clienteTelefone}</span>
+                              </a>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-4">
+                            <span className="font-medium text-gray-800 block truncate max-w-[180px]">
+                              {b.servicoNome}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-4 text-right whitespace-nowrap font-bold">
+                            {b.valorCobrado !== null ? (
+                              <span className="text-gray-900">
+                                R$&nbsp;{b.valorCobrado.toLocaleString('pt-BR')}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-gray-400 font-normal italic">
+                                Oculto
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-4 text-center whitespace-nowrap">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                b.status === 'concluido'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : b.status === 'confirmado'
+                                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}
+                            >
+                              {b.status === 'concluido'
+                                ? 'Concluído'
+                                : b.status === 'confirmado'
+                                ? 'Confirmado'
+                                : 'Cancelado'}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-4 text-center whitespace-nowrap">
+                            {isUpdating ? (
+                              <Loader2 className="h-4 w-4 animate-spin text-purple-600 mx-auto" />
+                            ) : b.status === 'confirmado' ? (
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateBookingStatus(b.id, 'concluido', 'pago')}
+                                  className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
+                                  title="Marcar como Concluído e Pago"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateBookingStatus(b.id, 'cancelado')}
+                                  className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                                  title="Cancelar Agendamento"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-gray-300 text-xs">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* ABA 3: EQUIPE (LINK DE CONVITE & MEMBROS) */}
+      {/* ==================================================================== */}
       {activeTab === 'equipe' && (
         <div className="space-y-8 animate-in fade-in duration-200">
-          {/* Membros do Studio */}
+          {/* Card Único e Central de Convite por Link (Busca por email removida) */}
+          <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-purple-50 text-[#4A3F5C] flex items-center justify-center shrink-0">
+                  <Link2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#4A3F5C]">
+                    Adicionar Novas Profissionais à Equipe
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Gere links seguros de convite para enviar no WhatsApp das parceiras
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={isGeneratingLink}
+                onClick={handleGenerateLink}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#4A3F5C] hover:bg-[#3b324a] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer self-start sm:self-auto shadow-xs"
+              >
+                {isGeneratingLink ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                <span>Gerar Novo Link de Convite</span>
+              </button>
+            </div>
+
+            {/* Links Ativos */}
+            <div className="space-y-3">
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                Links de Convite Ativos ({convites.filter((c) => c.tipo === 'link').length})
+              </h4>
+
+              {convites.filter((c) => c.tipo === 'link').length === 0 ? (
+                <div className="p-4 text-center rounded-2xl bg-gray-50/80 border border-gray-200/60 text-xs text-gray-500">
+                  Nenhum link ativo no momento. Clique no botão &quot;Gerar Novo Link de Convite&quot; acima.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {convites
+                    .filter((c) => c.tipo === 'link')
+                    .map((convite) => (
+                      <div
+                        key={convite.id}
+                        className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-gray-50/80 border border-gray-200/80"
+                      >
+                        <div className="min-w-0">
+                          <span className="font-mono text-xs font-bold text-gray-700 block truncate">
+                            .../convite-estudio/{convite.codigo}
+                          </span>
+                          <span className="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5">
+                            <Clock className="h-3 w-3" />
+                            <span>Válido por 7 dias</span>
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyLink(convite.codigo || '', convite.id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white border border-gray-200 hover:bg-gray-100 text-xs font-bold text-gray-700 transition cursor-pointer"
+                          >
+                            {copiedId === convite.id ? (
+                              <>
+                                <Check className="h-3.5 w-3.5 text-emerald-600" />
+                                <span className="text-emerald-700">Copiado</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-3.5 w-3.5 text-gray-500" />
+                                <span>Copiar</span>
+                              </>
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleShareWhatsapp(convite.codigo || '')}
+                            className="p-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 transition cursor-pointer"
+                            title="Compartilhar no WhatsApp"
+                          >
+                            <Share2 className="h-3.5 w-3.5" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleCancelInvite(convite.id)}
+                            className="p-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 transition cursor-pointer"
+                            title="Excluir link"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Lista de Membros da Equipe */}
           <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
               <div>
-                <h2 className="text-lg font-bold text-[#4A3F5C] flex items-center gap-2">
-                  <Users className="h-5 w-5 text-[#B8A9D9]" />
-                  <span>Equipe do Studio</span>
-                </h2>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {membros.length} {membros.length === 1 ? 'profissional' : 'profissionais'} fazendo
-                  parte deste espaço
+                <h3 className="text-base font-bold text-[#4A3F5C]">
+                  Profissionais Atuais ({membros.length})
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Gerencie regras financeiras, permissões e status de atendimento de cada parceira
                 </p>
               </div>
             </div>
 
-            <div className="divide-y divide-gray-100 border border-gray-100 rounded-2xl overflow-hidden">
+            <div className="space-y-4">
               {membros.map((membro) => (
                 <div
                   key={membro.id}
-                  className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50/50 transition"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-gray-50/70 border border-gray-200/70"
                 >
-                  <div className="flex items-center gap-3.5">
-                    <div className="relative h-12 w-12 shrink-0 rounded-full overflow-hidden bg-gray-100 border border-purple-200">
+                  {/* Foto e Nome */}
+                  <div className="flex items-center gap-3">
+                    <div className="relative h-12 w-12 rounded-2xl bg-purple-100 overflow-hidden shrink-0 flex items-center justify-center font-bold text-sm text-purple-900 border border-purple-200">
                       {membro.foto_url ? (
                         <Image src={membro.foto_url} alt={membro.nome} fill className="object-cover" />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center font-bold text-purple-700">
-                          {membro.nome.charAt(0)}
-                        </div>
+                        membro.nome.charAt(0)
                       )}
                     </div>
 
-                    <div className="min-w-0 max-w-[200px] sm:max-w-xs md:max-w-md">
-                      <div className="flex items-center gap-1.5">
-                        <h3
-                          className={`text-sm font-bold text-gray-900 ${
-                            expandedMemberIds.includes(membro.id) ? '' : 'truncate'
-                          }`}
-                        >
-                          {membro.nome}
-                        </h3>
-                        {membro.isOwner ? (
-                          <span title="Dona / Administradora do Studio" className="inline-flex items-center text-amber-500 shrink-0">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-gray-900">{membro.nome}</span>
+                        {membro.isOwner && (
+                          <span title="Dona do Studio" className="text-amber-500">
                             <Crown className="h-4 w-4 fill-amber-400/25" />
-                          </span>
-                        ) : (
-                          <span title="Membro da Equipe" className="inline-flex items-center text-gray-400 shrink-0">
-                            <User className="h-4 w-4" />
                           </span>
                         )}
                       </div>
-                      {(() => {
-                        const categorias = parseCategorias(membro.categoria)
-                        const catLabel =
-                          categorias.length > 0
-                            ? categorias.map((c) => getCategoryLabel(c, true)).join(' • ')
-                            : 'Profissional de beleza'
-                        const isExpanded = expandedMemberIds.includes(membro.id)
-                        return (
-                          <div>
-                            <p className={`text-xs text-gray-500 ${isExpanded ? '' : 'truncate'}`}>
-                              {catLabel}
-                            </p>
-                            {(catLabel.length > 25 || membro.nome.length > 22) && (
-                              <button
-                                type="button"
-                                onClick={() => toggleExpandMember(membro.id)}
-                                className="text-[11px] font-bold text-[#8675A9] hover:text-[#4A3F5C] transition cursor-pointer mt-0.5"
-                              >
-                                {isExpanded ? 'Ver menos' : 'Ver mais'}
-                              </button>
-                            )}
-                          </div>
-                        )
-                      })()}
+                      <span className="text-xs text-gray-500 block">
+                        {membro.categoria.join(' • ') || 'Atendente'}
+                      </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 self-end sm:self-center">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                        membro.ativo_no_estudio
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          membro.ativo_no_estudio ? 'bg-emerald-500' : 'bg-gray-400'
-                        }`}
-                      />
-                      <span>{membro.ativo_no_estudio ? 'Atendendo' : 'Oculta'}</span>
-                    </span>
+                  {/* Regra Financeira e Permissões */}
+                  <div className="flex flex-wrap sm:flex-nowrap items-center gap-4">
+                    {/* Regra Financeira */}
+                    <div className="text-left sm:text-right">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
+                        Regra Financeira:
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-emerald-700">
+                          {tipoGestao === 'gestao_completa'
+                            ? `${membro.comissao_personalizada_pct ?? comissaoPadraoPct}% comissão`
+                            : `R$ ${(membro.aluguel_personalizado_fixo ?? aluguelPadraoFixo).toLocaleString('pt-BR')}/mês`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditMemberRule(membro)}
+                          className="text-[10px] text-[#8675A9] hover:text-[#4A3F5C] font-bold underline cursor-pointer"
+                        >
+                          Editar
+                        </button>
+                      </div>
+                    </div>
 
+                    {/* Indicadores de Privacidade */}
+                    <div className="flex items-center gap-1.5 border-l border-gray-200 pl-4">
+                      <span
+                        title={
+                          membro.compartilhar_faturamento
+                            ? 'Faturamento compartilhado com o studio'
+                            : 'Faturamento privado pela parceira'
+                        }
+                        className={`p-1.5 rounded-lg text-xs ${
+                          membro.compartilhar_faturamento ? 'text-emerald-700 bg-emerald-50' : 'text-gray-400 bg-gray-100'
+                        }`}
+                      >
+                        <DollarSign className="h-3.5 w-3.5" />
+                      </span>
+
+                      <span
+                        title={
+                          membro.compartilhar_agendamentos
+                            ? 'Agenda compartilhada na visão geral'
+                            : 'Agenda privada pela parceira'
+                        }
+                        className={`p-1.5 rounded-lg text-xs ${
+                          membro.compartilhar_agendamentos ? 'text-purple-700 bg-purple-50' : 'text-gray-400 bg-gray-100'
+                        }`}
+                      >
+                        <Calendar className="h-3.5 w-3.5" />
+                      </span>
+
+                      <span
+                        title={
+                          membro.permitir_agendamento_dona
+                            ? 'Permite agendamento assistido pela dona'
+                            : 'Bloqueou agendamento assistido'
+                        }
+                        className={`p-1.5 rounded-lg text-xs ${
+                          membro.permitir_agendamento_dona ? 'text-blue-700 bg-blue-50' : 'text-gray-400 bg-gray-100'
+                        }`}
+                      >
+                        <Scissors className="h-3.5 w-3.5" />
+                      </span>
+                    </div>
+
+                    {/* Desvincular */}
                     <button
                       type="button"
                       onClick={() =>
@@ -1425,16 +1824,8 @@ function OwnerStudioSection({
                           isOwner: membro.isOwner,
                         })
                       }
-                      className={`p-2 rounded-xl transition cursor-pointer ${
-                        membro.isOwner
-                          ? 'text-gray-400 hover:text-amber-700 hover:bg-amber-50'
-                          : 'text-gray-400 hover:text-rose-600 hover:bg-rose-50'
-                      }`}
-                      title={
-                        membro.isOwner
-                          ? 'Deixar de atender neste studio (Apenas administrar)'
-                          : 'Remover membro do studio'
-                      }
+                      className="p-2 rounded-xl text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                      title={membro.isOwner ? 'Desvincular atendimento' : 'Desvincular do studio'}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -1443,679 +1834,367 @@ function OwnerStudioSection({
               ))}
             </div>
           </div>
-
-          {/* Convidar Profissionais (Link + Email) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Lado A: Convite por Link */}
-            <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-5 flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center">
-                      <Link2 className="h-4 w-4" />
-                    </div>
-                    <h3 className="text-sm font-bold text-gray-900">Convite por Link</h3>
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={isGeneratingLink}
-                    onClick={handleGenerateLink}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#4A3F5C] hover:bg-[#3d334d] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer"
-                  >
-                    {isGeneratingLink ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Plus className="h-3 w-3" />
-                    )}
-                    <span>Gerar Link</span>
-                  </button>
-                </div>
-
-                <p className="text-xs text-gray-500 leading-relaxed">
-                  Gere um link temporário seguro. Qualquer profissional que clicar poderá aceitar e se
-                  juntar ao studio. O link expira automaticamente em 7 dias.
-                </p>
-              </div>
-
-              <div className="space-y-2 pt-2">
-                <h4 className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                  Links Ativos ({convites.filter((c) => c.tipo === 'link').length})
-                </h4>
-
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {convites.filter((c) => c.tipo === 'link').length === 0 ? (
-                    <p className="text-xs text-gray-400 italic py-2">
-                      Nenhum link ativo. Clique em &quot;Gerar Link&quot; acima.
-                    </p>
-                  ) : (
-                    convites
-                      .filter((c) => c.tipo === 'link')
-                      .map((convite) => (
-                        <div
-                          key={convite.id}
-                          className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-200/70 text-xs"
-                        >
-                          <div className="flex items-center gap-1.5 overflow-hidden">
-                            <Clock className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                            <span className="truncate font-mono text-gray-600">
-                              .../{convite.codigo}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => handleCopyLink(convite.codigo || '', convite.id)}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 text-[11px] font-bold text-gray-700 transition cursor-pointer"
-                            >
-                              {copiedId === convite.id ? (
-                                <>
-                                  <Check className="h-3 w-3 text-emerald-600" />
-                                  <span className="text-emerald-700">Copiado</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="h-3 w-3 text-gray-500" />
-                                  <span>Copiar</span>
-                                </>
-                              )}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleCancelInvite(convite.id)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50/80 hover:bg-rose-100 text-[11px] font-bold text-rose-700 transition cursor-pointer shadow-2xs"
-                              title="Cancelar convite"
-                            >
-                              <Trash2 className="h-3 w-3 text-rose-600" />
-                              <span>Cancelar</span>
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Lado B: Convite por Email */}
-            <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-5 flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center">
-                    <Mail className="h-4 w-4" />
-                  </div>
-                  <h3 className="text-sm font-bold text-gray-900">Convidar por Email</h3>
-                </div>
-
-                <p className="text-xs text-gray-500 leading-relaxed">
-                  Digite o email de uma profissional cadastrada no Lumê. Ela receberá um aviso de convite
-                  diretamente no painel dela.
-                </p>
-
-                <form onSubmit={handleSearchEmail} className="flex gap-2">
-                  <input
-                    type="email"
-                    required
-                    value={emailInput}
-                    onChange={(e) => {
-                      setEmailInput(e.target.value)
-                      setEmailFeedback(null)
-                      setFoundProf(null)
-                    }}
-                    placeholder="email@profissional.com"
-                    className="flex-1 px-3.5 py-2 rounded-xl border border-gray-200 text-xs focus:border-[#4A3F5C] focus:ring-1 focus:ring-[#4A3F5C] outline-hidden"
-                  />
-                  <button
-                    type="submit"
-                    disabled={isSearchingEmail || !emailInput}
-                    className="px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-bold text-gray-700 transition disabled:opacity-50 cursor-pointer inline-flex items-center gap-1.5"
-                  >
-                    {isSearchingEmail ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Search className="h-3.5 w-3.5" />
-                    )}
-                    <span>Buscar</span>
-                  </button>
-                </form>
-
-                {emailFeedback && (
-                  <div
-                    className={`p-3 rounded-xl text-xs font-medium ${
-                      emailFeedback.type === 'success'
-                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                        : emailFeedback.type === 'error'
-                        ? 'bg-rose-50 text-rose-800 border border-rose-200'
-                        : 'bg-purple-50 text-purple-800 border border-purple-200'
-                    }`}
-                  >
-                    {emailFeedback.message}
-                  </div>
-                )}
-
-                {foundProf && (
-                  <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-50 to-white border border-purple-200 flex items-center justify-between gap-3 animate-in fade-in">
-                    <div className="flex items-center gap-2.5">
-                      <div className="h-9 w-9 rounded-full bg-purple-200 text-purple-800 font-bold flex items-center justify-center text-xs overflow-hidden">
-                        {foundProf.foto_url ? (
-                          <Image
-                            src={foundProf.foto_url}
-                            alt={foundProf.nome}
-                            width={36}
-                            height={36}
-                            className="object-cover"
-                          />
-                        ) : (
-                          foundProf.nome.charAt(0)
-                        )}
-                      </div>
-                      <div>
-                        <strong className="text-xs text-gray-900 block">{foundProf.nome}</strong>
-                        <span className="text-[10px] text-gray-500">{foundProf.email}</span>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={isSendingEmail}
-                      onClick={handleSendEmailInvite}
-                      className="px-3 py-1.5 rounded-xl bg-[#4A3F5C] hover:bg-[#3d334d] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer inline-flex items-center gap-1"
-                    >
-                      {isSendingEmail && <Loader2 className="h-3 w-3 animate-spin" />}
-                      <span>Enviar Convite</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2 pt-2">
-                <h4 className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                  Convites Pendentes ({convites.filter((c) => c.tipo === 'email').length})
-                </h4>
-
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {convites.filter((c) => c.tipo === 'email').length === 0 ? (
-                    <p className="text-xs text-gray-400 italic py-2">Nenhum convite por email pendente.</p>
-                  ) : (
-                    convites
-                      .filter((c) => c.tipo === 'email')
-                      .map((convite) => (
-                        <div
-                          key={convite.id}
-                          className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-200/70 text-xs"
-                        >
-                          <div className="flex items-center gap-1.5 overflow-hidden">
-                            <Mail className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                            <span className="truncate text-gray-700 font-medium">
-                              {convite.email_convidado}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md font-bold">
-                              Pendente
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleCancelInvite(convite.id)}
-                              className="p-1 text-gray-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition cursor-pointer"
-                              title="Cancelar convite"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
-      {/* ABA 3: VITRINE */}
+      {/* ==================================================================== */}
+      {/* ABA 4: VITRINE & CONFIGURAÇÕES CADASTRAIS */}
+      {/* ==================================================================== */}
       {activeTab === 'vitrine' && (
-        <div className="space-y-8 animate-in fade-in duration-200">
-          <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
-              <div className="flex items-center gap-3">
-                <Store className="h-6 w-6 text-[#4A3F5C] shrink-0" />
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* SEÇÃO 1: MODO DE OPERAÇÃO DO STUDIO */}
+          <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-5">
+            <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
+              <div className="h-10 w-10 rounded-2xl bg-[#B8A9D9]/20 text-[#4A3F5C] flex items-center justify-center">
+                <SlidersHorizontal className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-[#4A3F5C]">
+                  Modo de Operação do Studio
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Defina como o espaço funciona financeiramente com as profissionais parceiras
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Opção A: Gestão Completa */}
+              <div
+                onClick={() => setTipoGestao('gestao_completa')}
+                className={`p-4 rounded-2xl border-2 transition cursor-pointer space-y-2 ${
+                  tipoGestao === 'gestao_completa'
+                    ? 'border-[#4A3F5C] bg-[#FAF7F5]'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-gray-900">
+                    Gestão Completa (Dona do Studio)
+                  </span>
+                  {tipoGestao === 'gestao_completa' && <Check className="h-4 w-4 text-[#4A3F5C]" />}
+                </div>
+                <p className="text-[11px] text-gray-500 leading-relaxed">
+                  Controle centralizado de faturamento, cálculo de comissões, repasses e agenda integrada.
+                </p>
+              </div>
+
+              {/* Opção B: Aluguel de Cadeira */}
+              <div
+                onClick={() => setTipoGestao('aluguel_cadeira')}
+                className={`p-4 rounded-2xl border-2 transition cursor-pointer space-y-2 ${
+                  tipoGestao === 'aluguel_cadeira'
+                    ? 'border-[#4A3F5C] bg-[#FAF7F5]'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-gray-900">
+                    Aluguel de Cadeira (Coworking)
+                  </span>
+                  {tipoGestao === 'aluguel_cadeira' && <Check className="h-4 w-4 text-[#4A3F5C]" />}
+                </div>
+                <p className="text-[11px] text-gray-500 leading-relaxed">
+                  Profissionais autônomas pagam taxa/aluguel fixo de cadeira e mantêm faturamento totalmente independente.
+                </p>
+              </div>
+            </div>
+
+            {/* Inputs de Regras Padrão */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-700 block">
+                  Comissão Padrão do Studio (%)
+                </label>
+                <div className="flex items-center rounded-2xl border border-gray-200 bg-white px-3.5 py-2.5 text-xs">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={comissaoPadraoPct}
+                    onChange={(e) => setComissaoPadraoPct(Number(e.target.value))}
+                    className="w-full bg-transparent outline-none font-bold text-gray-900 text-sm"
+                  />
+                  <span className="text-gray-400 font-bold">%</span>
+                </div>
+                <span className="text-[10px] text-gray-400">
+                  Usado na Gestão Completa quando a profissional não tem taxa individual
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-700 block">
+                  Aluguel Mensal Padrão de Cadeira (R$)
+                </label>
+                <div className="flex items-center rounded-2xl border border-gray-200 bg-white px-3.5 py-2.5 text-xs">
+                  <span className="text-gray-400 font-bold mr-1.5">R$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="50"
+                    value={aluguelPadraoFixo}
+                    onChange={(e) => setAluguelPadraoFixo(Number(e.target.value))}
+                    className="w-full bg-transparent outline-none font-bold text-gray-900 text-sm"
+                  />
+                </div>
+                <span className="text-[10px] text-gray-400">
+                  Usado no Aluguel de Cadeira como valor mensal padrão por parceira
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+              {modeSaved ? (
+                <span className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
+                  <Check className="h-4 w-4" />
+                  <span>Configurações salvas!</span>
+                </span>
+              ) : <div />}
+
+              <button
+                type="button"
+                disabled={isSavingMode}
+                onClick={handleSaveMode}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4A3F5C] hover:bg-[#3d334d] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-xs"
+              >
+                {isSavingMode && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                <span>Salvar Modo & Regras</span>
+              </button>
+            </div>
+          </div>
+
+          {/* SEÇÃO 2: DADOS CADASTRAIS & APRESENTAÇÃO */}
+          <form onSubmit={handleSaveEdit} className="space-y-6">
+            <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-6">
+              <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
+                <div className="h-10 w-10 rounded-2xl bg-[#B8A9D9]/20 text-[#4A3F5C] flex items-center justify-center">
+                  <Building2 className="h-5 w-5" />
+                </div>
                 <div>
-                  <h2 className="text-base sm:text-lg font-bold text-[#4A3F5C]">Vitrine do Studio</h2>
+                  <h3 className="text-base font-bold text-[#4A3F5C]">
+                    Identificação & Vitrine Coletiva
+                  </h3>
                   <p className="text-xs text-gray-500">
-                    Capa, paleta de cores e fotos do ambiente do seu espaço
+                    Dados exibidos na página pública `/studio/{slug}`
                   </p>
                 </div>
               </div>
 
-              <Link
-                href={`/studio/${estudio.slug}`}
-                target="_blank"
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition cursor-pointer self-start sm:self-auto shadow-2xs"
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 block">Nome do Studio *</label>
+                  <input
+                    type="text"
+                    required
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-900 focus:outline-none focus:border-[#4A3F5C]"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 block">Link (slug) *</label>
+                  <div className="flex items-center rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs">
+                    <span className="text-gray-400">/studio/</span>
+                    <input
+                      type="text"
+                      required
+                      value={slug}
+                      onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                      className="w-full bg-transparent px-1 font-bold text-gray-900 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-700 block">Biografia do Espaço</label>
+                <textarea
+                  rows={3}
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="Conceito do espaço, diferenciais..."
+                  className="w-full rounded-2xl border border-gray-200 p-3 text-xs text-gray-800 focus:outline-none focus:border-[#4A3F5C] resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 block">WhatsApp do Studio</label>
+                  <input
+                    type="text"
+                    value={whatsapp}
+                    onChange={(e) => setWhatsapp(e.target.value)}
+                    placeholder="(11) 99999-9999"
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none focus:border-[#4A3F5C]"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 block">Instagram (@)</label>
+                  <input
+                    type="text"
+                    value={instagram}
+                    onChange={(e) => setInstagram(e.target.value)}
+                    placeholder="@seustudio"
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none focus:border-[#4A3F5C]"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 block">Endereço Completo</label>
+                  <input
+                    type="text"
+                    value={endereco}
+                    onChange={(e) => setEndereco(e.target.value)}
+                    placeholder="Rua, Número, Bairro, Cidade"
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs text-gray-800 focus:outline-none focus:border-[#4A3F5C]"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
+                {saveSuccess ? (
+                  <span className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
+                    <Check className="h-4 w-4" />
+                    <span>Dados salvos com sucesso!</span>
+                  </span>
+                ) : <div />}
+
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#4A3F5C] hover:bg-[#3d334d] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer shadow-xs"
+                >
+                  {isSavingEdit && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>Salvar Dados Cadastrais</span>
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ==================================================================== */}
+      {/* MODAL: AJUSTAR REGRA FINANCEIRA INDIVIDUAL DE MEMBRO */}
+      {/* ==================================================================== */}
+      {editingMemberRule && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-4 border border-gray-200 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">
+                  Regra Financeira: {editingMemberRule.nome}
+                </h3>
+                <p className="text-[11px] text-gray-500">
+                  Personalize a retenção para esta parceira ou deixe em branco para usar o padrão
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingMemberRule(null)}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-700"
               >
-                <ExternalLink className="h-3.5 w-3.5 text-[#B8A9D9]" />
-                <span>Ver vitrine pública</span>
-              </Link>
+                <X className="h-4 w-4" />
+              </button>
             </div>
 
-            <form onSubmit={handleSaveEdit} className="space-y-6">
-              {/* Foto de Perfil / Logo do Studio (Item 16) */}
+            {tipoGestao === 'gestao_completa' ? (
               <div className="space-y-2">
                 <label className="text-xs font-bold text-gray-700 block">
-                  Foto de Perfil / Logo do Studio
+                  Comissão Individual do Studio (%)
                 </label>
-
-                <div className="flex items-center gap-4">
-                  {fotoPerfilUrl ? (
-                    <div className="relative h-20 w-20 rounded-2xl overflow-hidden border-2 border-[#B8A9D9] shadow-xs shrink-0">
-                      <Image src={fotoPerfilUrl} alt="Logo" fill className="object-cover" />
-                    </div>
-                  ) : (
-                    <div className="h-20 w-20 rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 text-xs bg-gray-50 shrink-0">
-                      <Building2 className="h-7 w-7 text-gray-300" />
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-2">
-                    <label className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-bold text-gray-700 transition cursor-pointer">
-                      {isUploadingPerfil ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Upload className="h-3.5 w-3.5" />
-                      )}
-                      <span>{fotoPerfilUrl ? 'Alterar Imagem' : 'Enviar Imagem'}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        disabled={isUploadingPerfil}
-                        onChange={handleUploadFotoPerfil}
-                        className="hidden"
-                      />
-                    </label>
-
-                    {fotoPerfilUrl && (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          setFotoPerfilUrl('')
-                          await handleAutoSaveVitrine({ foto_perfil_url: null })
-                        }}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-xl transition cursor-pointer"
-                        title="Remover foto de perfil"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
+                <div className="flex items-center rounded-xl border border-gray-200 px-3 py-2 text-xs">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    placeholder={`Padrão: ${comissaoPadraoPct}%`}
+                    value={customComissaoInput}
+                    onChange={(e) => setCustomComissaoInput(e.target.value)}
+                    className="w-full outline-none font-bold text-gray-900"
+                  />
+                  <span className="text-gray-400 font-bold">%</span>
                 </div>
+                <p className="text-[10px] text-gray-400">
+                  Deixe vazio para usar a taxa padrão do studio ({comissaoPadraoPct}%).
+                </p>
               </div>
-
-              {/* Foto de Capa (Item 17: sem recomendação de tamanho) */}
+            ) : (
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-gray-700 block">Foto de Capa do Studio</label>
+                <label className="text-xs font-bold text-gray-700 block">
+                  Aluguel Individual de Cadeira (R$)
+                </label>
+                <div className="flex items-center rounded-xl border border-gray-200 px-3 py-2 text-xs">
+                  <span className="text-gray-400 mr-1.5 font-bold">R$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder={`Padrão: ${aluguelPadraoFixo}`}
+                    value={customAluguelInput}
+                    onChange={(e) => setCustomAluguelInput(e.target.value)}
+                    className="w-full outline-none font-bold text-gray-900"
+                  />
                 </div>
-
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                  {fotoCapaUrl ? (
-                    <div className="relative h-28 w-full sm:w-60 rounded-2xl overflow-hidden border border-gray-200 shadow-2xs">
-                      <Image src={fotoCapaUrl} alt="Capa" fill className="object-cover" />
-                    </div>
-                  ) : (
-                    <div className="h-24 w-full sm:w-60 rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 text-xs">
-                      <Camera className="h-6 w-6 mb-1 text-gray-300" />
-                      <span>Sem foto de capa</span>
-                    </div>
-                  )}
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    <label className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-bold text-gray-700 transition cursor-pointer">
-                      {isUploadingEdit ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Upload className="h-4 w-4" />
-                      )}
-                      <span>{fotoCapaUrl ? 'Alterar Imagem' : 'Enviar Imagem'}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        disabled={isUploadingEdit}
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0]
-                          if (!file) return
-                          setIsUploadingEdit(true)
-                          try {
-                            const supabase = createClient()
-                            const { data: { user } } = await supabase.auth.getUser()
-                            if (!user) throw new Error('Usuário não autenticado.')
-
-                            const ext = file.name.split('.').pop() || 'jpg'
-                            const filePath = `${user.id}/estudio-capa-${Date.now()}.${ext}`
-                            await supabase.storage
-                              .from('avatars')
-                              .upload(filePath, file, { upsert: true })
-                            const { data } = supabase.storage
-                              .from('avatars')
-                              .getPublicUrl(filePath)
-                            setFotoCapaUrl(data.publicUrl)
-                            await handleAutoSaveVitrine({ foto_capa_url: data.publicUrl })
-                          } finally {
-                            setIsUploadingEdit(false)
-                          }
-                        }}
-                        className="hidden"
-                      />
-                    </label>
-                    {fotoCapaUrl && (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          setFotoCapaUrl('')
-                          await handleAutoSaveVitrine({ foto_capa_url: null })
-                        }}
-                        className="text-xs text-rose-600 hover:underline font-semibold cursor-pointer"
-                      >
-                        Remover capa
-                      </button>
-                    )}
-                  </div>
-                </div>
+                <p className="text-[10px] text-gray-400">
+                  Deixe vazio para usar o aluguel padrão do studio (R$ {aluguelPadraoFixo}).
+                </p>
               </div>
+            )}
 
-              {/* Identidade Visual & Cores */}
-              <div className="space-y-4 pt-2 border-t border-gray-100">
-                <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
-                  <Palette className="h-4 w-4 text-[#B8A9D9]" />
-                  <span>Identidade Visual do Studio</span>
-                </h3>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {/* Cor Primária */}
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold text-[#4A3F5C]">
-                      Cor Primária de Destaque
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setOwnerColorModalTarget('primaria')}
-                        className="h-10 w-10 rounded-full border-2 border-white shadow-md ring-2 ring-gray-200 cursor-pointer shrink-0 transition-transform duration-150 hover:scale-110 active:scale-95"
-                        style={{ backgroundColor: corPrimaria }}
-                        title="Clique para escolher a cor primária"
-                      />
-                      <input
-                        type="text"
-                        value={corPrimaria}
-                        onChange={(e) => {
-                          setCorPrimaria(e.target.value)
-                          handleAutoSaveVitrine({ cor_primaria: e.target.value })
-                        }}
-                        placeholder="#B8A9D9"
-                        maxLength={7}
-                        className="w-28 rounded-xl border border-gray-200 bg-gray-50/50 p-2 text-xs font-mono text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-hidden font-bold uppercase"
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                      {['#B8A9D9', '#E8C5C8', '#4A3F5C', '#D4B89B', '#A8D5C5', '#E2BDAB'].map((hex) => (
-                        <button
-                          key={hex}
-                          type="button"
-                          onClick={() => {
-                            setCorPrimaria(hex)
-                            handleAutoSaveVitrine({ cor_primaria: hex })
-                          }}
-                          className={`h-6 w-6 rounded-full border transition-transform cursor-pointer ${
-                            corPrimaria.toLowerCase() === hex.toLowerCase()
-                              ? 'scale-110 ring-2 ring-[#4A3F5C]'
-                              : 'hover:scale-105'
-                          }`}
-                          style={{ backgroundColor: hex }}
-                          title={hex}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Cor Secundária */}
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold text-[#4A3F5C]">
-                      Cor Secundária (Fundo)
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setOwnerColorModalTarget('secundaria')}
-                        className="h-10 w-10 rounded-full border-2 border-white shadow-md ring-2 ring-gray-200 cursor-pointer shrink-0 transition-transform duration-150 hover:scale-110 active:scale-95"
-                        style={{ backgroundColor: corSecundaria }}
-                        title="Clique para escolher a cor secundária"
-                      />
-                      <input
-                        type="text"
-                        value={corSecundaria}
-                        onChange={(e) => {
-                          setCorSecundaria(e.target.value)
-                        }}
-                        onBlur={() => handleAutoSaveVitrine({ cor_secundaria: corSecundaria })}
-                        placeholder="#FAF7F5"
-                        maxLength={7}
-                        className="w-28 rounded-xl border border-gray-200 bg-gray-50/50 p-2 text-xs font-mono text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-hidden font-bold uppercase"
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                      {['#FAF7F5', '#FFFFFF', '#F5EBE6', '#F3F4F6', '#EBF4F6', '#EFE9F4'].map((hex) => (
-                        <button
-                          key={hex}
-                          type="button"
-                          onClick={() => {
-                            setCorSecundaria(hex)
-                            handleAutoSaveVitrine({ cor_secundaria: hex })
-                          }}
-                          className={`h-6 w-6 rounded-full border transition-transform cursor-pointer ${
-                            corSecundaria.toLowerCase() === hex.toLowerCase()
-                              ? 'scale-110 ring-2 ring-[#4A3F5C]'
-                              : 'hover:scale-105'
-                          }`}
-                          style={{ backgroundColor: hex }}
-                          title={hex}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Prévia da Vitrine do Studio */}
-                <div className="space-y-2 pt-3 border-t border-gray-100">
-                  <div>
-                    <label className="text-xs font-bold text-gray-700 block">Prévia da Vitrine do Studio</label>
-                  </div>
-
-                  <div
-                    className="p-5 sm:p-6 rounded-3xl border transition-all duration-300 space-y-4 shadow-sm"
-                    style={{
-                      backgroundColor: corSecundaria || '#FAF7F5',
-                      borderColor: corPrimaria || '#B8A9D9',
-                    }}
-                  >
-                    <div className="flex items-center justify-between border-b border-black/5 pb-3">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="h-9 w-9 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-xs"
-                          style={{ backgroundColor: corPrimaria || '#B8A9D9' }}
-                        >
-                          <Building2 className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <span className="text-xs font-extrabold text-[#4A3F5C] block">
-                            {nome || 'Nome do Studio'}
-                          </span>
-                          <span className="text-[10px] text-gray-500">
-                            {slug ? `/studio/${slug}` : '/studio/seu-studio'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <span
-                        className="px-2.5 py-1 rounded-full text-[10px] font-bold shadow-2xs"
-                        style={{
-                          backgroundColor: corPrimaria,
-                          color: getContrastingTextColor(corPrimaria),
-                        }}
-                      >
-                        Studio
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-gray-600 line-clamp-2">
-                      {bio || 'Conheça nosso espaço e agende com uma de nossas profissionais parceiras.'}
-                    </p>
-
-                    <div className="space-y-2 pt-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
-                        Equipe de Atendimento:
-                      </span>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <div className="bg-white/90 p-3 rounded-xl border border-gray-200/70 flex items-center gap-3 shadow-2xs">
-                          <div
-                            className="h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0"
-                            style={{
-                              backgroundColor: getLightTint(corPrimaria, 25),
-                              color: corPrimaria,
-                            }}
-                          >
-                            <Crown className="h-3.5 w-3.5" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-bold text-[#4A3F5C] truncate">Dona do Studio</p>
-                            <p className="text-[10px] text-gray-500 truncate">Administradora</p>
-                          </div>
-                        </div>
-
-                        <div className="bg-white/90 p-3 rounded-xl border border-gray-200/70 flex items-center gap-3 shadow-2xs">
-                          <div
-                            className="h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 text-gray-500 bg-gray-100"
-                          >
-                            <User className="h-3.5 w-3.5" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-bold text-[#4A3F5C] truncate">Profissional Parceira</p>
-                            <p className="text-[10px] text-gray-500 truncate">Membro da Equipe</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Nosso Espaço (Fotos do Ambiente) */}
-              <div className="space-y-4 pt-4 border-t border-gray-100">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                  <div>
-                    <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
-                      <Camera className="h-4 w-4 text-[#B8A9D9]" />
-                      <span>Nosso Espaço (Fotos do Ambiente)</span>
-                    </h3>
-                    <p className="text-[11px] text-gray-500 mt-0.5">
-                      Adicione fotos do seu studio (recepção, macas, iluminação). Se não houver foto cadastrada, o título e seção não aparecerão na vitrine.
-                    </p>
-                  </div>
-                  <span className="text-xs font-bold text-gray-400">
-                    {fotosEspaco.length} / 6 fotos
-                  </span>
-                </div>
-
-                {/* Grid de fotos atuais */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {fotosEspaco.map((foto, index) => (
-                    <div
-                      key={index}
-                      className="relative aspect-4/3 rounded-2xl overflow-hidden border border-gray-200 group bg-gray-100 shadow-2xs"
-                    >
-                      <Image src={foto} alt={`Espaço ${index + 1}`} fill className="object-cover" />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFotoEspaco(index)}
-                          className="p-1.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition cursor-pointer shadow-xs"
-                          title="Remover foto"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Botão de upload se menos de 6 fotos */}
-                  {fotosEspaco.length < 6 && (
-                    <label className="relative aspect-4/3 rounded-2xl border-2 border-dashed border-gray-200 hover:border-[#B8A9D9] hover:bg-purple-50/20 transition flex flex-col items-center justify-center gap-1 text-gray-400 hover:text-[#4A3F5C] cursor-pointer p-2 text-center">
-                      {isUploadingEspaco ? (
-                        <Loader2 className="h-5 w-5 animate-spin text-purple-600" />
-                      ) : (
-                        <Plus className="h-5 w-5 text-gray-400" />
-                      )}
-                      <span className="text-[11px] font-bold">
-                        {isUploadingEspaco ? 'Enviando...' : 'Adicionar Foto'}
-                      </span>
-                      <span className="text-[9px] text-gray-400">Até 6 fotos</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        disabled={isUploadingEspaco}
-                        onChange={handleUploadFotoEspaco}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
-                </div>
-              </div>
-
-              {/* Indicador de Salvamento Automático da Vitrine */}
-              <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
-                {saveSuccess ? (
-                  <span className="inline-flex items-center gap-1.5 font-bold text-emerald-700 animate-in fade-in">
-                    <Check className="h-4 w-4" />
-                    <span>Alterações da vitrine salvas automaticamente!</span>
-                  </span>
-                ) : (
-                  <span className="text-[11px] text-gray-400 font-medium flex items-center gap-1">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-[#B8A9D9]" />
-                    <span>Fotos e cores são salvas automaticamente</span>
-                  </span>
-                )}
-              </div>
-            </form>
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setEditingMemberRule(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isSavingRule}
+                onClick={handleSaveMemberRule}
+                className="px-5 py-2 rounded-xl bg-[#4A3F5C] hover:bg-[#3d334d] text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer"
+              >
+                {isSavingRule && <Loader2 className="h-3 w-3 animate-spin mr-1.5" />}
+                <span>Salvar Regra</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Modal de Remoção de Membro ou Desvinculação da Dona */}
+      {/* ==================================================================== */}
+      {/* MODAL: NOVO AGENDAMENTO ASSISTIDO DA DONA */}
+      {/* ==================================================================== */}
+      <StudioNewBookingModal
+        isOpen={isNewBookingModalOpen}
+        onClose={() => setIsNewBookingModalOpen(false)}
+        estudioId={estudio.id}
+        onSuccess={() => {
+          // Atualizar agendamentos e métricas
+          obterAgendamentosStudioAction(estudio.id, {
+            profissionalId: bookingFilterProf === 'todos' ? undefined : bookingFilterProf,
+            status: bookingFilterStatus === 'todos' ? undefined : bookingFilterStatus,
+          }).then((d) => setBookings(d))
+          obterMetricasStudioAction(estudio.id, periodo).then((d) => setMetrics(d))
+        }}
+      />
+
+      {/* MODAL: CONFIRMAR REMOÇÃO DE MEMBRO */}
       {memberToRemove && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-4 border border-gray-200 shadow-2xl">
-            <div
-              className={`h-12 w-12 rounded-2xl flex items-center justify-center ${
-                memberToRemove.isOwner
-                  ? 'bg-amber-50 text-amber-600'
-                  : 'bg-rose-50 text-rose-600'
-              }`}
-            >
+            <div className="h-12 w-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
               <AlertTriangle className="h-6 w-6" />
             </div>
 
             <h3 className="text-lg font-bold text-gray-900">
-              {memberToRemove.isOwner
-                ? 'Deixar a equipe de atendimento do studio?'
-                : `Desvincular ${memberToRemove.nome} do studio?`}
+              Desvincular {memberToRemove.nome}?
             </h3>
 
             <p className="text-xs text-gray-600 leading-relaxed">
-              {memberToRemove.isOwner
-                ? 'Você continuará sendo a proprietária e administradora deste studio com controle total da gestão, equipe, convites e configurações. Seu perfil apenas deixará de aparecer na vitrine pública e você não receberá agendamentos através do studio. Você pode voltar a fazer parte da equipe a qualquer momento.'
-                : 'Esta ação apenas desvincula a profissional do seu studio. A conta, dados, histórico de agendamentos e clientes dela permanecem 100% seguros e independentes.'}
+              A profissional deixará de fazer parte da equipe do studio e não aparecerá mais na vitrine pública coletiva. A conta dela e todos os seus agendamentos continuam intactos.
             </p>
 
             <div className="flex items-center justify-end gap-3 pt-3">
@@ -2130,90 +2209,15 @@ function OwnerStudioSection({
                 type="button"
                 disabled={isRemovingMember}
                 onClick={handleConfirmRemoveMember}
-                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer ${
-                  memberToRemove.isOwner
-                    ? 'bg-amber-600 hover:bg-amber-700'
-                    : 'bg-rose-600 hover:bg-rose-700'
-                }`}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer"
               >
                 {isRemovingMember && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                <span>
-                  {memberToRemove.isOwner
-                    ? 'Sim, deixar de atender'
-                    : 'Sim, desvincular'}
-                </span>
+                <span>Sim, desvincular</span>
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Modal de Confirmação ao Trocar Slug do Studio */}
-      {showStudioSlugModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4 relative border border-gray-100">
-            <div className="flex items-center gap-3 text-amber-600">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 shrink-0">
-                <AlertTriangle className="h-5 w-5 text-amber-600" />
-              </div>
-              <h3 className="text-base font-bold text-[#4A3F5C]">
-                Confirmar alteração de link do Studio?
-              </h3>
-            </div>
-
-            <p className="text-xs text-gray-700 leading-relaxed font-medium">
-              O link atual do seu studio é <strong className="font-bold text-[#4A3F5C]">/studio/{estudio.slug}</strong>.
-            </p>
-
-            <div className="rounded-2xl bg-amber-50 p-3.5 border border-amber-200 text-xs font-medium text-amber-900 space-y-2">
-              <p>
-                <strong>Tem certeza que deseja mudar? Isso só é possível a cada 30 dias.</strong>
-              </p>
-              <p>
-                Ao confirmar a alteração para <strong className="font-bold text-purple-900">/studio/{slug}</strong>, o link anterior deixará de funcionar imediatamente para todas as profissionais da equipe.
-              </p>
-            </div>
-
-            <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowStudioSlugModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={isSavingEdit}
-                onClick={() => handleSaveEdit(undefined, true)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#4A3F5C] hover:bg-purple-900 transition shadow-md cursor-pointer"
-              >
-                {isSavingEdit ? 'Salvando...' : 'Confirmar e Salvar Link'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Modal Customizado de Cores da Vitrine do Studio (Cores em Círculo) */}
-      <CustomColorPickerModal
-        isOpen={ownerColorModalTarget !== null}
-        onClose={() => setOwnerColorModalTarget(null)}
-        currentColor={ownerColorModalTarget === 'primaria' ? corPrimaria : corSecundaria}
-        title={
-          ownerColorModalTarget === 'primaria'
-            ? 'Cor Primária da Vitrine'
-            : 'Cor Secundária (Fundo) da Vitrine'
-        }
-        onSelectColor={(hex) => {
-          if (ownerColorModalTarget === 'primaria') {
-            setCorPrimaria(hex)
-            handleAutoSaveVitrine({ cor_primaria: hex })
-          } else if (ownerColorModalTarget === 'secundaria') {
-            setCorSecundaria(hex)
-            handleAutoSaveVitrine({ cor_secundaria: hex })
-          }
-        }}
-      />
     </div>
   )
 }

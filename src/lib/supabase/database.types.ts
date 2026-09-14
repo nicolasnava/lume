@@ -41,6 +41,12 @@ export type Database = {
           codigo_indicacao?: string | null
           indicado_por?: string | null
           is_demo?: boolean
+          compartilhar_faturamento?: boolean
+          compartilhar_agendamentos?: boolean
+          permitir_agendamento_dona?: boolean
+          termo_aceito_em?: string | null
+          comissao_personalizada_pct?: number | null
+          aluguel_personalizado_fixo?: number | null
           created_at: string
         }
         Insert: {
@@ -74,6 +80,12 @@ export type Database = {
           codigo_indicacao?: string | null
           indicado_por?: string | null
           is_demo?: boolean
+          compartilhar_faturamento?: boolean
+          compartilhar_agendamentos?: boolean
+          permitir_agendamento_dona?: boolean
+          termo_aceito_em?: string | null
+          comissao_personalizada_pct?: number | null
+          aluguel_personalizado_fixo?: number | null
           created_at?: string
         }
         Update: {
@@ -107,6 +119,12 @@ export type Database = {
           codigo_indicacao?: string | null
           indicado_por?: string | null
           is_demo?: boolean
+          compartilhar_faturamento?: boolean
+          compartilhar_agendamentos?: boolean
+          permitir_agendamento_dona?: boolean
+          termo_aceito_em?: string | null
+          comissao_personalizada_pct?: number | null
+          aluguel_personalizado_fixo?: number | null
           created_at?: string
         }
         Relationships: []
@@ -252,6 +270,7 @@ export type Database = {
           observacao_pagamento: string | null
           forma_pagamento_preferida?: string | null
           combo_id?: string | null
+          status_pagamento?: string | null
           created_at: string
         }
         Insert: {
@@ -271,6 +290,7 @@ export type Database = {
           observacao_pagamento?: string | null
           forma_pagamento_preferida?: string | null
           combo_id?: string | null
+          status_pagamento?: string | null
           created_at?: string
         }
         Update: {
@@ -290,6 +310,7 @@ export type Database = {
           observacao_pagamento?: string | null
           forma_pagamento_preferida?: string | null
           combo_id?: string | null
+          status_pagamento?: string | null
           created_at?: string
         }
         Relationships: []
@@ -907,6 +928,9 @@ export type Database = {
           cor_secundaria: string
           criado_por: string
           round_robin_ultimo_membro_id: string | null
+          tipo_gestao?: 'completa' | 'cadeira_alugada'
+          comissao_padrao_pct?: number | null
+          aluguel_padrao_fixo?: number | null
           created_at: string
         }
         Insert: {
@@ -919,6 +943,9 @@ export type Database = {
           cor_secundaria?: string
           criado_por: string
           round_robin_ultimo_membro_id?: string | null
+          tipo_gestao?: 'completa' | 'cadeira_alugada'
+          comissao_padrao_pct?: number | null
+          aluguel_padrao_fixo?: number | null
           created_at?: string
         }
         Update: {
@@ -931,6 +958,9 @@ export type Database = {
           cor_secundaria?: string
           criado_por?: string
           round_robin_ultimo_membro_id?: string | null
+          tipo_gestao?: 'completa' | 'cadeira_alugada'
+          comissao_padrao_pct?: number | null
+          aluguel_padrao_fixo?: number | null
           created_at?: string
         }
         Relationships: []

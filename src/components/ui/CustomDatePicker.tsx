@@ -36,6 +36,7 @@ export default function CustomDatePicker({
   value,
   onChange,
   label,
+  minDate,
   placeholder = 'Selecione uma data...',
   disabled = false,
   className = '',
@@ -59,7 +60,17 @@ export default function CustomDatePicker({
     }
   }, [value])
 
+  const isPrevMonthDisabled = (() => {
+    if (!minDate) return false
+    const minParts = minDate.split('-').map(Number)
+    if (minParts.length < 2) return false
+    const minYear = minParts[0]
+    const minMonth = minParts[1] - 1
+    return viewYear < minYear || (viewYear === minYear && viewMonth <= minMonth)
+  })()
+
   const handlePrevMonth = () => {
+    if (isPrevMonthDisabled) return
     if (viewMonth === 0) {
       setViewMonth(11)
       setViewYear((prev) => prev - 1)
@@ -198,7 +209,12 @@ export default function CustomDatePicker({
               <button
                 type="button"
                 onClick={handlePrevMonth}
-                className="p-1.5 rounded-xl text-gray-600 hover:text-[#4A3F5C] hover:bg-white transition cursor-pointer"
+                disabled={isPrevMonthDisabled}
+                className={`p-1.5 rounded-xl text-gray-600 transition ${
+                  isPrevMonthDisabled
+                    ? 'opacity-30 cursor-not-allowed text-gray-300'
+                    : 'hover:text-[#4A3F5C] hover:bg-white cursor-pointer'
+                }`}
                 title="Mês anterior"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -246,22 +262,26 @@ export default function CustomDatePicker({
                 const dayIso = `${viewYear}-${mm}-${dd}`
                 const isSelected = value === dayIso
                 const isToday = dayIso === todayStr
+                const isBeforeMin = minDate ? dayIso < minDate : false
 
                 return (
                   <button
                     key={`day-${d}`}
                     type="button"
-                    onClick={() => handleSelectDay(d)}
-                    className={`h-9 w-9 rounded-2xl flex flex-col items-center justify-center text-xs font-bold transition cursor-pointer relative ${
-                      isSelected
-                        ? 'bg-[#4A3F5C] text-white shadow-md scale-105 font-extrabold'
+                    disabled={isBeforeMin}
+                    onClick={() => !isBeforeMin && handleSelectDay(d)}
+                    className={`h-9 w-9 rounded-2xl flex flex-col items-center justify-center text-xs font-bold transition relative ${
+                      isBeforeMin
+                        ? 'text-gray-300 opacity-30 cursor-not-allowed hover:bg-transparent pointer-events-none'
+                        : isSelected
+                        ? 'bg-[#4A3F5C] text-white shadow-md scale-105 font-extrabold cursor-pointer'
                         : isToday
-                        ? 'bg-[#B8A9D9]/35 text-[#4A3F5C] hover:bg-[#B8A9D9]/50 font-extrabold'
-                        : 'text-gray-700 hover:bg-purple-50 hover:text-[#4A3F5C]'
+                        ? 'bg-[#B8A9D9]/35 text-[#4A3F5C] hover:bg-[#B8A9D9]/50 font-extrabold cursor-pointer'
+                        : 'text-gray-700 hover:bg-purple-50 hover:text-[#4A3F5C] cursor-pointer'
                     }`}
                   >
                     <span>{d}</span>
-                    {isToday && !isSelected && (
+                    {isToday && !isSelected && !isBeforeMin && (
                       <span className="absolute bottom-1 h-1 w-1 rounded-full bg-[#8675A9]" />
                     )}
                   </button>
@@ -273,8 +293,13 @@ export default function CustomDatePicker({
             <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-1.5">
               <button
                 type="button"
+                disabled={minDate ? todayStr < minDate : false}
                 onClick={() => handleSelectShortcut(0)}
-                className="flex-1 py-2 rounded-xl bg-gray-100 hover:bg-[#B8A9D9]/30 text-gray-700 hover:text-[#4A3F5C] font-bold text-[11px] transition cursor-pointer text-center"
+                className={`flex-1 py-2 rounded-xl text-gray-700 font-bold text-[11px] transition text-center ${
+                  minDate && todayStr < minDate
+                    ? 'opacity-30 cursor-not-allowed bg-gray-50'
+                    : 'bg-gray-100 hover:bg-[#B8A9D9]/30 hover:text-[#4A3F5C] cursor-pointer'
+                }`}
               >
                 Hoje
               </button>

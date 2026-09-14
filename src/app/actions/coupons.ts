@@ -12,6 +12,7 @@ export interface CupomProfissionalItem {
   segmento_alvo: 'todos' | 'nunca_agendou' | 'inativa'
   limite_uso_total: number | null
   limite_uso_por_cliente: number
+  valido_de?: string | null
   valido_ate: string | null
   usos_atuais: number
   ativo: boolean
@@ -82,6 +83,7 @@ export async function createCupomAction(payload: {
   segmento_alvo?: 'todos' | 'nunca_agendou' | 'inativa'
   limite_uso_total?: number | null
   limite_uso_por_cliente?: number
+  valido_de?: string | null
   valido_ate?: string | null
 }): Promise<{ success: boolean; message?: string }> {
   try {
@@ -96,7 +98,7 @@ export async function createCupomAction(payload: {
 
     const codigoLimpo = payload.codigo.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '')
     if (!codigoLimpo || codigoLimpo.length < 3) {
-      return { success: false, message: 'O código do cupom deve ter pelo menos 3 caracteres alfanuméricos.' }
+      return { success: false, message: 'O nome do cupom deve ter pelo menos 3 caracteres alfanuméricos.' }
     }
 
     if (!payload.valor || payload.valor <= 0) {
@@ -134,7 +136,15 @@ export async function createCupomAction(payload: {
       .maybeSingle()
 
     if (existente) {
-      return { success: false, message: `Você já possui um cupom com o código ${codigoLimpo}.` }
+      return { success: false, message: `Você já possui um cupom com o nome ${codigoLimpo}.` }
+    }
+
+    let dataValidadeDeIso: string | null = null
+    if (payload.valido_de && payload.valido_de.trim()) {
+      const parsed = new Date(payload.valido_de)
+      if (!isNaN(parsed.getTime())) {
+        dataValidadeDeIso = parsed.toISOString()
+      }
     }
 
     let dataValidadeIso: string | null = null
@@ -155,7 +165,7 @@ export async function createCupomAction(payload: {
         ? Math.floor(Number(payload.limite_uso_por_cliente))
         : 1
 
-    const { error } = await (admin.from('cupons_profissional') as any).insert({
+    const insertData: Record<string, any> = {
       profissional_id: user.id,
       codigo: codigoLimpo,
       tipo_desconto: payload.tipo_desconto,
@@ -163,10 +173,19 @@ export async function createCupomAction(payload: {
       segmento_alvo: payload.segmento_alvo || 'todos',
       limite_uso_total: limTotal,
       limite_uso_por_cliente: limPorCliente,
+      valido_de: dataValidadeDeIso,
       valido_ate: dataValidadeIso,
       usos_atuais: 0,
       ativo: true,
-    })
+    }
+
+    let { error } = await (admin.from('cupons_profissional') as any).insert(insertData)
+
+    if (error && (error.code === 'PGRST204' || String(error.message).includes('valido_de'))) {
+      delete insertData.valido_de
+      const retry = await (admin.from('cupons_profissional') as any).insert(insertData)
+      error = retry.error
+    }
 
     if (error) throw error
 
@@ -197,6 +216,7 @@ export async function updateCupomAction(
     segmento_alvo?: 'todos' | 'nunca_agendou' | 'inativa'
     limite_uso_total?: number | null
     limite_uso_por_cliente?: number
+    valido_de?: string | null
     valido_ate?: string | null
     ativo?: boolean
   }
@@ -222,13 +242,27 @@ export async function updateCupomAction(
     if (payload.segmento_alvo) updates.segmento_alvo = payload.segmento_alvo
     if (payload.limite_uso_total !== undefined) updates.limite_uso_total = payload.limite_uso_total
     if (payload.limite_uso_por_cliente !== undefined) updates.limite_uso_por_cliente = payload.limite_uso_por_cliente
-    if (payload.valido_ate !== undefined) updates.valido_ate = payload.valido_ate
+    if (payload.valido_de !== undefined) {
+      updates.valido_de = payload.valido_de ? new Date(payload.valido_de).toISOString() : null
+    }
+    if (payload.valido_ate !== undefined) {
+      updates.valido_ate = payload.valido_ate ? new Date(payload.valido_ate).toISOString() : null
+    }
     if (payload.ativo !== undefined) updates.ativo = payload.ativo
 
-    const { error } = await (admin.from('cupons_profissional') as any)
+    let { error } = await (admin.from('cupons_profissional') as any)
       .update(updates)
       .eq('id', id)
       .eq('profissional_id', user.id)
+
+    if (error && (error.code === 'PGRST204' || String(error.message).includes('valido_de'))) {
+      delete updates.valido_de
+      const retry = await (admin.from('cupons_profissional') as any)
+        .update(updates)
+        .eq('id', id)
+        .eq('profissional_id', user.id)
+      error = retry.error
+    }
 
     if (error) throw error
 
@@ -312,7 +346,10 @@ export async function validarCupomAgendamentoAction(params: {
       return { success: false, message: 'Este cupom foi pausado ou está desativado.' }
     }
 
-    // 2. Checar data de validade
+    // 2. Checar data de início e de validade (De X até Y)
+    if (cupom.valido_de && new Date() < new Date(cupom.valido_de)) {
+      return { success: false, message: 'Este cupom ainda não está ativo para agendamentos.' }
+    }
     if (cupom.valido_ate && new Date() > new Date(cupom.valido_ate)) {
       return { success: false, message: 'Este cupom já expirou.' }
     }

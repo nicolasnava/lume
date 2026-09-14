@@ -11,22 +11,46 @@ export default function NpsSurveyModal() {
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isTourActive, setIsTourActive] = useState(false)
+
+  // Monitorar se o tutorial da plataforma está ativo (ocultar avaliação durante o tour)
+  useEffect(() => {
+    const checkTourState = () => {
+      const active = document.documentElement.getAttribute('data-tour-active') === 'true'
+      setIsTourActive(active)
+    }
+
+    checkTourState()
+
+    const handleTourEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ active: boolean }>
+      setIsTourActive(!!customEvent.detail?.active)
+    }
+
+    window.addEventListener('lume-tour-state', handleTourEvent)
+    return () => {
+      window.removeEventListener('lume-tour-state', handleTourEvent)
+    }
+  }, [])
 
   useEffect(() => {
     const lastNpsTimestamp = localStorage.getItem('lume_last_nps_survey_timestamp')
     const now = Date.now()
-    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000
+    const fifteenDaysMs = 15 * 24 * 60 * 60 * 1000 // 1 vez a cada 15 dias
 
-    if (!lastNpsTimestamp || now - Number(lastNpsTimestamp) > thirtyDaysMs) {
-      // Exibir o convite após 3 segundos de navegação inicial
+    if (!lastNpsTimestamp || now - Number(lastNpsTimestamp) > fifteenDaysMs) {
+      // Exibir o convite após 3 segundos de navegação inicial e gravar timestamp para respeitar 15 dias
       const timer = setTimeout(() => {
+        // Se o tutorial estiver ativo, não abre
+        if (document.documentElement.getAttribute('data-tour-active') === 'true') return
         setIsOpen(true)
+        localStorage.setItem('lume_last_nps_survey_timestamp', String(Date.now()))
       }, 3000)
       return () => clearTimeout(timer)
     }
   }, [])
 
-  if (!isOpen) return null
+  if (!isOpen || isTourActive) return null
 
   const handleDismiss = () => {
     localStorage.setItem('lume_last_nps_survey_timestamp', String(Date.now()))

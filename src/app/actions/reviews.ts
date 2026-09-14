@@ -1,5 +1,6 @@
 'use server'
 
+import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { avaliacaoSchema } from '@/lib/validations'
 import { checkRateLimitDb, getClientIp } from '@/lib/rateLimit'
@@ -110,6 +111,115 @@ export async function submitAvaliacaoAction(data: SubmitAvaliacaoInput) {
     return {
       success: false,
       message: 'Ocorreu um erro ao enviar sua avaliação. Tente novamente mais tarde.',
+    }
+  }
+}
+
+// 2. Atualizar avaliação (pela profissional logada)
+export async function updateAvaliacaoAction(
+  id: string,
+  nota: number,
+  comentario?: string | null
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, message: 'Usuário não autenticado.' }
+    }
+
+    if (nota < 1 || nota > 5) {
+      return { success: false, message: 'A nota deve estar entre 1 e 5 estrelas.' }
+    }
+
+    const adminSupabase = createAdminClient()
+
+    // Verificar se a avaliação pertence ao profissional logado
+    const { data: avaliacao, error: findError } = await (adminSupabase.from('avaliacoes') as any)
+      .select('id, profissional_id')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (findError || !avaliacao) {
+      return { success: false, message: 'Avaliação não encontrada.' }
+    }
+
+    if (avaliacao.profissional_id !== user.id) {
+      return { success: false, message: 'Você não tem permissão para editar esta avaliação.' }
+    }
+
+    const { error: updateError } = await (adminSupabase.from('avaliacoes') as any)
+      .update({
+        nota,
+        comentario: comentario?.trim() || null,
+      })
+      .eq('id', id)
+
+    if (updateError) throw updateError
+
+    revalidatePath('/dashboard')
+    revalidatePath('/dashboard/avaliacoes')
+    revalidatePath('/p/[slug]', 'page')
+
+    return { success: true, message: 'Avaliação atualizada com sucesso!' }
+  } catch (err: unknown) {
+    console.error('[updateAvaliacaoAction] Erro:', err)
+    return {
+      success: false,
+      message: err instanceof Error ? err.message : 'Erro ao atualizar avaliação.',
+    }
+  }
+}
+
+// 3. Excluir avaliação (pela profissional logada)
+export async function deleteAvaliacaoAction(
+  id: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return { success: false, message: 'Usuário não autenticado.' }
+    }
+
+    const adminSupabase = createAdminClient()
+
+    // Verificar se a avaliação pertence ao profissional logado
+    const { data: avaliacao, error: findError } = await (adminSupabase.from('avaliacoes') as any)
+      .select('id, profissional_id')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (findError || !avaliacao) {
+      return { success: false, message: 'Avaliação não encontrada.' }
+    }
+
+    if (avaliacao.profissional_id !== user.id) {
+      return { success: false, message: 'Você não tem permissão para excluir esta avaliação.' }
+    }
+
+    const { error: deleteError } = await (adminSupabase.from('avaliacoes') as any)
+      .delete()
+      .eq('id', id)
+
+    if (deleteError) throw deleteError
+
+    revalidatePath('/dashboard')
+    revalidatePath('/dashboard/avaliacoes')
+    revalidatePath('/p/[slug]', 'page')
+
+    return { success: true, message: 'Avaliação excluída com sucesso!' }
+  } catch (err: unknown) {
+    console.error('[deleteAvaliacaoAction] Erro:', err)
+    return {
+      success: false,
+      message: err instanceof Error ? err.message : 'Erro ao excluir avaliação.',
     }
   }
 }

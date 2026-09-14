@@ -16,6 +16,12 @@ export interface StudioMember {
   categoria: string[]
   ativo_no_estudio: boolean
   isOwner: boolean
+  compartilhar_faturamento: boolean
+  compartilhar_agendamentos: boolean
+  permitir_agendamento_dona: boolean
+  termo_aceito_em?: string | null
+  comissao_personalizada_pct?: number | null
+  aluguel_personalizado_fixo?: number | null
 }
 
 export interface StudioInvite {
@@ -45,6 +51,9 @@ export interface StudioData {
   round_robin_ultimo_membro_id: string | null
   created_at: string
   fotos_espaco?: string[]
+  tipo_gestao: 'aluguel_cadeira' | 'gestao_completa'
+  comissao_padrao_pct: number
+  aluguel_padrao_fixo: number
 }
 
 export type StudioUserStatus =
@@ -63,6 +72,11 @@ export type StudioUserStatus =
       dona: { nome: string; foto_url: string | null }
       ativoNoEstudio: boolean
       userSlug: string
+      compartilhar_faturamento: boolean
+      compartilhar_agendamentos: boolean
+      permitir_agendamento_dona: boolean
+      comissao_personalizada_pct?: number | null
+      aluguel_personalizado_fixo?: number | null
     }
   | {
       papel: 'nenhum'
@@ -101,6 +115,9 @@ export async function obterDadosEstudioUsuario(): Promise<StudioUserStatus | nul
       instagram: meta.instagram,
       whatsapp: meta.whatsapp,
       endereco: meta.endereco,
+      tipo_gestao: (estudioDona.tipo_gestao as 'aluguel_cadeira' | 'gestao_completa') || 'gestao_completa',
+      comissao_padrao_pct: Number(estudioDona.comissao_padrao_pct ?? 30),
+      aluguel_padrao_fixo: Number(estudioDona.aluguel_padrao_fixo ?? 0),
     } as StudioData
 
     // Verifica se a dona também está vinculada como membro da equipe de atendimento
@@ -109,12 +126,12 @@ export async function obterDadosEstudioUsuario(): Promise<StudioUserStatus | nul
     // Buscar membros vinculados a este studio
     const { data: membrosRaw } = await adminSupabase
       .from('profissionais')
-      .select('id, nome, foto_url, slug, categoria, ativo_no_estudio')
+      .select('id, nome, foto_url, slug, categoria, ativo_no_estudio, compartilhar_faturamento, compartilhar_agendamentos, permitir_agendamento_dona, termo_aceito_em, comissao_personalizada_pct, aluguel_personalizado_fixo')
       .eq('estudio_id', estudio.id)
       .is('deletado_em', null)
       .order('nome', { ascending: true })
 
-    const membros: StudioMember[] = (membrosRaw || []).map((m) => ({
+    const membros: StudioMember[] = (membrosRaw || []).map((m: any) => ({
       id: m.id,
       nome: m.nome,
       foto_url: m.foto_url,
@@ -122,6 +139,12 @@ export async function obterDadosEstudioUsuario(): Promise<StudioUserStatus | nul
       categoria: parseCategorias(m.categoria),
       ativo_no_estudio: m.ativo_no_estudio !== false,
       isOwner: m.id === estudio.criado_por,
+      compartilhar_faturamento: m.compartilhar_faturamento !== false,
+      compartilhar_agendamentos: m.compartilhar_agendamentos !== false,
+      permitir_agendamento_dona: m.permitir_agendamento_dona !== false,
+      termo_aceito_em: m.termo_aceito_em || null,
+      comissao_personalizada_pct: m.comissao_personalizada_pct != null ? Number(m.comissao_personalizada_pct) : null,
+      aluguel_personalizado_fixo: m.aluguel_personalizado_fixo != null ? Number(m.aluguel_personalizado_fixo) : null,
     }))
 
     // Buscar convites pendentes e não expirados do studio
@@ -164,6 +187,9 @@ export async function obterDadosEstudioUsuario(): Promise<StudioUserStatus | nul
         instagram: meta.instagram,
         whatsapp: meta.whatsapp,
         endereco: meta.endereco,
+        tipo_gestao: (estudioMembro.tipo_gestao as 'aluguel_cadeira' | 'gestao_completa') || 'gestao_completa',
+        comissao_padrao_pct: Number(estudioMembro.comissao_padrao_pct ?? 30),
+        aluguel_padrao_fixo: Number(estudioMembro.aluguel_padrao_fixo ?? 0),
       } as StudioData
 
       // Buscar dados da dona
@@ -182,6 +208,11 @@ export async function obterDadosEstudioUsuario(): Promise<StudioUserStatus | nul
         },
         ativoNoEstudio: prof.ativo_no_estudio !== false,
         userSlug: prof.slug,
+        compartilhar_faturamento: prof.compartilhar_faturamento !== false,
+        compartilhar_agendamentos: prof.compartilhar_agendamentos !== false,
+        permitir_agendamento_dona: prof.permitir_agendamento_dona !== false,
+        comissao_personalizada_pct: prof.comissao_personalizada_pct != null ? Number(prof.comissao_personalizada_pct) : null,
+        aluguel_personalizado_fixo: prof.aluguel_personalizado_fixo != null ? Number(prof.aluguel_personalizado_fixo) : null,
       }
     }
   }
@@ -308,6 +339,9 @@ export async function atualizarEstudio(dados: {
   cor_primaria?: string
   cor_secundaria?: string
   fotos_espaco?: string[]
+  tipo_gestao?: 'aluguel_cadeira' | 'gestao_completa'
+  comissao_padrao_pct?: number
+  aluguel_padrao_fixo?: number
 }) {
   const supabase = await createClient()
   const {
@@ -373,6 +407,15 @@ export async function atualizarEstudio(dados: {
 
   if (dados.fotos_espaco !== undefined) {
     payload.fotos_espaco = dados.fotos_espaco
+  }
+  if (dados.tipo_gestao !== undefined) {
+    payload.tipo_gestao = dados.tipo_gestao
+  }
+  if (dados.comissao_padrao_pct !== undefined) {
+    payload.comissao_padrao_pct = dados.comissao_padrao_pct
+  }
+  if (dados.aluguel_padrao_fixo !== undefined) {
+    payload.aluguel_padrao_fixo = dados.aluguel_padrao_fixo
   }
 
   let { error: updateError } = await adminSupabase
@@ -950,6 +993,9 @@ export async function obterDadosConviteLink(codigo: string) {
       foto_capa_url: est.foto_capa_url,
       cor_primaria: est.cor_primaria,
       cor_secundaria: est.cor_secundaria,
+      tipo_gestao: (est.tipo_gestao as 'aluguel_cadeira' | 'gestao_completa') || 'gestao_completa',
+      comissao_padrao_pct: Number(est.comissao_padrao_pct ?? 30),
+      aluguel_padrao_fixo: Number(est.aluguel_padrao_fixo ?? 0),
     },
     dona: {
       nome: donaObj?.nome || 'Administradora',
@@ -963,9 +1009,16 @@ export async function obterDadosConviteLink(codigo: string) {
 }
 
 /**
- * 13. Aceitar convite por link
+ * 13. Aceitar convite por link com preferências de privacidade
  */
-export async function aceitarConviteLink(codigo: string) {
+export async function aceitarConviteLink(
+  codigo: string,
+  preferencias?: {
+    compartilhar_faturamento?: boolean
+    compartilhar_agendamentos?: boolean
+    permitir_agendamento_dona?: boolean
+  }
+) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -1008,12 +1061,16 @@ export async function aceitarConviteLink(codigo: string) {
     )
   }
 
-  // Definir novo estudio_id
+  // Definir novo estudio_id e registrar consentimento
   await adminSupabase
     .from('profissionais')
     .update({
       estudio_id: convite.estudio_id,
       ativo_no_estudio: true,
+      compartilhar_faturamento: preferencias?.compartilhar_faturamento ?? true,
+      compartilhar_agendamentos: preferencias?.compartilhar_agendamentos ?? true,
+      permitir_agendamento_dona: preferencias?.permitir_agendamento_dona ?? true,
+      termo_aceito_em: new Date().toISOString(),
     })
     .eq('id', user.id)
 
@@ -1023,6 +1080,7 @@ export async function aceitarConviteLink(codigo: string) {
     .update({ status: 'aceito' })
     .eq('id', convite.id)
 
+  revalidatePath('/dashboard/studio')
   revalidatePath('/dashboard/estudio')
   revalidatePath('/dashboard/geral')
   revalidatePath('/perfil')
@@ -1223,4 +1281,720 @@ export async function selecionarQualquerProfissional(studioSlug: string) {
     success: true,
     redirectUrl: `/estudio/${estudio.slug}/${proximoMembro.slug}`,
   }
+}
+
+// ============================================================================
+// 17. CENTRAL DE GESTÃO DO STUDIO: MÉTRICAS, COMISSÕES E REPASSES
+// ============================================================================
+
+export interface MemberPerformance {
+  id: string
+  nome: string
+  foto_url: string | null
+  slug: string
+  categoria: string[]
+  ativo_no_estudio: boolean
+  isOwner: boolean
+  totalAgendamentos: number
+  agendamentosConcluidos: number
+  faturamentoBruto: number | null // null se a profissional marcou como privado
+  comissaoStudio: number | null
+  repasseLiquido: number | null
+  aluguelFixo: number | null
+  compartilharFaturamento: boolean
+  compartilharAgendamentos: boolean
+  permitirAgendamentoDona: boolean
+}
+
+export interface StudioMetricsData {
+  periodo: 'mes_atual' | 'mes_anterior' | 'hoje' | 'ultimos_30_dias'
+  periodoLabel: string
+  tipoGestao: 'aluguel_cadeira' | 'gestao_completa'
+  totalAgendamentos: number
+  agendamentosConcluidos: number
+  agendamentosConfirmados: number
+  agendamentosCancelados: number
+  faturamentoBrutoTotal: number
+  faturamentoStudioTotal: number
+  repassesEquipeTotal: number
+  ticketMedio: number
+  membrosDesempenho: MemberPerformance[]
+  totalProfissionaisAtivas: number
+}
+
+export async function obterMetricasStudioAction(
+  estudioId: string,
+  periodo: 'mes_atual' | 'mes_anterior' | 'hoje' | 'ultimos_30_dias' = 'mes_atual'
+): Promise<StudioMetricsData> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('Não autorizado.')
+
+  const adminSupabase = createAdminClient()
+
+  // 1. Validar que o usuário é a dona do studio
+  const { data: estudio } = await adminSupabase
+    .from('estudios')
+    .select('id, criado_por, tipo_gestao, comissao_padrao_pct, aluguel_padrao_fixo')
+    .eq('id', estudioId)
+    .single()
+
+  if (!estudio || estudio.criado_por !== user.id) {
+    throw new Error('Apenas a administradora do studio pode acessar as métricas de gestão.')
+  }
+
+  const tipoGestao = (estudio.tipo_gestao as 'aluguel_cadeira' | 'gestao_completa') || 'gestao_completa'
+  const comissaoPadrao = Number(estudio.comissao_padrao_pct ?? 30)
+  const aluguelPadrao = Number(estudio.aluguel_padrao_fixo ?? 0)
+
+  // 2. Buscar membros do studio
+  const { data: membrosRaw } = await adminSupabase
+    .from('profissionais')
+    .select('id, nome, foto_url, slug, categoria, ativo_no_estudio, compartilhar_faturamento, compartilhar_agendamentos, permitir_agendamento_dona, comissao_personalizada_pct, aluguel_personalizado_fixo')
+    .eq('estudio_id', estudioId)
+    .is('deletado_em', null)
+    .order('nome', { ascending: true })
+
+  const membros = membrosRaw || []
+  const memberIds = membros.map((m) => m.id)
+
+  // 3. Definir intervalo de datas
+  const now = new Date()
+  let startDate: Date
+  let endDate: Date
+  let periodoLabel: string
+
+  if (periodo === 'hoje') {
+    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
+    endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
+    periodoLabel = 'Hoje'
+  } else if (periodo === 'mes_anterior') {
+    startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0)
+    endDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)
+    periodoLabel = startDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+  } else if (periodo === 'ultimos_30_dias') {
+    startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    endDate = now
+    periodoLabel = 'Últimos 30 dias'
+  } else {
+    // mes_atual
+    startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
+    endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+    periodoLabel = startDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+  }
+
+  if (memberIds.length === 0) {
+    return {
+      periodo,
+      periodoLabel,
+      tipoGestao,
+      totalAgendamentos: 0,
+      agendamentosConcluidos: 0,
+      agendamentosConfirmados: 0,
+      agendamentosCancelados: 0,
+      faturamentoBrutoTotal: 0,
+      faturamentoStudioTotal: 0,
+      repassesEquipeTotal: 0,
+      ticketMedio: 0,
+      membrosDesempenho: [],
+      totalProfissionaisAtivas: 0,
+    }
+  }
+
+  // 4. Buscar agendamentos de todos os membros no período
+  const { data: agendamentosRaw } = await adminSupabase
+    .from('agendamentos')
+    .select('id, profissional_id, status, status_pagamento, valor_cobrado, data_hora_inicio')
+    .in('profissional_id', memberIds)
+    .gte('data_hora_inicio', startDate.toISOString())
+    .lte('data_hora_inicio', endDate.toISOString())
+
+  const agendamentos = agendamentosRaw || []
+
+  // 5. Agregar por profissional
+  let faturamentoBrutoTotal = 0
+  let faturamentoStudioTotal = 0
+  let repassesEquipeTotal = 0
+  let totalAgendamentos = 0
+  let totalConcluidos = 0
+  let totalConfirmados = 0
+  let totalCancelados = 0
+
+  const membrosDesempenho: MemberPerformance[] = membros.map((m: any) => {
+    const profBookings = agendamentos.filter((b) => b.profissional_id === m.id)
+    const isOwner = m.id === user.id
+    const podeVerFaturamento = m.compartilhar_faturamento !== false || isOwner
+
+    const concluidos = profBookings.filter((b) => b.status === 'concluido')
+    const confirmados = profBookings.filter((b) => b.status === 'confirmado')
+    const cancelados = profBookings.filter((b) => b.status === 'cancelado')
+
+    totalAgendamentos += profBookings.length
+    totalConcluidos += concluidos.length
+    totalConfirmados += confirmados.length
+    totalCancelados += cancelados.length
+
+    // Atendimentos considerados para receita: concluídos ou pagos
+    const faturaveis = profBookings.filter(
+      (b) => b.status === 'concluido' || (b.status === 'confirmado' && b.status_pagamento === 'pago')
+    )
+    const valorSoma = faturaveis.reduce((acc, cur) => acc + Number(cur.valor_cobrado || 0), 0)
+
+    const comissaoPct = m.comissao_personalizada_pct != null ? Number(m.comissao_personalizada_pct) : comissaoPadrao
+    const aluguelFixo = m.aluguel_personalizado_fixo != null ? Number(m.aluguel_personalizado_fixo) : aluguelPadrao
+
+    let faturamentoBruto: number | null = null
+    let comissaoStudio: number | null = null
+    let repasseLiquido: number | null = null
+
+    if (podeVerFaturamento) {
+      faturamentoBruto = Math.round(valorSoma)
+      faturamentoBrutoTotal += faturamentoBruto
+
+      if (tipoGestao === 'gestao_completa') {
+        comissaoStudio = Math.round((faturamentoBruto * comissaoPct) / 100)
+        repasseLiquido = Math.max(0, faturamentoBruto - comissaoStudio)
+        faturamentoStudioTotal += comissaoStudio
+        repassesEquipeTotal += repasseLiquido
+      } else {
+        // aluguel_cadeira
+        comissaoStudio = 0
+        repasseLiquido = faturamentoBruto
+        faturamentoStudioTotal += aluguelFixo
+        repassesEquipeTotal += repasseLiquido
+      }
+    } else {
+      // Caso a parceira tenha optado por não compartilhar faturamento
+      if (tipoGestao === 'aluguel_cadeira') {
+        faturamentoStudioTotal += aluguelFixo
+      }
+    }
+
+    return {
+      id: m.id,
+      nome: m.nome,
+      foto_url: m.foto_url,
+      slug: m.slug,
+      categoria: parseCategorias(m.categoria),
+      ativo_no_estudio: m.ativo_no_estudio !== false,
+      isOwner,
+      totalAgendamentos: profBookings.length,
+      agendamentosConcluidos: concluidos.length,
+      faturamentoBruto,
+      comissaoStudio,
+      repasseLiquido,
+      aluguelFixo,
+      compartilharFaturamento: podeVerFaturamento,
+      compartilharAgendamentos: m.compartilhar_agendamentos !== false,
+      permitirAgendamentoDona: m.permitir_agendamento_dona !== false,
+    }
+  })
+
+  // Ordenar por faturamento bruto decrescente
+  membrosDesempenho.sort((a, b) => (b.faturamentoBruto || 0) - (a.faturamentoBruto || 0))
+
+  const ticketMedio = totalConcluidos > 0 ? Math.round(faturamentoBrutoTotal / totalConcluidos) : 0
+  const totalProfissionaisAtivas = membros.filter((m: any) => m.ativo_no_estudio !== false).length
+
+  return {
+    periodo,
+    periodoLabel,
+    tipoGestao,
+    totalAgendamentos,
+    agendamentosConcluidos: totalConcluidos,
+    agendamentosConfirmados: totalConfirmados,
+    agendamentosCancelados: totalCancelados,
+    faturamentoBrutoTotal,
+    faturamentoStudioTotal,
+    repassesEquipeTotal,
+    ticketMedio,
+    membrosDesempenho,
+    totalProfissionaisAtivas,
+  }
+}
+
+// ============================================================================
+// 18. AGENDAMENTOS CONSOLIDADOS DO STUDIO
+// ============================================================================
+
+export interface StudioBookingItem {
+  id: string
+  profissionalId: string
+  profissionalNome: string
+  profissionalFoto: string | null
+  profissionalSlug: string
+  clienteNome: string
+  clienteTelefone: string
+  servicoNome: string
+  servicoPreco: number
+  valorCobrado: number | null
+  dataHoraInicio: string
+  dataHoraFim: string
+  status: 'confirmado' | 'cancelado' | 'concluido' | 'no_show'
+  statusPagamento: string | null
+}
+
+export interface ObterAgendamentosStudioFiltros {
+  profissionalId?: string
+  status?: string
+  dataInicio?: string
+  dataFim?: string
+  limite?: number
+}
+
+export async function obterAgendamentosStudioAction(
+  estudioId: string,
+  filtros?: ObterAgendamentosStudioFiltros
+): Promise<StudioBookingItem[]> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('Não autorizado.')
+
+  const adminSupabase = createAdminClient()
+
+  // 1. Validar que o usuário é a dona do studio
+  const { data: estudio } = await adminSupabase
+    .from('estudios')
+    .select('id, criado_por')
+    .eq('id', estudioId)
+    .single()
+
+  if (!estudio || estudio.criado_por !== user.id) {
+    throw new Error('Apenas a administradora do studio pode acessar a agenda consolidada.')
+  }
+
+  // 2. Buscar membros do studio que autorizam compartilhar agendamento
+  const { data: membros } = await adminSupabase
+    .from('profissionais')
+    .select('id, nome, foto_url, slug, compartilhar_faturamento, compartilhar_agendamentos')
+    .eq('estudio_id', estudioId)
+    .is('deletado_em', null)
+
+  if (!membros || membros.length === 0) return []
+
+  const membrosMap = new Map(membros.map((m) => [m.id, m]))
+  // Membros cujos agendamentos podem ser exibidos para a dona
+  const allowedMemberIds = membros
+    .filter((m) => m.id === user.id || m.compartilhar_agendamentos !== false)
+    .map((m) => m.id)
+
+  if (allowedMemberIds.length === 0) return []
+
+  let query = adminSupabase
+    .from('agendamentos')
+    .select(`
+      id,
+      profissional_id,
+      cliente_id,
+      servico_id,
+      data_hora_inicio,
+      data_hora_fim,
+      status,
+      status_pagamento,
+      valor_cobrado,
+      created_at,
+      clientes (id, nome, telefone),
+      servicos (id, nome, preco, duracao_minutos)
+    `)
+    .in('profissional_id', allowedMemberIds)
+    .order('data_hora_inicio', { ascending: false })
+    .limit(filtros?.limite || 100)
+
+  if (filtros?.profissionalId && allowedMemberIds.includes(filtros.profissionalId)) {
+    query = query.eq('profissional_id', filtros.profissionalId)
+  }
+
+  if (filtros?.status && filtros.status !== 'todos') {
+    query = query.eq('status', filtros.status as 'confirmado' | 'cancelado' | 'concluido' | 'no_show')
+  }
+
+  if (filtros?.dataInicio) {
+    query = query.gte('data_hora_inicio', filtros.dataInicio)
+  }
+
+  if (filtros?.dataFim) {
+    query = query.lte('data_hora_inicio', filtros.dataFim)
+  }
+
+  const { data: agendamentosRaw, error } = await query
+
+  if (error || !agendamentosRaw) {
+    console.error('[obterAgendamentosStudioAction] Erro:', error)
+    return []
+  }
+
+  return agendamentosRaw.map((a: any) => {
+    const prof = membrosMap.get(a.profissional_id)
+    const podeVerFaturamento = prof?.id === user.id || prof?.compartilhar_faturamento !== false
+
+    return {
+      id: a.id,
+      profissionalId: a.profissional_id,
+      profissionalNome: prof?.nome || 'Profissional',
+      profissionalFoto: prof?.foto_url || null,
+      profissionalSlug: prof?.slug || '',
+      clienteNome: a.clientes?.nome || 'Cliente',
+      clienteTelefone: a.clientes?.telefone || '',
+      servicoNome: a.servicos?.nome || 'Serviço',
+      servicoPreco: Number(a.servicos?.preco || 0),
+      valorCobrado: podeVerFaturamento ? Number(a.valor_cobrado ?? a.servicos?.preco ?? 0) : null,
+      dataHoraInicio: a.data_hora_inicio,
+      dataHoraFim: a.data_hora_fim,
+      status: a.status,
+      statusPagamento: a.status_pagamento,
+    }
+  })
+}
+
+// ============================================================================
+// 19. ATUALIZAR STATUS DE AGENDAMENTO PELA DONA
+// ============================================================================
+
+export async function atualizarStatusAgendamentoStudioAction(
+  agendamentoId: string,
+  novoStatus: 'confirmado' | 'concluido' | 'cancelado' | 'no_show',
+  statusPagamento?: string
+) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('Não autorizado.')
+
+  const adminSupabase = createAdminClient()
+
+  // Buscar agendamento e verificar se pertence a um studio onde user é dona
+  const { data: agendamento } = await adminSupabase
+    .from('agendamentos')
+    .select('id, profissional_id, profissionais(estudio_id, estudios(criado_por))')
+    .eq('id', agendamentoId)
+    .single()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const profData: any = agendamento?.profissionais
+  const criadoPor = profData?.estudios?.criado_por
+
+  if (!agendamento || criadoPor !== user.id) {
+    throw new Error('Você não tem permissão para alterar este agendamento.')
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const updateData: any = { status: novoStatus }
+  if (statusPagamento) {
+    updateData.status_pagamento = statusPagamento
+  }
+
+  const { error } = await adminSupabase
+    .from('agendamentos')
+    .update(updateData)
+    .eq('id', agendamentoId)
+
+  if (error) {
+    console.error('[atualizarStatusAgendamentoStudioAction] Erro:', error)
+    throw new Error('Erro ao atualizar agendamento.')
+  }
+
+  revalidatePath('/dashboard/studio')
+  return { success: true }
+}
+
+// ============================================================================
+// 20. CRIAR AGENDAMENTO PELA DONA DO STUDIO
+// ============================================================================
+
+export interface CriarAgendamentoDonaInput {
+  estudioId: string
+  profissionalId: string
+  clienteNome: string
+  clienteTelefone: string
+  servicoId: string
+  dataHoraInicio: string // ISO
+  formaPagamentoPreferida?: string
+  observacoes?: string
+}
+
+export async function criarAgendamentoPelaDonaAction(dados: CriarAgendamentoDonaInput) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('Não autorizado.')
+
+  const adminSupabase = createAdminClient()
+
+  // 1. Validar que user é dona do studio
+  const { data: estudio } = await adminSupabase
+    .from('estudios')
+    .select('id, criado_por')
+    .eq('id', dados.estudioId)
+    .single()
+
+  if (!estudio || estudio.criado_por !== user.id) {
+    throw new Error('Apenas a administradora do studio pode criar agendamentos para a equipe.')
+  }
+
+  // 2. Validar que a profissional pertence ao studio e autorizou agendamento pela dona
+  const { data: prof } = await adminSupabase
+    .from('profissionais')
+    .select('id, estudio_id, permitir_agendamento_dona, ativo_no_estudio')
+    .eq('id', dados.profissionalId)
+    .single()
+
+  if (!prof || prof.estudio_id !== dados.estudioId) {
+    throw new Error('Esta profissional não pertence a este studio.')
+  }
+
+  if (prof.id !== user.id && prof.permitir_agendamento_dona === false) {
+    throw new Error('Esta profissional optou por não receber agendamentos criados pela administradora.')
+  }
+
+  // 3. Buscar dados do serviço
+  const { data: servico } = await adminSupabase
+    .from('servicos')
+    .select('id, duracao_minutos, preco')
+    .eq('id', dados.servicoId)
+    .eq('profissional_id', dados.profissionalId)
+    .single()
+
+  if (!servico) {
+    throw new Error('Serviço não encontrado para esta profissional.')
+  }
+
+  const inicio = new Date(dados.dataHoraInicio)
+  const fim = new Date(inicio.getTime() + (servico.duracao_minutos || 45) * 60 * 1000)
+
+  // 4. Cadastrar / obter cliente no CRM da profissional
+  const telLimpo = dados.clienteTelefone.replace(/\D/g, '')
+  let clienteId: string | null = null
+
+  const { data: existingClient } = await adminSupabase
+    .from('clientes')
+    .select('id')
+    .eq('profissional_id', dados.profissionalId)
+    .eq('telefone', telLimpo)
+    .maybeSingle()
+
+  if (existingClient) {
+    clienteId = existingClient.id
+  } else {
+    const { data: newClient, error: clientError } = await adminSupabase
+      .from('clientes')
+      .insert([
+        {
+          profissional_id: dados.profissionalId,
+          nome: dados.clienteNome.trim(),
+          telefone: telLimpo,
+        },
+      ])
+      .select('id')
+      .single()
+
+    if (!clientError && newClient) {
+      clienteId = newClient.id
+    }
+  }
+
+  if (!clienteId) {
+    throw new Error('Não foi possível identificar ou cadastrar o cliente.')
+  }
+
+  // 5. Inserir agendamento
+  const { data: newBooking, error: bookingError } = await adminSupabase
+    .from('agendamentos')
+    .insert([
+      {
+        profissional_id: dados.profissionalId,
+        cliente_id: clienteId,
+        servico_id: dados.servicoId,
+        data_hora_inicio: inicio.toISOString(),
+        data_hora_fim: fim.toISOString(),
+        status: 'confirmado' as const,
+        status_pagamento: 'pendente',
+        valor_cobrado: servico.preco,
+        forma_pagamento_preferida: dados.formaPagamentoPreferida || 'pix',
+      },
+    ])
+    .select('id')
+    .single()
+
+  if (bookingError || !newBooking) {
+    console.error('[criarAgendamentoPelaDonaAction] Erro ao criar agendamento:', bookingError)
+    throw new Error('Conflito de horário ou erro ao gravar o agendamento.')
+  }
+
+  revalidatePath('/dashboard/studio')
+  revalidatePath('/dashboard/geral')
+  return { success: true, agendamentoId: newBooking.id }
+}
+
+// ============================================================================
+// 21. ATUALIZAR PERMISSÕES DE PRIVACIDADE DA PROFISSIONAL MEMBRO
+// ============================================================================
+
+export interface PermissoesPrivacidadeInput {
+  compartilhar_faturamento?: boolean
+  compartilhar_agendamentos?: boolean
+  permitir_agendamento_dona?: boolean
+}
+
+export async function atualizarPermissoesPrivacidadeMembroAction(permissoes: PermissoesPrivacidadeInput) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('Não autorizado.')
+
+  const adminSupabase = createAdminClient()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const payload: any = {}
+  if (permissoes.compartilhar_faturamento !== undefined) {
+    payload.compartilhar_faturamento = permissoes.compartilhar_faturamento
+  }
+  if (permissoes.compartilhar_agendamentos !== undefined) {
+    payload.compartilhar_agendamentos = permissoes.compartilhar_agendamentos
+  }
+  if (permissoes.permitir_agendamento_dona !== undefined) {
+    payload.permitir_agendamento_dona = permissoes.permitir_agendamento_dona
+  }
+
+  const { error } = await adminSupabase
+    .from('profissionais')
+    .update(payload)
+    .eq('id', user.id)
+
+  if (error) {
+    console.error('[atualizarPermissoesPrivacidadeMembroAction] Erro:', error)
+    throw new Error('Erro ao salvar preferências de privacidade.')
+  }
+
+  revalidatePath('/dashboard/studio')
+  revalidatePath('/dashboard/estudio')
+  return { success: true }
+}
+
+// ============================================================================
+// 22. ATUALIZAR REGRA FINANCEIRA INDIVIDUAL DE MEMBRO (APENAS DONA)
+// ============================================================================
+
+export interface RegraMembroInput {
+  comissao_personalizada_pct?: number | null
+  aluguel_personalizado_fixo?: number | null
+}
+
+export async function atualizarRegraMembroStudioAction(
+  estudioId: string,
+  membroId: string,
+  dados: RegraMembroInput
+) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('Não autorizado.')
+
+  const adminSupabase = createAdminClient()
+
+  // Validar propriedade do studio
+  const { data: estudio } = await adminSupabase
+    .from('estudios')
+    .select('id, criado_por')
+    .eq('id', estudioId)
+    .single()
+
+  if (!estudio || estudio.criado_por !== user.id) {
+    throw new Error('Apenas a administradora do studio pode ajustar regras financeiras da equipe.')
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const payload: any = {}
+  if (dados.comissao_personalizada_pct !== undefined) {
+    payload.comissao_personalizada_pct = dados.comissao_personalizada_pct
+  }
+  if (dados.aluguel_personalizado_fixo !== undefined) {
+    payload.aluguel_personalizado_fixo = dados.aluguel_personalizado_fixo
+  }
+
+  const { error } = await adminSupabase
+    .from('profissionais')
+    .update(payload)
+    .eq('id', membroId)
+    .eq('estudio_id', estudioId)
+
+  if (error) {
+    console.error('[atualizarRegraMembroStudioAction] Erro:', error)
+    throw new Error('Erro ao salvar regra financeira da profissional.')
+  }
+
+  revalidatePath('/dashboard/studio')
+  return { success: true }
+}
+
+// ============================================================================
+// 23. OBTER PROFISSIONAIS DISPONÍVEIS PARA NOVO AGENDAMENTO NO STUDIO
+// ============================================================================
+
+export async function obterProfissionaisDisponiveisParaAgendamentoAction(estudioId: string) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('Não autorizado.')
+
+  const adminSupabase = createAdminClient()
+
+  // Buscar membros ativos que autorizam agendamento pela dona
+  const { data: membros } = await adminSupabase
+    .from('profissionais')
+    .select('id, nome, foto_url, slug, ativo_no_estudio, permitir_agendamento_dona')
+    .eq('estudio_id', estudioId)
+    .eq('ativo_no_estudio', true)
+    .is('deletado_em', null)
+    .order('nome', { ascending: true })
+
+  if (!membros) return []
+
+  // Filtrar apenas as que permitem (ou a própria dona)
+  const aptas = membros.filter((m) => m.id === user.id || m.permitir_agendamento_dona !== false)
+
+  if (aptas.length === 0) return []
+
+  // Buscar serviços de cada uma
+  const aptasIds = aptas.map((m) => m.id)
+  const { data: servicos } = await adminSupabase
+    .from('servicos')
+    .select('id, profissional_id, nome, preco, duracao_minutos')
+    .in('profissional_id', aptasIds)
+    .order('nome', { ascending: true })
+
+  const servicosMap = new Map<string, Array<{ id: string; nome: string; preco: number; duracao_minutos: number }>>()
+  ;(servicos || []).forEach((s) => {
+    const list = servicosMap.get(s.profissional_id) || []
+    list.push({
+      id: s.id,
+      nome: s.nome,
+      preco: Number(s.preco),
+      duracao_minutos: Number(s.duracao_minutos),
+    })
+    servicosMap.set(s.profissional_id, list)
+  })
+
+  return aptas.map((m) => ({
+    id: m.id,
+    nome: m.nome,
+    foto_url: m.foto_url,
+    slug: m.slug,
+    servicos: servicosMap.get(m.id) || [],
+  }))
 }

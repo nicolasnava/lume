@@ -1,13 +1,25 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { ShieldCheck, X } from 'lucide-react'
 
 export default function CookieConsentBanner() {
+  const pathname = usePathname()
   const [visible, setVisible] = useState(false)
 
+  // Ocultar completamente na vitrine digital e fluxo de agendamentos
+  const isShowcaseOrBooking =
+    !pathname ||
+    pathname.startsWith('/p/') ||
+    pathname.startsWith('/studio/') ||
+    pathname.startsWith('/estudio/') ||
+    pathname.startsWith('/avaliar/')
+
   useEffect(() => {
+    if (isShowcaseOrBooking) return
+
     try {
       const consent = localStorage.getItem('lume_cookie_consent')
       if (!consent) {
@@ -17,7 +29,7 @@ export default function CookieConsentBanner() {
     } catch {
       // localStorage may be restricted in some private modes
     }
-  }, [])
+  }, [isShowcaseOrBooking])
 
   const handleAccept = () => {
     try {
@@ -33,7 +45,14 @@ export default function CookieConsentBanner() {
     setVisible(false)
   }
 
-  if (!visible) return null
+  const handleDismiss = () => {
+    try {
+      localStorage.setItem('lume_cookie_consent', 'dismissed')
+    } catch {}
+    setVisible(false)
+  }
+
+  if (isShowcaseOrBooking || !visible) return null
 
   return (
     <aside
@@ -55,7 +74,7 @@ export default function CookieConsentBanner() {
             </h4>
           </div>
           <button
-            onClick={handleDecline}
+            onClick={handleDismiss}
             aria-label="Fechar aviso de cookies"
             className="text-[#6B5E7A] hover:text-[#3D2E4D] p-1 rounded-lg hover:bg-gray-100 transition cursor-pointer"
           >

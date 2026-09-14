@@ -51,9 +51,13 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
   const [segmentoAlvo, setSegmentoAlvo] = useState<'todos' | 'nunca_agendou' | 'inativa'>('todos')
   const [limiteUsoTotal, setLimiteUsoTotal] = useState<string>('')
   const [limiteUsoPorCliente, setLimiteUsoPorCliente] = useState<string>('1')
+  const [validoDe, setValidoDe] = useState<string>('')
   const [validoAte, setValidoAte] = useState<string>('')
   const [formError, setFormError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const today = new Date()
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
   // Fetch Cupons
   const loadCupons = async () => {
@@ -84,6 +88,7 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
     setSegmentoAlvo('todos')
     setLimiteUsoTotal('')
     setLimiteUsoPorCliente('1')
+    setValidoDe('')
     setValidoAte('')
     setFormError(null)
     setIsModalOpen(true)
@@ -97,6 +102,7 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
     setSegmentoAlvo(cupom.segmento_alvo)
     setLimiteUsoTotal(cupom.limite_uso_total ? String(cupom.limite_uso_total) : '')
     setLimiteUsoPorCliente(String(cupom.limite_uso_por_cliente || 1))
+    setValidoDe(cupom.valido_de ? cupom.valido_de.split('T')[0] : '')
     setValidoAte(cupom.valido_ate ? cupom.valido_ate.split('T')[0] : '')
     setFormError(null)
     setIsModalOpen(true)
@@ -140,6 +146,11 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
       return
     }
 
+    if (validoDe && validoAte && validoDe > validoAte) {
+      setFormError('A data inicial (Válido de) não pode ser posterior à data final (Até).')
+      return
+    }
+
     setIsSubmitting(true)
 
     const payload = {
@@ -149,6 +160,7 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
       segmento_alvo: segmentoAlvo,
       limite_uso_total: limiteUsoTotal ? parseInt(limiteUsoTotal, 10) : null,
       limite_uso_por_cliente: limiteUsoPorCliente ? parseInt(limiteUsoPorCliente, 10) : 1,
+      valido_de: validoDe ? `${validoDe}T00:00:00` : null,
       valido_ate: validoAte ? `${validoAte}T23:59:59` : null,
     }
 
@@ -256,7 +268,7 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
                           type="button"
                           onClick={() => handleCopy(cupom.codigo)}
                           className="p-1 text-gray-400 hover:text-[#4A3F5C] transition cursor-pointer"
-                          title="Copiar código do cupom"
+                          title="Copiar nome do cupom"
                         >
                           {copiedCode === cupom.codigo ? (
                             <Check className="h-4 w-4 text-emerald-600" />
@@ -310,11 +322,15 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
                       </strong>
                     </div>
 
-                    {cupom.valido_ate && (
+                    {(cupom.valido_de || cupom.valido_ate) && (
                       <div className="flex items-center justify-between text-gray-600">
                         <span className="text-[11px] font-medium text-gray-500">Validade:</span>
-                        <span className="text-xs font-semibold text-gray-700">
-                          {new Date(cupom.valido_ate).toLocaleDateString('pt-BR')}
+                        <span className="text-xs font-semibold text-gray-700 text-right">
+                          {cupom.valido_de && cupom.valido_ate
+                            ? `De ${new Date(cupom.valido_de).toLocaleDateString('pt-BR')} até ${new Date(cupom.valido_ate).toLocaleDateString('pt-BR')}`
+                            : cupom.valido_ate
+                            ? `Até ${new Date(cupom.valido_ate).toLocaleDateString('pt-BR')}`
+                            : `A partir de ${new Date(cupom.valido_de!).toLocaleDateString('pt-BR')}`}
                         </span>
                       </div>
                     )}
@@ -392,10 +408,10 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
             )}
 
             <form onSubmit={handleSubmitForm} className="space-y-4">
-              {/* Código do Cupom */}
+              {/* Nome do Cupom */}
               <div>
                 <label className="block text-xs font-bold text-[#4A3F5C] mb-1">
-                  Código do Cupom *
+                  Nome do Cupom *
                 </label>
                 <input
                   type="text"
@@ -490,32 +506,52 @@ export default function CouponsManager({ onCouponsLoaded }: CouponsManagerProps)
                 />
               </div>
 
-              {/* Limite Total e Validade */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-[#4A3F5C] mb-1">
-                    Limite Total de Usos
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={limiteUsoTotal}
-                    onChange={(e) => setLimiteUsoTotal(e.target.value)}
-                    placeholder="Ex: 50 (opcional)"
-                    className="w-full rounded-2xl border border-gray-200 p-3 text-xs text-[#4A3F5C] font-medium focus:border-[#B8A9D9] focus:outline-hidden"
-                  />
-                </div>
+              {/* Limite Total de Usos */}
+              <div>
+                <label className="block text-xs font-bold text-[#4A3F5C] mb-1">
+                  Limite Total de Usos (Opcional)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={limiteUsoTotal}
+                  onChange={(e) => setLimiteUsoTotal(e.target.value)}
+                  placeholder="Ex: 50 utilizações (deixe em branco para ilimitado)"
+                  className="w-full rounded-2xl border border-gray-200 p-3 text-xs text-[#4A3F5C] font-medium focus:border-[#B8A9D9] focus:outline-hidden"
+                />
+              </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-[#4A3F5C] mb-1">
-                    Válido Até (Opcional)
-                  </label>
-                  <CustomDatePicker
-                    value={validoAte}
-                    onChange={setValidoAte}
-                    placeholder="Sem data limite"
-                    className="w-full"
-                  />
+              {/* Período de Validade: de X até Y */}
+              <div>
+                <label className="block text-xs font-bold text-[#4A3F5C] mb-1.5">
+                  Período de Validade (Opcional)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#FAF7F5] p-3 rounded-2xl border border-gray-200/80">
+                  <div>
+                    <span className="block text-[11px] font-bold text-gray-500 mb-1">
+                      Válido de:
+                    </span>
+                    <CustomDatePicker
+                      value={validoDe}
+                      onChange={setValidoDe}
+                      minDate={todayStr}
+                      placeholder="A partir de hoje"
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <span className="block text-[11px] font-bold text-gray-500 mb-1">
+                      Até:
+                    </span>
+                    <CustomDatePicker
+                      value={validoAte}
+                      onChange={setValidoAte}
+                      minDate={validoDe || todayStr}
+                      placeholder="Sem data limite"
+                      className="w-full"
+                    />
+                  </div>
                 </div>
               </div>
 

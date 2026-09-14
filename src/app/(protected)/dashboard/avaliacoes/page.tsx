@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { Star, MessageSquare, Calendar, CheckCircle2 } from 'lucide-react'
+import { Star, MessageSquare } from 'lucide-react'
+import AvaliacoesListClient from '@/components/dashboard/AvaliacoesListClient'
 
 export const revalidate = 0
 export const dynamic = 'force-dynamic'
@@ -66,8 +67,9 @@ export default async function AvaliacoesDashboardPage() {
               Média de Satisfação
             </span>
             {total > 0 && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs">
-                <span>{Number(media) >= 4.8 ? '★ Excelente' : Number(media) >= 4.0 ? '✓ Muito Boa' : '• Regular'}</span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs">
+                <Star className="h-3.5 w-3.5 fill-emerald-600 text-emerald-600" />
+                <span>{Number(media) >= 4.8 ? 'Excelente' : Number(media) >= 4.0 ? 'Muito Boa' : 'Regular'}</span>
               </span>
             )}
           </div>
@@ -132,70 +134,7 @@ export default async function AvaliacoesDashboardPage() {
           <span>Feedbacks Recebidos</span>
         </h2>
 
-        {avaliacoes.length === 0 ? (
-          <div className="rounded-2xl bg-white p-12 text-center border border-gray-100 shadow-xs">
-            <Star className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-            <h3 className="text-base font-bold text-[#4A3F5C]">Nenhuma avaliação ainda</h3>
-            <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
-              Ao concluir um atendimento, compartilhe o link de avaliação com a cliente no WhatsApp
-              para coletar seus primeiros depoimentos!
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {avaliacoes.map((av) => {
-              const clienteNome = av.agendamentos?.clientes?.nome || 'Cliente'
-              const servicoNome = av.agendamentos?.servicos?.nome || 'Atendimento'
-              const dataAtendimento = av.agendamentos?.data_hora_inicio
-                ? new Date(av.agendamentos.data_hora_inicio).toLocaleDateString('pt-BR')
-                : new Date(av.created_at).toLocaleDateString('pt-BR')
-
-              return (
-                <div
-                  key={av.id}
-                  className="rounded-2xl bg-white p-5 border border-gray-100 shadow-xs hover:shadow-md transition space-y-3 flex flex-col justify-between"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h3 className="text-sm font-bold text-[#4A3F5C]">{clienteNome}</h3>
-                        <p className="text-[11px] text-gray-500 font-medium mt-0.5">{servicoNome}</p>
-                      </div>
-
-                      <div className="flex items-center gap-0.5 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200/60">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star
-                            key={star}
-                            className={`h-3.5 w-3.5 ${
-                              star <= Number(av.nota)
-                                ? 'fill-amber-400 text-amber-400'
-                                : 'text-gray-300'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    {av.comentario ? (
-                      <p className="text-xs text-[#4A3F5C]/85 bg-[#FAF7F5] p-3 rounded-xl border border-gray-100 leading-relaxed italic">
-                        &ldquo;{av.comentario}&rdquo;
-                      </p>
-                    ) : (
-                      <p className="text-[11px] text-gray-400 italic">Sem comentário por escrito.</p>
-                    )}
-                  </div>
-
-                  <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-400">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3 text-[#B8A9D9]" />
-                      {dataAtendimento}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+        <AvaliacoesListClient initialAvaliacoes={avaliacoes} />
       </div>
     </div>
   )

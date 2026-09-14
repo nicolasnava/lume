@@ -456,6 +456,307 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
         </div>
       </section>
 
+      {/* 2.5 SIMULADOR DE FATURAMENTO (DESTAQUE COM CORES INVERTIDAS) - #simulador */}
+      <section id="simulador" className="py-12 sm:py-20 bg-[#FAF8F5] border-b border-[#E8DFD8] scroll-mt-20">
+        <div className="mx-auto max-w-4xl px-3.5 sm:px-6">
+          <div className="relative overflow-hidden bg-gradient-to-br from-[#241A32] via-[#1E162A] to-[#15101E] p-5 sm:p-10 md:p-12 rounded-3xl sm:rounded-[2.5rem] border border-[#44325E] shadow-2xl shadow-purple-950/25 space-y-6 sm:space-y-8 text-white">
+            
+            {/* Efeitos de Glow decorativos de fundo */}
+            <div className="absolute -top-24 -right-24 w-80 h-80 bg-[#8C5383]/25 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-[#B8A9D9]/15 rounded-full blur-3xl pointer-events-none" />
+
+            {/* CABEÇALHO DO SIMULADOR (ETAPAS 1, 2 E 3) */}
+            <div className="relative z-10 space-y-3 sm:space-y-4 border-b border-[#3E2E52] pb-4 sm:pb-6">
+              {/* Barra de Progresso em 3 Segmentos */}
+              <div className="grid grid-cols-3 gap-2 pt-1" role="progressbar" aria-valuenow={simuladorStep} aria-valuemin={1} aria-valuemax={3}>
+                <div className={`h-1.5 rounded-full transition-all duration-300 ${simuladorStep >= 1 ? 'bg-gradient-to-r from-[#B8A9D9] to-[#34D399]' : 'bg-[#35254A]'}`} />
+                <div className={`h-1.5 rounded-full transition-all duration-300 ${simuladorStep >= 2 ? 'bg-gradient-to-r from-[#B8A9D9] to-[#34D399]' : 'bg-[#35254A]'}`} />
+                <div className={`h-1.5 rounded-full transition-all duration-300 ${simuladorStep >= 3 ? 'bg-gradient-to-r from-[#B8A9D9] to-[#34D399]' : 'bg-[#35254A]'}`} />
+              </div>
+
+              {/* Título ampliado e focado */}
+              <div className="space-y-1.5 text-left pt-1">
+                <h2 className="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-tight">
+                  {simuladorStep === 1 && 'Quanto você poderia estar ganhando?'}
+                  {simuladorStep === 2 && 'De onde vem esse faturamento?'}
+                  {simuladorStep === 3 && 'Você poderia estar ganhando até:'}
+                </h2>
+                <p className="text-xs sm:text-sm text-[#B8A9D9] leading-relaxed">
+                  {simuladorStep === 1 && 'Responda a 2 perguntas e veja o faturamento que sua agenda pode resgatar.'}
+                  {simuladorStep === 2 && 'Horários vazios e mensagens manuais somam grandes oportunidades no mês.'}
+                  {simuladorStep === 3 && 'Clientes confirmadas, zero tempo perdido e faturamento no piloto automático.'}
+                </p>
+              </div>
+            </div>
+
+            {/* ETAPA 1: ENTRADA DOS NÚMEROS DA ROTINA */}
+            {simuladorStep === 1 && (
+              <div className="relative z-10 space-y-4 sm:space-y-6 text-left animate-in fade-in duration-200">
+                {/* Card 1: Atendimentos por Semana */}
+                <div className="bg-[#261B35]/90 p-4 sm:p-6 rounded-2xl border border-[#44325E] space-y-2 sm:space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <label htmlFor="sim-clientes-slider" className="text-xs sm:text-sm font-bold text-gray-200">
+                      Atendimentos por semana
+                    </label>
+                    <div className="text-right whitespace-nowrap shrink-0">
+                      <span className="text-2xl sm:text-4xl font-black text-white tracking-tight whitespace-nowrap">
+                        {clientesSemana}
+                      </span>
+                      <span className="text-xs sm:text-sm font-bold text-[#B8A9D9] ml-1.5 whitespace-nowrap">
+                        clientes/sem
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-[11px] sm:text-xs text-[#B8A9D9] font-medium">
+                    Aproximadamente <strong className="text-white whitespace-nowrap">~{clientesMes} atendimentos</strong> por mês na sua rotina.
+                  </p>
+
+                  <div className="pt-2">
+                    <input
+                      id="sim-clientes-slider"
+                      type="range"
+                      min="5"
+                      max="80"
+                      step="5"
+                      value={clientesSemana}
+                      aria-label="Atendimentos por semana"
+                      aria-valuemin={5}
+                      aria-valuemax={80}
+                      aria-valuenow={clientesSemana}
+                      aria-valuetext={`${clientesSemana} clientes por semana`}
+                      onChange={(e) => setClientesSemana(Number(e.target.value))}
+                      className="w-full h-3 bg-[#171020] rounded-lg appearance-none cursor-pointer accent-[#B8A9D9]"
+                    />
+                    <div className="flex justify-between text-[10px] sm:text-xs text-[#9E8EBA] font-semibold pt-1 whitespace-nowrap">
+                      <span>5 clientes</span>
+                      <span>40 clientes</span>
+                      <span>80+ clientes</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card 2: Valor Médio por Atendimento */}
+                <div className="bg-[#261B35]/90 p-4 sm:p-6 rounded-2xl border border-[#44325E] space-y-2 sm:space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <label htmlFor="sim-ticket-slider" className="text-xs sm:text-sm font-bold text-gray-200">
+                      Valor médio por atendimento (Ticket Médio)
+                    </label>
+                    <span className="text-2xl sm:text-4xl font-black text-[#34D399] tracking-tight whitespace-nowrap shrink-0">
+                      R$&nbsp;{ticketMedio},00
+                    </span>
+                  </div>
+                  <p className="text-[11px] sm:text-xs text-[#B8A9D9] font-medium">
+                    Preço médio cobrado por procedimento ou serviço realizado.
+                  </p>
+
+                  <div className="pt-2">
+                    <input
+                      id="sim-ticket-slider"
+                      type="range"
+                      min="20"
+                      max="350"
+                      step="5"
+                      value={ticketMedio}
+                      aria-label="Valor médio por atendimento"
+                      aria-valuemin={20}
+                      aria-valuemax={350}
+                      aria-valuenow={ticketMedio}
+                      aria-valuetext={`R$ ${ticketMedio}`}
+                      onChange={(e) => setTicketMedio(Number(e.target.value))}
+                      className="w-full h-3 bg-[#171020] rounded-lg appearance-none cursor-pointer accent-[#34D399]"
+                    />
+                    <div className="flex justify-between text-[10px] sm:text-xs text-[#9E8EBA] font-semibold pt-1 whitespace-nowrap">
+                      <span>R$ 20</span>
+                      <span>R$ 150</span>
+                      <span>R$ 350+</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rodapé Etapa 1 */}
+                <div className="space-y-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setSimuladorStep(2)}
+                    className="w-full min-h-[50px] sm:min-h-[58px] flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-[#B8A9D9] via-[#C8B8E6] to-[#D8B4E2] hover:opacity-95 text-[#241A32] text-sm sm:text-base font-extrabold shadow-xl transition transform active:scale-[0.99] cursor-pointer"
+                  >
+                    <span>Ver quanto posso ganhar</span>
+                    <ArrowRight className="h-4 w-4 stroke-[3]" />
+                  </button>
+                  <div className="flex items-center justify-center text-[11px] text-[#9E8EBA] pt-0.5">
+                    <span className="font-medium">
+                      Leva menos de 30 segundos · Não precisa de cadastro
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ETAPA 2: ONDE EXISTE POTENCIAL */}
+            {simuladorStep === 2 && (
+              <div className="relative z-10 space-y-4 sm:space-y-5 text-left animate-in fade-in duration-200">
+                {/* 3 Cards Empilhados */}
+                <div className="space-y-2.5 sm:space-y-3">
+                  {/* Card 1: Faltas e Cancelamentos */}
+                  <div className="bg-[#261B35]/90 p-4 sm:p-5 rounded-2xl border border-[#44325E] flex items-start gap-3 sm:gap-4">
+                    <div className="h-9 w-9 sm:h-11 sm:w-11 rounded-xl bg-[#3B2B52] text-[#34D399] flex items-center justify-center shrink-0 border border-[#523C73]">
+                      <CalendarX className="h-5 w-5" />
+                    </div>
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="text-xs sm:text-sm font-bold text-white">Faltas e horários vazios evitados</h4>
+                        <span className="text-sm sm:text-base font-black text-[#34D399] shrink-0 whitespace-nowrap">
+                          ~R$&nbsp;{faltasRecuperadas.toLocaleString('pt-BR')}/mês
+                        </span>
+                      </div>
+                      <p className="text-[11px] sm:text-xs text-[#B8A9D9] leading-relaxed">
+                        Lembretes e confirmações automáticas no WhatsApp reduzem drasticamente faltas e buracos na agenda.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Tempo no WhatsApp */}
+                  <div className="bg-[#261B35]/90 p-4 sm:p-5 rounded-2xl border border-[#44325E] flex items-start gap-3 sm:gap-4">
+                    <div className="h-9 w-9 sm:h-11 sm:w-11 rounded-xl bg-[#3B2B52] text-[#B8A9D9] flex items-center justify-center shrink-0 border border-[#523C73]">
+                      <MessageCircle className="h-5 w-5" />
+                    </div>
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="text-xs sm:text-sm font-bold text-white">Tempo livre poupado no WhatsApp</h4>
+                        <span className="text-sm sm:text-base font-black text-white shrink-0 whitespace-nowrap">
+                          ~{horasPoupadas}h&nbsp;livres/mês
+                        </span>
+                      </div>
+                      <p className="text-[11px] sm:text-xs text-[#B8A9D9] leading-relaxed">
+                        Sua cliente agenda sozinha em segundos sem que você precise interromper atendimentos ou perder noites respondendo mensagens.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Fora do Expediente */}
+                  <div className="bg-[#261B35]/90 p-4 sm:p-5 rounded-2xl border border-[#44325E] flex items-start gap-3 sm:gap-4">
+                    <div className="h-9 w-9 sm:h-11 sm:w-11 rounded-xl bg-[#3B2B52] text-[#34D399] flex items-center justify-center shrink-0 border border-[#523C73]">
+                      <Clock className="h-5 w-5" />
+                    </div>
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="text-xs sm:text-sm font-bold text-white">Agendamentos fora do expediente</h4>
+                        <span className="text-sm sm:text-base font-black text-[#34D399] shrink-0 whitespace-nowrap">
+                          ~R$&nbsp;{agendamentosNoturnos.toLocaleString('pt-BR')}/mês
+                        </span>
+                      </div>
+                      <p className="text-[11px] sm:text-xs text-[#B8A9D9] leading-relaxed">
+                        Sua vitrine pública continua recebendo pedidos à noite e fins de semana enquanto você descansa.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rodapé Etapa 2 */}
+                <div className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3 pt-3 border-t border-[#3E2E52]">
+                  <button
+                    type="button"
+                    onClick={() => setSimuladorStep(1)}
+                    className="w-full sm:w-auto py-2.5 px-4 text-xs font-bold text-[#B8A9D9] hover:text-white transition cursor-pointer text-center"
+                  >
+                    ← Voltar e ajustar números
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSimuladorStep(3)}
+                    className="w-full sm:flex-1 min-h-[50px] sm:min-h-[56px] flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#B8A9D9] via-[#C8B8E6] to-[#D8B4E2] hover:opacity-95 text-[#241A32] text-xs sm:text-base font-extrabold shadow-xl transition cursor-pointer"
+                  >
+                    <span>Calcular resultado final</span>
+                    <ArrowRight className="h-4 w-4 stroke-[3]" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ETAPA 3: RESULTADO FINAL (O GRANDE NÚMERO CLARO EM DESTAQUE) */}
+            {simuladorStep === 3 && (
+              <div className="relative z-10 space-y-4 sm:space-y-6 text-left animate-in fade-in duration-200">
+                {/* Destaque Principal do Potencial */}
+                <div className="bg-gradient-to-br from-[#35234C] via-[#2A1C3E] to-[#1E142D] p-6 sm:p-10 rounded-3xl border border-[#5C3F80] text-center space-y-2 sm:space-y-3 shadow-inner">
+                  <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-[#34D399] block">
+                    Potencial de ganho estimado
+                  </span>
+                  
+                  {/* Número Gigante em Cor Clara / Verde Esmeralda Vibrante (Nunca Quebra Linha) */}
+                  <div className="flex items-baseline justify-center gap-1.5 pt-2 whitespace-nowrap flex-nowrap">
+                    <span className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-[#34D399] tracking-tight drop-shadow-md whitespace-nowrap">
+                      +&nbsp;R$&nbsp;{ganhoAdicional.toLocaleString('pt-BR')}
+                    </span>
+                    <span className="text-sm sm:text-xl md:text-2xl font-bold text-[#E8DEF8] whitespace-nowrap">/mês</span>
+                  </div>
+
+                  <p className="text-xs sm:text-sm text-[#D1C4E9] font-medium max-w-md mx-auto pt-1">
+                    Retorno estimado de <strong className="text-white font-black whitespace-nowrap">~{roiMultiplicador}x</strong> sobre a assinatura mensal do Lumê.
+                  </p>
+                </div>
+
+                {/* 3 Indicadores de Apoio Compactos */}
+                <div className="grid grid-cols-3 gap-2 sm:gap-3.5">
+                  <div className="bg-[#261B35]/90 p-3 sm:p-4 rounded-2xl border border-[#44325E] text-center space-y-1">
+                    <span className="text-[10px] sm:text-xs font-bold text-[#B8A9D9] block truncate">Faltas Evitadas</span>
+                    <span className="text-xs sm:text-base font-black text-[#34D399] block whitespace-nowrap">
+                      +R$&nbsp;{faltasRecuperadas.toLocaleString('pt-BR')}
+                    </span>
+                  </div>
+                  <div className="bg-[#261B35]/90 p-3 sm:p-4 rounded-2xl border border-[#44325E] text-center space-y-1">
+                    <span className="text-[10px] sm:text-xs font-bold text-[#B8A9D9] block truncate">Agenda 24h</span>
+                    <span className="text-xs sm:text-base font-black text-[#34D399] block whitespace-nowrap">
+                      +R$&nbsp;{agendamentosNoturnos.toLocaleString('pt-BR')}
+                    </span>
+                  </div>
+                  <div className="bg-[#261B35]/90 p-3 sm:p-4 rounded-2xl border border-[#44325E] text-center space-y-1">
+                    <span className="text-[10px] sm:text-xs font-bold text-[#B8A9D9] block truncate">Tempo Poupado</span>
+                    <span className="text-xs sm:text-base font-black text-white block whitespace-nowrap">
+                      ~{horasPoupadas}h/mês
+                    </span>
+                  </div>
+                </div>
+
+                {/* Comparação Vertical */}
+                <div className="bg-[#261B35]/90 p-4 sm:p-6 rounded-2xl border border-[#44325E] space-y-2 sm:space-y-3">
+                  <div className="flex items-center justify-between text-xs sm:text-sm">
+                    <span className="text-gray-400 font-medium">Cenário atual (organização manual):</span>
+                    <span className="font-bold text-gray-200 whitespace-nowrap shrink-0">R$&nbsp;{faturamentoBase.toLocaleString('pt-BR')}/mês</span>
+                  </div>
+                  <div className="h-px bg-[#3E2E52]" />
+                  <div className="flex items-center justify-between text-xs sm:text-sm">
+                    <span className="text-[#D8B4E2] font-bold">Com o Lumê (potencial total):</span>
+                    <span className="font-black text-[#34D399] text-base sm:text-xl whitespace-nowrap shrink-0">
+                      R$&nbsp;{faturamentoComLume.toLocaleString('pt-BR')}/mês
+                    </span>
+                  </div>
+                </div>
+
+                {/* CTAs Finais */}
+                <div className="space-y-2.5 pt-2">
+                  <Link
+                    href="/cadastro"
+                    className="w-full min-h-[54px] sm:min-h-[60px] flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-[#B8A9D9] via-[#C8B8E6] to-[#D8B4E2] hover:opacity-95 text-[#241A32] text-sm sm:text-base font-black shadow-xl transition transform active:scale-[0.99] cursor-pointer text-center px-4"
+                  >
+                    <span>Quero esse resultado na minha agenda</span>
+                    <ArrowRight className="h-4 w-4 stroke-[3]" />
+                  </Link>
+
+                  <button
+                    type="button"
+                    onClick={() => setSimuladorStep(1)}
+                    className="w-full text-center text-xs sm:text-sm font-bold text-[#B8A9D9] hover:text-white transition py-1.5 cursor-pointer"
+                  >
+                    ← Recalcular com outros números
+                  </button>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      </section>
+
       {/* 3. SEÇÃO DE DORES DO DIA A DIA - #dores */}
       <section id="dores" className="py-16 sm:py-24 bg-white border-y border-[#E8DFD8] scroll-mt-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12">
@@ -1143,307 +1444,6 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
               </div>
 
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 6. SIMULADOR INTERATIVO COMPACTO NO MOBILE (JORNADA DE 3 ETAPAS) - #simulador */}
-      <section id="simulador" className="py-8 sm:py-20 bg-[#FBF7F3] border-t border-[#E8DFD8] scroll-mt-16 text-[#30203E]">
-        <div className="mx-auto max-w-3xl px-3.5 sm:px-6">
-          <div className="bg-white p-4 sm:p-10 rounded-2xl sm:rounded-[2rem] border border-[#E8DFD8] shadow-sm space-y-4 sm:space-y-8">
-            
-            {/* Header Compacto com Indicador de Progresso (3 Segmentos) */}
-            <div className="space-y-2.5 sm:space-y-4 border-b border-[#E8DFD8] pb-3.5 sm:pb-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <div className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-[#8C5383]" />
-                  <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-widest text-[#8C5383]">
-                    {simuladorStep === 1 && 'SIMULADOR DE POTENCIAL'}
-                    {simuladorStep === 2 && 'SUA ROTINA HOJE'}
-                    {simuladorStep === 3 && 'SEU POTENCIAL COM O LUMÊ'}
-                  </span>
-                </div>
-                <span className="text-[11px] sm:text-xs font-bold text-[#6B5E7A] bg-[#FBF7F3] px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full border border-[#E8DFD8]">
-                  {simuladorStep} de 3
-                </span>
-              </div>
-
-              {/* Barra de Progresso em 3 Segmentos */}
-              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-0.5" role="progressbar" aria-valuenow={simuladorStep} aria-valuemin={1} aria-valuemax={3}>
-                <div className={`h-1 sm:h-1.5 rounded-full transition-all duration-300 ${simuladorStep >= 1 ? 'bg-[#3D2E4D]' : 'bg-[#E8DFD8]'}`} />
-                <div className={`h-1 sm:h-1.5 rounded-full transition-all duration-300 ${simuladorStep >= 2 ? 'bg-[#3D2E4D]' : 'bg-[#E8DFD8]'}`} />
-                <div className={`h-1 sm:h-1.5 rounded-full transition-all duration-300 ${simuladorStep >= 3 ? 'bg-[#3D2E4D]' : 'bg-[#E8DFD8]'}`} />
-              </div>
-
-              {/* Título & Subtítulo Dinâmicos por Etapa */}
-              <div className="space-y-1 text-left pt-1">
-                <h3 className="text-lg sm:text-3xl font-bold text-[#30203E] tracking-tight leading-snug sm:leading-tight">
-                  {simuladorStep === 1 && 'Descubra quanto sua agenda pode recuperar'}
-                  {simuladorStep === 2 && 'Onde sua agenda pode ganhar fôlego'}
-                  {simuladorStep === 3 && 'Sua agenda pode recuperar até'}
-                </h3>
-                <p className="text-[11px] sm:text-sm text-[#6B5E7A] leading-snug sm:leading-relaxed">
-                  {simuladorStep === 1 && 'Responda a duas perguntas rápidas e veja o potencial da sua rotina.'}
-                  {simuladorStep === 2 && 'Pequenos vazamentos de tempo e organização somam oportunidades no mês.'}
-                  {simuladorStep === 3 && 'Mais organização para recuperar oportunidades e focar no atendimento.'}
-                </p>
-              </div>
-            </div>
-
-            {/* ETAPA 1: DADOS DA ROTINA */}
-            {simuladorStep === 1 && (
-              <div className="space-y-3.5 sm:space-y-6 text-left animate-in fade-in duration-200">
-                {/* Card 1: Atendimentos por Semana */}
-                <div className="bg-[#FAF8F5] p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-[#E8DFD8] space-y-1.5 sm:space-y-3">
-                  <div className="flex items-center justify-between gap-1">
-                    <label htmlFor="sim-clientes-slider" className="text-xs sm:text-sm font-bold text-[#30203E]">
-                      Atendimentos por semana
-                    </label>
-                    <span className="text-base sm:text-xl font-extrabold text-[#8C5383]">
-                      {clientesSemana} clientes
-                    </span>
-                  </div>
-                  <p className="text-[10px] sm:text-[11px] text-[#6B5E7A] font-medium">
-                    aproximadamente ~{clientesMes} atendimentos por mês
-                  </p>
-
-                  <div className="pt-1 sm:pt-2">
-                    <input
-                      id="sim-clientes-slider"
-                      type="range"
-                      min="5"
-                      max="80"
-                      step="5"
-                      value={clientesSemana}
-                      aria-label="Atendimentos por semana"
-                      aria-valuemin={5}
-                      aria-valuemax={80}
-                      aria-valuenow={clientesSemana}
-                      aria-valuetext={`${clientesSemana} clientes por semana`}
-                      onChange={(e) => setClientesSemana(Number(e.target.value))}
-                      className="w-full h-2.5 sm:h-3 bg-[#E8DFD8] rounded-lg appearance-none cursor-pointer accent-[#8C5383]"
-                    />
-                    <div className="flex justify-between text-[10px] sm:text-[11px] text-[#6B5E7A] font-semibold pt-0.5 sm:pt-1">
-                      <span>5 clientes</span>
-                      <span>40 clientes</span>
-                      <span>80+ clientes</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card 2: Valor Médio por Atendimento */}
-                <div className="bg-[#FAF8F5] p-3.5 sm:p-6 rounded-xl sm:rounded-2xl border border-[#E8DFD8] space-y-1.5 sm:space-y-3">
-                  <div className="flex items-center justify-between gap-1">
-                    <label htmlFor="sim-ticket-slider" className="text-xs sm:text-sm font-bold text-[#30203E]">
-                      Valor médio por atendimento
-                    </label>
-                    <span className="text-base sm:text-xl font-extrabold text-[#30203E]">
-                      R$ {ticketMedio},00
-                    </span>
-                  </div>
-                  <p className="text-[10px] sm:text-[11px] text-[#6B5E7A] font-medium">
-                    ticket médio estimado por serviço
-                  </p>
-
-                  <div className="pt-1 sm:pt-2">
-                    <input
-                      id="sim-ticket-slider"
-                      type="range"
-                      min="20"
-                      max="350"
-                      step="5"
-                      value={ticketMedio}
-                      aria-label="Valor médio por atendimento"
-                      aria-valuemin={20}
-                      aria-valuemax={350}
-                      aria-valuenow={ticketMedio}
-                      aria-valuetext={`R$ ${ticketMedio}`}
-                      onChange={(e) => setTicketMedio(Number(e.target.value))}
-                      className="w-full h-2.5 sm:h-3 bg-[#E8DFD8] rounded-lg appearance-none cursor-pointer accent-[#3D2E4D]"
-                    />
-                    <div className="flex justify-between text-[10px] sm:text-[11px] text-[#6B5E7A] font-semibold pt-0.5 sm:pt-1">
-                      <span>R$ 20</span>
-                      <span>R$ 150</span>
-                      <span>R$ 350+</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Rodapé Etapa 1 */}
-                <div className="space-y-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setSimuladorStep(2)}
-                    className="w-full min-h-[46px] sm:min-h-[56px] flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-[#3D2E4D] hover:bg-[#2E223B] text-white text-xs sm:text-base font-bold shadow-md transition transform active:scale-[0.99] cursor-pointer"
-                  >
-                    <span>Continuar</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-                  <p className="text-center text-[10px] sm:text-[11px] text-[#6B5E7A] font-medium">
-                    Leva menos de 1 minuto.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* ETAPA 2: ONDE EXISTE POTENCIAL */}
-            {simuladorStep === 2 && (
-              <div className="space-y-3 sm:space-y-4 text-left animate-in fade-in duration-200">
-                {/* 3 Cards Empilhados */}
-                <div className="space-y-2 sm:space-y-3">
-                  {/* Card 1: Faltas e Cancelamentos */}
-                  <div className="bg-[#FAF8F5] p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-[#E8DFD8] flex items-start gap-2.5 sm:gap-4">
-                    <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg sm:rounded-xl bg-[#FAF0F5] text-[#8C5383] flex items-center justify-center shrink-0 border border-[#E8DFD8]">
-                      <CalendarX className="h-4 w-4 sm:h-5 sm:w-5" />
-                    </div>
-                    <div className="space-y-0.5 sm:space-y-1 flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1">
-                        <h4 className="text-xs sm:text-sm font-bold text-[#30203E]">Faltas e cancelamentos</h4>
-                        <span className="text-[11px] sm:text-xs font-extrabold text-[#8C5383] shrink-0">
-                          ~R$ {faltasRecuperadas.toLocaleString('pt-BR')}/mês
-                        </span>
-                      </div>
-                      <p className="text-[10px] sm:text-xs text-[#6B5E7A] leading-tight sm:leading-relaxed">
-                        Lembretes e confirmações no WhatsApp ajudam a reduzir horários vazios na sua grade.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Card 2: Tempo no WhatsApp */}
-                  <div className="bg-[#FAF8F5] p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-[#E8DFD8] flex items-start gap-2.5 sm:gap-4">
-                    <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg sm:rounded-xl bg-[#FAF0F5] text-[#8C5383] flex items-center justify-center shrink-0 border border-[#E8DFD8]">
-                      <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5" />
-                    </div>
-                    <div className="space-y-0.5 sm:space-y-1 flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1">
-                        <h4 className="text-xs sm:text-sm font-bold text-[#30203E]">Tempo no WhatsApp</h4>
-                        <span className="text-[11px] sm:text-xs font-extrabold text-[#8C5383] shrink-0">
-                          ~{horasPoupadas}h poupadas/mês
-                        </span>
-                      </div>
-                      <p className="text-[10px] sm:text-xs text-[#6B5E7A] leading-tight sm:leading-relaxed">
-                        Sua cliente agenda sozinha 24h sem você precisar pausar atendimentos.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Card 3: Fora do Expediente */}
-                  <div className="bg-[#FAF8F5] p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-[#E8DFD8] flex items-start gap-2.5 sm:gap-4">
-                    <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg sm:rounded-xl bg-[#FAF0F5] text-[#8C5383] flex items-center justify-center shrink-0 border border-[#E8DFD8]">
-                      <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
-                    </div>
-                    <div className="space-y-0.5 sm:space-y-1 flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1">
-                        <h4 className="text-xs sm:text-sm font-bold text-[#30203E]">Fora do expediente</h4>
-                        <span className="text-[11px] sm:text-xs font-extrabold text-[#8C5383] shrink-0">
-                          ~R$ {agendamentosNoturnos.toLocaleString('pt-BR')}/mês
-                        </span>
-                      </div>
-                      <p className="text-[10px] sm:text-xs text-[#6B5E7A] leading-tight sm:leading-relaxed">
-                        Sua página pública continua recebendo pedidos à noite ou finais de semana.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Rodapé Etapa 2 */}
-                <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 pt-2 sm:pt-4 border-t border-[#E8DFD8]">
-                  <button
-                    type="button"
-                    onClick={() => setSimuladorStep(1)}
-                    className="w-full sm:w-auto py-2 sm:py-3 px-3 text-[11px] sm:text-xs font-bold text-[#6B5E7A] hover:text-[#30203E] transition cursor-pointer text-center"
-                  >
-                    ← Voltar e ajustar dados
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSimuladorStep(3)}
-                    className="w-full sm:flex-1 min-h-[46px] sm:min-h-[56px] flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-[#3D2E4D] hover:bg-[#2E223B] text-white text-xs sm:text-base font-bold shadow-md transition cursor-pointer"
-                  >
-                    <span>Ver meu potencial</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ETAPA 3: RESULTADO */}
-            {simuladorStep === 3 && (
-              <div className="space-y-3.5 sm:space-y-6 text-left animate-in fade-in duration-200">
-                {/* Destaque Principal do Potencial */}
-                <div className="bg-[#FAF0F5] p-4 sm:p-8 rounded-2xl sm:rounded-3xl border border-[#ECCAC0] text-center space-y-1 sm:space-y-2">
-                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#8C5383]">
-                    Potencial de Recuperação Mensal
-                  </span>
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-3xl sm:text-5xl font-black text-[#30203E] tracking-tight">
-                      R$ {ganhoAdicional.toLocaleString('pt-BR')}
-                    </span>
-                    <span className="text-xs sm:text-lg font-bold text-[#6B5E7A]">/mês</span>
-                  </div>
-                  <p className="text-[11px] sm:text-xs text-[#6B5E7A] font-medium max-w-md mx-auto">
-                    Retorno estimado de <strong className="text-[#30203E]">~{roiMultiplicador}x</strong> sobre a assinatura mensal do Lumê.
-                  </p>
-                </div>
-
-                {/* 3 Indicadores de Apoio Compactos */}
-                <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
-                  <div className="bg-[#FAF8F5] p-2 sm:p-3.5 rounded-xl sm:rounded-2xl border border-[#E8DFD8] text-center space-y-0.5">
-                    <span className="text-[9px] sm:text-[11px] font-bold text-[#6B5E7A] block truncate">Faltas</span>
-                    <span className="text-xs sm:text-sm font-extrabold text-emerald-700 block">
-                      +R$ {faltasRecuperadas.toLocaleString('pt-BR')}
-                    </span>
-                  </div>
-                  <div className="bg-[#FAF8F5] p-2 sm:p-3.5 rounded-xl sm:rounded-2xl border border-[#E8DFD8] text-center space-y-0.5">
-                    <span className="text-[9px] sm:text-[11px] font-bold text-[#6B5E7A] block truncate">24 horas</span>
-                    <span className="text-xs sm:text-sm font-extrabold text-emerald-700 block">
-                      +R$ {agendamentosNoturnos.toLocaleString('pt-BR')}
-                    </span>
-                  </div>
-                  <div className="bg-[#FAF8F5] p-2 sm:p-3.5 rounded-xl sm:rounded-2xl border border-[#E8DFD8] text-center space-y-0.5">
-                    <span className="text-[9px] sm:text-[11px] font-bold text-[#6B5E7A] block truncate">Tempo</span>
-                    <span className="text-xs sm:text-sm font-extrabold text-[#8C5383] block">
-                      ~{horasPoupadas}h/mês
-                    </span>
-                  </div>
-                </div>
-
-                {/* Comparação Vertical Compacta */}
-                <div className="bg-[#FAF8F5] p-3 sm:p-6 rounded-xl sm:rounded-2xl border border-[#E8DFD8] space-y-1.5 sm:space-y-3">
-                  <div className="flex items-center justify-between text-[11px] sm:text-sm">
-                    <span className="text-[#6B5E7A] font-medium">Cenário atual (manual):</span>
-                    <span className="font-bold text-[#30203E]">R$ {faturamentoBase.toLocaleString('pt-BR')}/mês</span>
-                  </div>
-                  <div className="h-px bg-[#E8DFD8]" />
-                  <div className="flex items-center justify-between text-[11px] sm:text-sm">
-                    <span className="text-[#8C5383] font-bold">Com o Lumê (potencial):</span>
-                    <span className="font-extrabold text-emerald-700 text-xs sm:text-base">
-                      R$ {faturamentoComLume.toLocaleString('pt-BR')}/mês
-                    </span>
-                  </div>
-                </div>
-
-                {/* CTAs Finais */}
-                <div className="space-y-2 pt-1">
-                  <Link
-                    href="/cadastro"
-                    className="w-full min-h-[46px] sm:min-h-[56px] flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-[#3D2E4D] hover:bg-[#2E223B] text-white text-xs sm:text-base font-bold shadow-md transition transform active:scale-[0.99] cursor-pointer"
-                  >
-                    <span>Quero organizar minha agenda</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-
-                  <button
-                    type="button"
-                    onClick={() => setSimuladorStep(1)}
-                    className="w-full text-center text-[10px] sm:text-xs font-bold text-[#6B5E7A] hover:text-[#30203E] transition py-1 cursor-pointer"
-                  >
-                    ← Recalcular com outros números
-                  </button>
-                </div>
-              </div>
-            )}
-
           </div>
         </div>
       </section>
