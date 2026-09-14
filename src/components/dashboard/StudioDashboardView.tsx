@@ -209,6 +209,13 @@ function CreateStudioSection({ defaultSlug }: { defaultSlug: string }) {
           Reúna profissionais parceiras, compartilhe uma vitrine coletiva com link único e gerencie
           agendamentos e repasses em um único painel.
         </p>
+        <div className="pt-1 flex flex-wrap items-center justify-center gap-2 text-[11px] text-[#4A3F5C] font-bold">
+          <span>Plano Studio: R$ 169/mês</span>
+          <span>•</span>
+          <span>Até 6 profissionais inclusas</span>
+          <span>•</span>
+          <span>+R$ 29/mês por vaga extra</span>
+        </div>
       </div>
 
       <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-10 shadow-xs">
@@ -1600,6 +1607,39 @@ function OwnerStudioSection({
       {/* ==================================================================== */}
       {activeTab === 'equipe' && (
         <div className="space-y-8 animate-in fade-in duration-200">
+          {/* Card de Vagas do Plano Studio (Até 6 inclusas, +R$ 29 por extra) */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-3xl bg-purple-50/70 border border-[#B8A9D9]/50 text-[#4A3F5C] shadow-2xs">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-2xl bg-[#B8A9D9]/30 text-[#4A3F5C] flex items-center justify-center shrink-0">
+                <Users className="h-5 w-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-[#4A3F5C]">
+                  {membros.length <= 6
+                    ? `Plano Studio: ${membros.length} de 6 vagas inclusas`
+                    : `Plano Studio: 6 inclusas + ${membros.length - 6} adicionais`}
+                </h4>
+                <p className="text-[11px] text-gray-500">
+                  {membros.length <= 6
+                    ? 'Sua assinatura base de R$ 169/mês cobre até 6 profissionais sem custo para a equipe.'
+                    : `Base de R$ 169/mês + R$ ${(membros.length - 6) * 29},00/mês pelas ${membros.length - 6} profissionais extras (+R$ 29/mês por vaga).`}
+                </p>
+              </div>
+            </div>
+
+            <div className="self-start sm:self-auto shrink-0">
+              {membros.length <= 6 ? (
+                <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100/90 px-3 py-1 rounded-full border border-emerald-200">
+                  {6 - membros.length} {6 - membros.length === 1 ? 'vaga restante' : 'vagas restantes'}
+                </span>
+              ) : (
+                <span className="text-[11px] font-bold text-purple-900 bg-purple-100/90 px-3 py-1 rounded-full border border-purple-200">
+                  Total Studio: R$ {169 + (membros.length - 6) * 29},00/mês
+                </span>
+              )}
+            </div>
+          </div>
+
           {/* Card Único e Central de Convite por Link (Busca por email removida) */}
           <div className="rounded-3xl bg-white border border-gray-200/80 p-6 sm:p-8 shadow-xs space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">

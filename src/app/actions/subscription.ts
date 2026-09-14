@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 
 export interface SubscriptionData {
   statusConta: 'trial' | 'ativa' | 'atrasada' | 'suspensa' | 'cortesia' | 'cancelada'
-  planoTipo: 'mensal' | 'anual' | 'cortesia'
+  planoTipo: 'mensal' | 'anual' | 'cortesia' | 'studio'
   valorMensalidade: number
   trialEndsAt: string | null
   proximoVencimento: string | null
@@ -148,7 +148,7 @@ export async function getProfissionalSubscriptionData(): Promise<SubscriptionDat
 /**
  * Altera o plano de assinatura da profissional (Mensal vs Anual)
  */
-export async function changeProfissionalPlan(newPlanoSlug: 'mensal' | 'anual') {
+export async function changeProfissionalPlan(newPlanoSlug: 'mensal' | 'anual' | 'studio') {
   const supabase = await createClient()
   const {
     data: { user },

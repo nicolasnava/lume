@@ -42,7 +42,7 @@ export async function getSaaSFinancialDashboardData() {
   // MRR = Soma das mensalidades das contas ATIVAS (ou equivalente mensal para planos anuais)
   const mrr = allProfs.reduce((acc, p) => {
     if (p.status_conta === 'ativa') {
-      const valor = Number(p.valor_mensalidade || 39.90)
+      const valor = Number(p.valor_mensalidade || 69.00)
       if (p.plano_tipo === 'anual') {
         // Se for anual, a mensalidade equivalente é o valor total dividido por 12
         return acc + valor / 12
@@ -111,13 +111,13 @@ export async function getSaaSFinancialDashboardData() {
   // 1) Valor de renovações das profissionais ativas
   const renovacoes30d = allProfs
     .filter((p) => p.status_conta === 'ativa')
-    .reduce((acc, p) => acc + Number(p.valor_mensalidade || 39.90), 0)
+    .reduce((acc, p) => acc + Number(p.valor_mensalidade || 69.00), 0)
 
   const renovacoes90d = renovacoes30d * 3
 
   // 2) Projeção de receita dos trials ativos que devem converter
   const taxaConversaoDecimal = trialConversionPct > 0 ? trialConversionPct / 100 : 0.5
-  const trialsPrevisto30d = trialCount * taxaConversaoDecimal * 39.90
+  const trialsPrevisto30d = trialCount * taxaConversaoDecimal * 69.00
 
   // Total Projetado
   const faturamentoFuturo30d = Math.round((renovacoes30d + trialsPrevisto30d + faturasPendentesValor) * 100) / 100
@@ -133,7 +133,7 @@ export async function getSaaSFinancialDashboardData() {
     const cutoffDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59)
     const mrrNoMes = allProfs
       .filter((p) => new Date(p.created_at) <= cutoffDate && (p.status_conta === 'ativa' || p.status_conta === 'trial'))
-      .reduce((acc, p) => acc + (p.status_conta === 'ativa' ? Number(p.valor_mensalidade || 39.90) : 0), 0)
+      .reduce((acc, p) => acc + (p.status_conta === 'ativa' ? Number(p.valor_mensalidade || 69.00) : 0), 0)
 
     mrrChartData.push({
       mes: monthLabel,

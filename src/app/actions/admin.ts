@@ -151,7 +151,7 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
   const mrrEstimado = activeProfs
     .filter((p) => p.status_conta === 'ativa')
     .reduce((sum, p) => {
-      const val = Number(p.valor_mensalidade || 39.90)
+      const val = Number(p.valor_mensalidade || 69.00)
       return sum + (p.plano_tipo === 'anual' ? val / 12 : val)
     }, 0)
 
@@ -300,7 +300,7 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5)
     .map((p) => {
-      const mrrVal = p.status_conta === 'ativa' ? Number(p.valor_mensalidade || 39.90) : 0
+      const mrrVal = p.status_conta === 'ativa' ? Number(p.valor_mensalidade || 69.00) : 0
       return {
         id: p.id,
         nome: p.nome,
@@ -978,7 +978,7 @@ export async function getAdminAnalyticsData() {
     const profsAtivasMes = (profs || []).filter(
       (p) => new Date(p.created_at) <= monthEnd && p.status_conta === 'ativa'
     )
-    const mrrMes = profsAtivasMes.reduce((sum, p) => sum + Number(p.valor_mensalidade || 39.90), 0)
+    const mrrMes = profsAtivasMes.reduce((sum, p) => sum + Number(p.valor_mensalidade || 69.00), 0)
 
     // Agendamentos concluídos no mês
     const agendamentosMes = (agendamentos || []).filter((a) => {

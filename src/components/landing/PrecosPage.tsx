@@ -75,107 +75,165 @@ export default function PrecosPage({ planPrice = 69.90, trialDays = 30 }: Precos
         </div>
       </section>
 
-      {/* Card Principal de Preço */}
+      {/* Grid de Planos: Solo vs Studio */}
       <section className="py-8 pb-16">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <div className="bg-white rounded-3xl p-8 sm:p-12 border border-[#E8DFD8] shadow-2xl space-y-8 text-center relative">
-            <div className="space-y-3 border-b border-[#E8DFD8] pb-6">
-              <h2 className="text-2xl sm:text-3xl font-bold text-[#3D2E4D]">Assinatura Mensal Completa</h2>
-              <p className="text-xs sm:text-sm text-[#6B5E7A]">
-                Desenvolvido especialmente para o fluxo de quem atende de forma autônoma.
-              </p>
-              <div className="flex items-baseline justify-center gap-1 pt-2">
-                <span className="text-5xl sm:text-6xl font-extrabold text-[#3D2E4D]">
-                  R$ {planPrice.toFixed(2).replace('.', ',')}
-                </span>
-                <span className="text-base text-[#6B5E7A] font-semibold">/mês</span>
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+            
+            {/* CARD 1: PLANO SOLO */}
+            <div className="bg-white rounded-3xl p-8 sm:p-10 border border-[#E8DFD8] shadow-lg space-y-7 flex flex-col justify-between relative">
+              <div className="space-y-6">
+                <div className="space-y-2 border-b border-[#E8DFD8] pb-6 text-center">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F3F0F7] text-[#4A3F5C] text-[11px] font-bold uppercase tracking-wider mb-2">
+                    <span>Profissional Autônoma</span>
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-[#3D2E4D]">Plano Solo</h2>
+                  <p className="text-xs sm:text-sm text-[#6B5E7A]">
+                    Tudo o que você precisa para atender de forma individual com excelência.
+                  </p>
+                  <div className="flex items-baseline justify-center gap-1 pt-3">
+                    <span className="text-4xl sm:text-5xl font-extrabold text-[#3D2E4D]">
+                      R$ {planPrice.toFixed(2).replace('.', ',')}
+                    </span>
+                    <span className="text-sm text-[#6B5E7A] font-semibold">/mês</span>
+                  </div>
+                  <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-[11px] text-[#6B5E7A] font-medium">
+                    <span>Teste grátis por {trialDays} dias</span>
+                    <span>•</span>
+                    <span>Sem taxa de adesão</span>
+                    <span>•</span>
+                    <span>Cancele quando quiser</span>
+                  </div>
+                </div>
+
+                {/* Lista Solo */}
+                <div className="space-y-3 text-left">
+                  <h3 className="text-xs font-bold text-[#3D2E4D] uppercase tracking-wider">
+                    Recursos incluídos no Solo:
+                  </h3>
+                  <ul className="space-y-3 text-xs font-medium text-[#3D2E4D]">
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>1 Profissional:</strong> acesso completo à sua conta e agenda pessoal.</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>Vitrine digital individual:</strong> link exclusivo com suas fotos e serviços.</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>Agendamentos e clientes ilimitados:</strong> sem surpresas no fim do mês.</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>Lembretes e confirmações no WhatsApp:</strong> redução de faltas e no-show.</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>Controle financeiro pessoal:</strong> faturamento, despesas e metas mensais.</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>Google Calendar em 2 vias:</strong> sincronização direta no seu celular.</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>Gestão de combos, cupons e avaliações:</strong> fidelização completa.</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
-              <div className="pt-2 flex flex-wrap items-center justify-center gap-3 text-xs text-[#6B5E7A] font-medium">
-                <span>Teste grátis por {trialDays} dias</span>
-                <span>•</span>
-                <span>Sem taxa de adesão</span>
-                <span>•</span>
-                <span>Cancelamento simples</span>
+
+              <div className="pt-4 border-t border-[#E8DFD8]">
+                <Link
+                  href="/cadastro"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#4A3F5C] py-3.5 text-xs sm:text-sm font-bold text-white shadow-md hover:bg-[#393047] transition transform hover:-translate-y-0.5 cursor-pointer"
+                >
+                  <span>Começar Teste Grátis Solo</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
               </div>
             </div>
 
-            {/* Lista Escaneável de Funcionalidades */}
-            <div className="space-y-4 text-left">
-              <h3 className="text-xs font-extrabold text-[#3D2E4D] uppercase tracking-wider border-b border-[#E8DFD8] pb-2.5">
-                Tudo incluído no seu plano:
-              </h3>
+            {/* CARD 2: PLANO STUDIO */}
+            <div className="bg-white rounded-3xl p-8 sm:p-10 border-2 border-[#B8A9D9] shadow-xl space-y-7 flex flex-col justify-between relative ring-2 ring-[#B8A9D9]/20">
+              <span className="absolute -top-3.5 right-6 px-4 py-1 rounded-full bg-[#4A3F5C] text-white text-[10px] font-extrabold uppercase tracking-wider shadow-sm">
+                Mais Completo para Espaços
+              </span>
 
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3.5 text-xs font-medium text-[#3D2E4D]">
-                <li className="flex items-start gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span><strong>Agendamento online:</strong> vitrine pública 24h sem exigir login da cliente.</span>
-                </li>
+              <div className="space-y-6">
+                <div className="space-y-2 border-b border-[#E8DFD8] pb-6 text-center">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#B8A9D9]/30 text-[#4A3F5C] text-[11px] font-bold uppercase tracking-wider mb-2">
+                    <span>Para Salões, Esmalterias & Studios</span>
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-[#3D2E4D]">Plano Studio</h2>
+                  <p className="text-xs sm:text-sm text-[#6B5E7A]">
+                    Controle total da sua equipe, repasses automáticos e recepção unificada.
+                  </p>
+                  <div className="flex items-baseline justify-center gap-1 pt-3">
+                    <span className="text-4xl sm:text-5xl font-extrabold text-[#3D2E4D]">
+                      R$ 169,00
+                    </span>
+                    <span className="text-sm text-[#6B5E7A] font-semibold">/mês</span>
+                  </div>
+                  <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-[11px] text-[#4A3F5C] font-semibold">
+                    <span>Até 6 profissionais inclusas</span>
+                    <span>•</span>
+                    <span>+R$ 29/mês por profissional extra</span>
+                  </div>
+                </div>
 
-                <li className="flex items-start gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span><strong>Vitrine personalizada:</strong> seu link exclusivo (<code className="text-[10px] bg-[#FAF8F5] px-1 rounded border border-[#E8DFD8]">/p/sua-marca</code>), foto e capa.</span>
-                </li>
+                {/* Lista Studio */}
+                <div className="space-y-3 text-left">
+                  <h3 className="text-xs font-bold text-[#3D2E4D] uppercase tracking-wider">
+                    Tudo do Solo mais recursos exclusivos de Studio:
+                  </h3>
+                  <ul className="space-y-3 text-xs font-medium text-[#3D2E4D]">
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>Equipe inclusa:</strong> até 6 profissionais (sem custo para as profissionais da equipe).</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>Fechamento de comissões automático:</strong> cálculo exato de repasses em 1 clique.</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>Extrato no WhatsApp:</strong> envie o demonstrativo de comissão para a parceira.</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>Agenda da recepção unificada:</strong> visualize todos os horários e cadeiras do espaço.</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>Vitrine coletiva do Studio:</strong> link único (<code className="text-[10px] bg-[#FAF8F5] px-1 rounded border border-[#E8DFD8]">/studio/seu-espaco</code>) com agendamento por profissional ou serviço.</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>Agendamento assistido:</strong> recepção ou dona podem marcar horários pela equipe.</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>Dois modelos de negócio:</strong> Gestão Completa (Comissões) ou Aluguel de Cadeira (Coworking).</span>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span><strong>Termo de integração digital (LGPD):</strong> respaldo jurídico alinhado à Lei do Salão-Parceiro.</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
 
-                <li className="flex items-start gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span><strong>Lembretes no WhatsApp:</strong> avisos automáticos prévios para evitar no-show.</span>
-                </li>
-
-                <li className="flex items-start gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span><strong>Histórico de clientes:</strong> ficha com atendimentos anteriores e preferências.</span>
-                </li>
-
-                <li className="flex items-start gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span><strong>Classificação inteligente:</strong> clientes VIPs, Frequentes e Inativas.</span>
-                </li>
-
-                <li className="flex items-start gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span><strong>Retorno de clientes:</strong> alertas para manutenção periódica de procedimentos.</span>
-                </li>
-
-                <li className="flex items-start gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span><strong>Gestão de serviços:</strong> cadastro ilimitado com fotos, durações e preços.</span>
-                </li>
-
-                <li className="flex items-start gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span><strong>Disponibilidade:</strong> controle de expediente, almoço e bloqueios de folgas.</span>
-                </li>
-
-                <li className="flex items-start gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span><strong>Controle financeiro:</strong> faturamento do dia/mês e receita futura estimada.</span>
-                </li>
-
-                <li className="flex items-start gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span><strong>Avaliações e reputação:</strong> depoimentos reais e nota média na vitrine.</span>
-                </li>
-
-                <li className="flex items-start gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span><strong>Google Calendar em 2 vias:</strong> sincronização direta com sua agenda pessoal.</span>
-                </li>
-
-                <li className="flex items-start gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span><strong>Acesso pelo celular:</strong> instalação direta na tela inicial (PWA ultra-leve).</span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="pt-4">
-              <Link
-                href="/cadastro"
-                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#3D2E4D] py-4 text-sm font-bold text-white shadow-xl hover:bg-[#2E223B] transition transform hover:-translate-y-0.5 cursor-pointer"
-              >
-                <span>Começar teste grátis</span>
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+              <div className="pt-4 border-t border-[#E8DFD8]">
+                <Link
+                  href="/cadastro?plano=studio"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#B8A9D9] hover:bg-[#a695ca] py-3.5 text-xs sm:text-sm font-bold text-[#4A3F5C] shadow-md transition transform hover:-translate-y-0.5 cursor-pointer"
+                >
+                  <span>Criar Meu Studio no Lumê</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
             </div>
 
           </div>

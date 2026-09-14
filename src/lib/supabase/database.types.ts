@@ -31,7 +31,7 @@ export type Database = {
           janela_agendamento_dias?: number
           status_conta?: 'trial' | 'ativa' | 'atrasada' | 'suspensa' | 'cortesia' | 'cancelada'
           notas_internas?: string | null
-          plano_tipo?: 'mensal' | 'anual' | 'cortesia'
+          plano_tipo?: 'mensal' | 'anual' | 'cortesia' | 'studio'
           valor_mensalidade?: number
           trial_ends_at?: string | null
           proximo_vencimento?: string | null
@@ -70,7 +70,7 @@ export type Database = {
           janela_agendamento_dias?: number
           status_conta?: 'trial' | 'ativa' | 'atrasada' | 'suspensa' | 'cortesia' | 'cancelada'
           notas_internas?: string | null
-          plano_tipo?: 'mensal' | 'anual' | 'cortesia'
+          plano_tipo?: 'mensal' | 'anual' | 'cortesia' | 'studio'
           valor_mensalidade?: number
           trial_ends_at?: string | null
           proximo_vencimento?: string | null
@@ -109,7 +109,7 @@ export type Database = {
           janela_agendamento_dias?: number
           status_conta?: 'trial' | 'ativa' | 'atrasada' | 'suspensa' | 'cortesia' | 'cancelada'
           notas_internas?: string | null
-          plano_tipo?: 'mensal' | 'anual' | 'cortesia'
+          plano_tipo?: 'mensal' | 'anual' | 'cortesia' | 'studio'
           valor_mensalidade?: number
           trial_ends_at?: string | null
           proximo_vencimento?: string | null
