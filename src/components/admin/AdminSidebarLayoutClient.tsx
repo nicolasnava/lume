@@ -6,20 +6,18 @@ import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import {
   LayoutDashboard,
-  Users,
-  DollarSign,
-  History,
   ArrowLeft,
-  Sun,
-  Moon,
   Menu,
   X,
-  Search,
-  BarChart3,
-  MessageSquare,
-  Megaphone,
-  Star,
-  Sparkles,
+  Bot,
+  Bell,
+  LogOut,
+  Users,
+  Building2,
+  CreditCard,
+  TrendingUp,
+  ShieldCheck,
+  Sliders,
 } from 'lucide-react'
 
 import AdminAiChatDrawer from './AdminAiChatDrawer'
@@ -38,31 +36,18 @@ export default function AdminSidebarLayoutClient({
   children,
 }: AdminSidebarLayoutClientProps) {
   const pathname = usePathname()
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isChatOpen, setIsChatOpen] = useState(false)
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('lume_admin_theme') as 'light' | 'dark' | null
-    if (savedTheme) {
-      setTheme(savedTheme)
-    } else {
-      setTheme('dark')
-      localStorage.setItem('lume_admin_theme', 'dark')
-    }
-  }, [])
-
+  // Painel admin sempre em modo escuro
   useEffect(() => {
     const handleOpenAi = () => setIsChatOpen(true)
     window.addEventListener('open-admin-ai-chat', handleOpenAi)
-    return () => window.removeEventListener('open-admin-ai-chat', handleOpenAi)
+    document.documentElement.classList.add('dark')
+    return () => {
+      window.removeEventListener('open-admin-ai-chat', handleOpenAi)
+    }
   }, [])
-
-  const toggleTheme = () => {
-    const nextTheme = theme === 'light' ? 'dark' : 'light'
-    setTheme(nextTheme)
-    localStorage.setItem('lume_admin_theme', nextTheme)
-  }
 
   const navItems = [
     {
@@ -78,235 +63,166 @@ export default function AdminSidebarLayoutClient({
       active: pathname.startsWith('/admin/profissionais'),
     },
     {
-      label: 'Financeiro',
+      label: 'Estúdios',
+      href: '/admin/estudios',
+      icon: Building2,
+      active: pathname.startsWith('/admin/estudios'),
+    },
+    {
+      label: 'Receita',
       href: '/admin/financeiro',
-      icon: DollarSign,
-      active: pathname.startsWith('/admin/financeiro'),
+      icon: CreditCard,
+      active: pathname === '/admin/financeiro',
     },
     {
-      label: 'Análises',
-      href: '/admin/analises',
-      icon: BarChart3,
-      active: pathname.startsWith('/admin/analises'),
-    },
-    {
-      label: 'Feedback',
-      href: '/admin/feedback',
-      icon: MessageSquare,
-      active: pathname.startsWith('/admin/feedback'),
+      label: 'Retenção',
+      href: '/admin/retencao',
+      icon: TrendingUp,
+      active: pathname === '/admin/retencao',
     },
     {
       label: 'Avisos',
       href: '/admin/avisos',
-      icon: Megaphone,
-      active: pathname.startsWith('/admin/avisos'),
+      icon: Bell,
+      active: pathname === '/admin/avisos',
     },
     {
-      label: 'NPS',
-      href: '/admin/nps',
-      icon: Star,
-      active: pathname.startsWith('/admin/nps'),
+      label: 'Segurança',
+      href: '/admin/seguranca',
+      icon: ShieldCheck,
+      active: pathname.startsWith('/admin/seguranca'),
     },
     {
-      label: 'Novidades',
-      href: '/admin/novidades',
-      icon: Sparkles,
-      active: pathname.startsWith('/admin/novidades'),
-    },
-    {
-      label: 'Auditoria',
-      href: '/admin/logs',
-      icon: History,
-      active: pathname.startsWith('/admin/logs'),
+      label: 'Configurações',
+      href: '/admin/configuracoes',
+      icon: Sliders,
+      active: pathname.startsWith('/admin/configuracoes'),
     },
   ]
 
-  const isDark = theme === 'dark'
-
   return (
-    <div
-      className={`min-h-screen font-sans flex flex-col md:flex-row transition-colors duration-300 ${
-        isDark ? 'bg-[#111111] text-[#F5F5F4] dark' : 'bg-[#FAF7F5] text-slate-800'
-      }`}
-      style={{ fontFamily: "'Inter', system-ui, -apple-system, sans-serif" }}
-    >
-      {/* 1. SIDEBAR LATERAL FIXA À ESQUERDA (DARK MODE EXECUTIVO) */}
-      <aside
-        className={`hidden md:flex w-64 flex-col justify-between p-5 sticky top-0 h-screen shrink-0 border-r transition-colors duration-300 ${
-          isDark
-            ? 'bg-[#161616] border-white/[0.06] text-[#9C9C9F]'
-            : 'bg-white border-slate-200 text-slate-700'
-        }`}
-      >
+    <div className="min-h-screen bg-[#FAF7F5] dark:bg-[#0E0B14] text-slate-800 dark:text-[#F8F5FA] flex flex-col md:flex-row antialiased font-sans transition-colors duration-200">
+      {/* 1. SIDEBAR LATERAL FIXA À ESQUERDA (ESTILO LUMÊ LUXO REFINADO) */}
+      <aside className="hidden md:flex w-68 flex-col justify-between p-4 sticky top-0 h-screen shrink-0 bg-white dark:bg-[#15111F] border-r border-gray-200/80 dark:border-white/[0.08] shadow-2xs overflow-y-auto">
         <div className="space-y-6">
-          {/* Logo Oficial do Lumê */}
-          <div className="px-1 pt-1 pb-1">
-            <Link href="/admin" className="flex items-center gap-2.5">
+          {/* Logo Oficial do Lumê (versão clara) */}
+          <div className="px-2 pt-2 flex items-center">
+            <Link href="/admin" className="flex items-center">
               <Image
-                src={isDark ? '/assets/logo_branca.webp' : '/assets/lume_logo.webp'}
-                alt="Lumê Logo Oficial"
-                width={125}
-                height={38}
+                src="/assets/logo_branca.webp"
+                alt="Lumê"
+                width={140}
+                height={42}
                 priority
                 className="h-auto w-auto max-h-9 object-contain"
               />
             </Link>
           </div>
 
-          {/* Campo de Busca Rápida no Topo da Sidebar */}
-          <div className="relative px-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#9C9C9F]" />
-            <input
-              type="text"
-              placeholder="Buscar no painel..."
-              className={`w-full rounded-xl text-xs font-medium pl-9 pr-3 py-2 transition border focus:outline-hidden ${
-                isDark
-                  ? 'bg-[#141416] border-white/[0.08] text-[#F5F5F4] placeholder-[#9C9C9F] focus:border-[#8C5383] shadow-inner'
-                  : 'bg-slate-100 border-slate-200 text-slate-800 placeholder-slate-400'
-              }`}
-            />
-          </div>
-
-          {/* Links de Navegação Lateral */}
-          <nav className="space-y-1 px-1">
+          {/* Menu Contínuo com Botões Ampliados e Confortáveis */}
+          <nav className="space-y-1.5">
             {navItems.map((item) => {
               const Icon = item.icon
               return (
                 <Link
-                  key={item.href}
+                  key={item.label}
                   href={item.href}
-                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium tracking-wide transition duration-150 ${
+                  className={`group flex items-center gap-3 px-4 py-3 text-sm font-semibold tracking-tight transition duration-150 active:scale-[0.98] ${
                     item.active
-                      ? isDark
-                        ? 'bg-[#242428] text-[#F5F5F4] font-bold border border-white/[0.1] shadow-xs'
-                        : 'bg-purple-900 text-white font-semibold shadow-2xs'
-                      : isDark
-                      ? 'text-[#9C9C9F] hover:bg-white/[0.04] hover:text-[#F5F5F4]'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      ? 'bg-[#B8A9D9]/[0.16] border-l-[3px] border-[#B8A9D9] text-[#4A3F5C] dark:text-[#F8F5FA] font-bold rounded-r-xl'
+                      : 'text-gray-600 dark:text-[#A9A1B5] hover:bg-gray-100/80 dark:hover:bg-white/[0.05] hover:text-[#4A3F5C] dark:hover:text-[#F8F5FA] rounded-xl'
                   }`}
                 >
                   <Icon
-                    className={`h-4 w-4 shrink-0 ${
+                    className={`h-5 w-5 shrink-0 transition-colors ${
                       item.active
-                        ? isDark
-                          ? 'text-[#D8B4E2]'
-                          : 'text-white'
-                        : isDark
-                        ? 'text-[#9C9C9F]'
-                        : 'text-purple-600'
+                        ? 'text-[#8675A9] dark:text-[#B8A9D9]'
+                        : 'text-gray-400 dark:text-[#A9A1B5] group-hover:text-[#4A3F5C] dark:group-hover:text-[#F8F5FA]'
                     }`}
                   />
-                  <span>{item.label}</span>
+                  <span className="truncate">{item.label}</span>
                 </Link>
               )
             })}
           </nav>
         </div>
 
-        {/* RODAPÉ DA SIDEBAR: TEMA, BOTÃO IA & USUÁRIO */}
-        <div
-          className={`border-t pt-4 space-y-3 px-1 ${
-            isDark ? 'border-white/[0.06]' : 'border-slate-200'
-          }`}
-        >
-          {/* Linha com Botão de Alternar Tema + Botão de Chat com o Assistente IA */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className={`flex-1 flex items-center justify-between px-3 py-2 rounded-xl text-xs font-light transition cursor-pointer border ${
-                isDark
-                  ? 'bg-[#141416] border-white/[0.08] text-[#9C9C9F] hover:bg-[#242428] hover:text-[#F5F5F4]'
-                  : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                {isDark ? (
-                  <Moon className="h-3.5 w-3.5 text-[#D8B4E2] stroke-[1.5]" />
-                ) : (
-                  <Sun className="h-3.5 w-3.5 text-amber-500 stroke-[1.5]" />
-                )}
-                <span className="font-medium text-[11px]">{isDark ? 'Modo Escuro' : 'Modo Claro'}</span>
-              </div>
-              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-[#9C9C9F]">
-                {theme.toUpperCase()}
-              </span>
-            </button>
-
-            {/* Botão Assistente IA no Desktop ao lado do Tema */}
-            <button
-              type="button"
-              onClick={() => setIsChatOpen(true)}
-              title="Abrir Chat com o Assistente do Chefe"
-              className="h-[34px] w-[34px] rounded-xl bg-[#8C5383]/20 hover:bg-[#8C5383]/30 border border-[#8C5383]/40 text-[#D8B4E2] flex items-center justify-center shrink-0 transition cursor-pointer shadow-xs"
-            >
-              <Image
-                src="/assets/ai.webp"
-                alt="Assistente IA"
-                width={20}
-                height={20}
-                className="w-5 h-5 object-contain rounded-full"
-              />
-            </button>
-          </div>
-
-          {/* Perfil do Admin Logado */}
-          <div className="flex items-center justify-between pt-1">
+        {/* RODAPÉ DA SIDEBAR: ASSISTENTE LUMÊ, PERFIL DO ADMIN & TEMA */}
+        <div className="border-t border-gray-100 dark:border-white/[0.08] pt-3.5 space-y-2.5">
+          {/* Botão Assistente Lumê (Desacoplado) */}
+          <button
+            type="button"
+            onClick={() => setIsChatOpen(true)}
+            className="w-full flex items-center justify-between p-2.5 rounded-xl bg-gray-50 dark:bg-[#18141F] hover:bg-gray-100 dark:hover:bg-[#201b2a] border border-gray-200 dark:border-white/[0.08] text-[#4A3F5C] dark:text-[#F8F5FA] transition cursor-pointer shadow-2xs group text-left"
+          >
             <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="h-8 w-8 rounded-xl bg-[#8C5383]/20 text-[#D8B4E2] font-bold flex items-center justify-center text-xs shrink-0 border border-[#8C5383]/30">
-                {admin.nome ? admin.nome.charAt(0).toUpperCase() : 'A'}
+              <div className="relative shrink-0">
+                <Image
+                  src="/assets/ai.webp"
+                  alt="Assistente Lumê"
+                  width={22}
+                  height={22}
+                  className="w-5 h-5 object-contain rounded-full"
+                />
+                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-[#34D399] rounded-full border border-white dark:border-[#15111F]" />
               </div>
-              <div className="overflow-hidden">
-                <p className="text-xs font-bold truncate text-[#F5F5F4]">{admin.nome}</p>
-                <p className="text-[10px] font-mono text-[#9C9C9F] truncate">{admin.email}</p>
+              <div className="overflow-hidden min-w-0">
+                <span className="block text-xs font-bold text-[#4A3F5C] dark:text-[#F8F5FA] truncate">Assistente Lumê</span>
+                <span className="block text-[10px] text-gray-500 dark:text-[#A9A1B5] truncate">Receita, retenção e operação</span>
               </div>
             </div>
-          </div>
+            <Bot className="h-4 w-4 text-[#8675A9] dark:text-[#B8A9D9] group-hover:scale-110 transition shrink-0 ml-1" />
+          </button>
 
-          {/* Botão Voltar ao App */}
-          <Link
-            href="/dashboard/geral"
-            className={`w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition border ${
-              isDark
-                ? 'bg-[#141416] border-white/[0.08] text-[#9C9C9F] hover:bg-[#242428] hover:text-[#F5F5F4]'
-                : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            <ArrowLeft className="h-3.5 w-3.5 stroke-[1.5]" />
-            <span>Voltar ao App</span>
-          </Link>
+          {/* Perfil do Administrador Logado */}
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 dark:bg-[#18141F] border border-gray-200 dark:border-white/[0.08]">
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <div className="h-7 w-7 rounded-full bg-[#B8A9D9]/20 border border-[#B8A9D9]/30 text-[#4A3F5C] dark:text-[#F8F5FA] font-black flex items-center justify-center text-xs shrink-0 shadow-2xs">
+                {admin.nome ? admin.nome.charAt(0).toUpperCase() : 'N'}
+              </div>
+              <div className="overflow-hidden min-w-0">
+                <p className="text-xs font-bold text-[#4A3F5C] dark:text-[#F8F5FA] truncate">
+                  {admin.nome || 'Nicolas Nava'}
+                </p>
+                <p className="text-[10px] text-gray-400 dark:text-[#A9A1B5] truncate">
+                  Administrador Geral
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/dashboard/geral"
+              title="Voltar ao App"
+              className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-[#F8F5FA] transition shrink-0"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </Link>
+          </div>
         </div>
       </aside>
 
       {/* 2. TOPBAR MOBILE */}
-      <header
-        className={`flex md:hidden items-center justify-between border-b px-4 py-3 sticky top-0 z-30 transition-colors ${
-          isDark
-            ? 'bg-[#161616] border-white/[0.06] text-white'
-            : 'bg-white border-slate-200 text-slate-900'
-        }`}
-      >
-        <div className="flex items-center gap-2">
-          <Image
-            src={isDark ? '/assets/logo_branca.webp' : '/assets/lume_logo.webp'}
-            alt="Lumê"
-            width={95}
-            height={30}
-            priority
-            className="h-auto w-auto max-h-7 object-contain"
-          />
-          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-white/[0.06] text-[#D8B4E2] border border-white/[0.08]">
-            Admin
-          </span>
+      <header className="flex md:hidden items-center justify-between border-b border-gray-200/80 dark:border-white/[0.08] px-4 py-3 sticky top-0 z-30 bg-white dark:bg-[#15111F] shadow-2xs">
+        <div className="flex items-center">
+          <Link href="/admin" className="flex items-center">
+            <Image
+              src="/assets/logo_branca.webp"
+              alt="Lumê"
+              width={120}
+              height={36}
+              priority
+              className="h-auto w-auto max-h-8 object-contain"
+            />
+          </Link>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Botão de Chat com a IA no Mobile */}
+          {/* Botão Assistente IA no Mobile */}
           <button
             type="button"
             onClick={() => setIsChatOpen(true)}
-            title="Assistente IA do Chefe"
-            className="p-2 rounded-xl bg-[#8C5383]/20 border border-[#8C5383]/30 text-[#D8B4E2] hover:bg-[#8C5383]/30 transition cursor-pointer flex items-center justify-center shadow-xs"
+            title="Assistente IA"
+            className="p-2 rounded-xl bg-[#B8A9D9]/20 dark:bg-[#171520] border border-[#B8A9D9]/40 dark:border-white/[0.07] text-[#4A3F5C] dark:text-white hover:bg-[#B8A9D9]/30 dark:hover:bg-[#1c1926] transition cursor-pointer flex items-center justify-center shadow-2xs"
           >
             <Image
               src="/assets/ai.webp"
@@ -317,17 +233,11 @@ export default function AdminSidebarLayoutClient({
             />
           </button>
 
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="p-2 rounded-xl bg-[#141416] border border-white/[0.08] text-[#9C9C9F] cursor-pointer"
-          >
-            {isDark ? <Moon className="h-4 w-4 text-[#D8B4E2]" /> : <Sun className="h-4 w-4" />}
-          </button>
+          {/* Botão Menu Hamburger */}
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-xl bg-[#141416] border border-white/[0.08] text-[#9C9C9F] cursor-pointer"
+            className="p-2 rounded-xl bg-[#FAF7F5] dark:bg-[#171520] border border-gray-200 dark:border-white/[0.07] text-[#4A3F5C] dark:text-[#EAE5F3] hover:bg-gray-100 dark:hover:bg-[#1f1c2b] transition cursor-pointer"
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -336,11 +246,7 @@ export default function AdminSidebarLayoutClient({
 
       {/* MENU MOBILE EXPANSÍVEL */}
       {mobileMenuOpen && (
-        <div
-          className={`md:hidden border-b p-4 space-y-2 sticky top-[53px] z-20 transition-colors ${
-            isDark ? 'bg-[#161616] border-white/[0.06]' : 'bg-white border-slate-200'
-          }`}
-        >
+        <div className="md:hidden border-b border-gray-200 dark:border-white/[0.07] p-4 space-y-1.5 fixed top-[53px] left-0 right-0 z-50 bg-white/98 dark:bg-[#121019]/98 backdrop-blur-md shadow-2xl animate-in fade-in slide-in-from-top-2 duration-150 max-h-[calc(100vh-120px)] overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon
             return (
@@ -348,37 +254,78 @@ export default function AdminSidebarLayoutClient({
                 key={item.href}
                 href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold active:scale-[0.98] transition duration-150 ${
                   item.active
-                    ? isDark
-                      ? 'bg-[#242428] text-white font-bold border border-white/[0.1]'
-                      : 'bg-zinc-800 text-white font-normal'
-                    : isDark
-                    ? 'text-[#9C9C9F] hover:bg-white/[0.04] hover:text-[#F5F5F4]'
-                    : 'text-slate-700 hover:bg-slate-100'
+                    ? 'bg-[#B8A9D9]/20 text-[#4A3F5C] dark:text-white font-bold border-l-2 border-[#B8A9D9]'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100/80 dark:hover:bg-white/[0.04] hover:text-[#4A3F5C] dark:hover:text-white'
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon
+                  className={`h-4.5 w-4.5 ${
+                    item.active ? 'text-[#8675A9] dark:text-[#B8A9D9]' : 'text-gray-400 dark:text-[#94a3b8]'
+                  }`}
+                />
                 <span>{item.label}</span>
               </Link>
             )
           })}
-          <div className="pt-2 border-t border-white/[0.06]">
+          <div className="pt-2 border-t border-gray-100 dark:border-white/[0.07]">
             <Link
               href="/dashboard/geral"
-              className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-[#9C9C9F]"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-600 dark:text-gray-300 hover:text-[#4A3F5C] dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/[0.04]"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span>Voltar ao App</span>
+              <span>Voltar ao App Lumê</span>
             </Link>
           </div>
         </div>
       )}
 
       {/* 3. CONTEÚDO PRINCIPAL DO ADMIN */}
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 sm:pb-20 max-w-7xl mx-auto w-full">
         {children}
       </main>
+
+      {/* 4. MENU NO RODAPÉ MOBILE (BOTTOM NAVIGATION BAR FIXA) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#15111F]/95 backdrop-blur-md border-t border-gray-200 dark:border-white/[0.08] flex items-center justify-around px-2 py-2 safe-area-pb shadow-lg">
+        <Link
+          href="/admin"
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-[10px] font-semibold transition active:scale-[0.95] ${
+            pathname === '/admin' ? 'text-[#B8A9D9] font-bold' : 'text-gray-500 dark:text-[#A9A1B5]'
+          }`}
+        >
+          <LayoutDashboard className="h-4 w-4" />
+          <span>Visão Geral</span>
+        </Link>
+        <Link
+          href="/admin/profissionais"
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-[10px] font-semibold transition active:scale-[0.95] ${
+            pathname.startsWith('/admin/profissionais') ? 'text-[#B8A9D9] font-bold' : 'text-gray-500 dark:text-[#A9A1B5]'
+          }`}
+        >
+          <Users className="h-4 w-4" />
+          <span>Equipe</span>
+        </Link>
+        <Link
+          href="/admin/financeiro"
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-[10px] font-semibold transition active:scale-[0.95] ${
+            pathname === '/admin/financeiro' ? 'text-[#B8A9D9] font-bold' : 'text-gray-500 dark:text-[#A9A1B5]'
+          }`}
+        >
+          <CreditCard className="h-4 w-4" />
+          <span>Receita</span>
+        </Link>
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-[10px] font-semibold transition active:scale-[0.95] cursor-pointer ${
+            mobileMenuOpen ? 'text-[#B8A9D9] font-bold' : 'text-gray-500 dark:text-[#A9A1B5]'
+          }`}
+        >
+          {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          <span>{mobileMenuOpen ? 'Fechar' : 'Menu'}</span>
+        </button>
+      </nav>
 
       {/* DRAWER GLOBAL DO ASSISTENTE IA */}
       <AdminAiChatDrawer

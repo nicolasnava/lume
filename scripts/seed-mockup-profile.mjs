@@ -83,6 +83,7 @@ async function seed() {
   await supabase.from('servicos').delete().eq('profissional_id', userId)
   await supabase.from('disponibilidade').delete().eq('profissional_id', userId)
   await supabase.from('bloqueios_disponibilidade').delete().eq('profissional_id', userId)
+  await supabase.from('metas_mensais').delete().eq('profissional_id', userId)
   await supabase.from('saas_faturas').delete().eq('profissional_id', userId)
   await supabase.from('feedbacks').delete().eq('profissional_id', userId)
   await supabase.from('login_logs').delete().eq('profissional_id', userId)
@@ -98,8 +99,8 @@ async function seed() {
     tagline: 'Realçando sua beleza natural com exclusividade e arte',
     categoria: ['cilios', 'sobrancelhas', 'estetica'],
     slug: PROFILE_SLUG,
-    cor_primaria: '#8B5CF6',
-    cor_secundaria: '#FAF5FF',
+    cor_primaria: '#4A3F5C',
+    cor_secundaria: '#FAF7F5',
     localizacao: 'Alameda Santos, 1200 - Conjunto 82, Jardins - São Paulo / SP',
     whatsapp: '11987654321',
     instagram: '@camiladuarte.beauty',
@@ -107,13 +108,13 @@ async function seed() {
     formas_pagamento_aceitas: ['pix', 'cartao', 'dinheiro'],
     janela_agendamento_dias: 60,
     status_conta: 'ativa',
-    notas_internas: '⭐ Perfil Modelo / VIP. Excelente taxa de retenção e faturamento consistente. Utiliza muito o link da bio no Instagram.',
+    notas_internas: 'Perfil Modelo / VIP. Excelente taxa de retenção e faturamento consistente. Utiliza muito o link da bio no Instagram.',
     plano_tipo: 'mensal',
     valor_mensalidade: 69.90,
     trial_ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     proximo_vencimento: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000).toISOString(),
-    foto_url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=600&auto=format&fit=crop',
-    foto_capa_url: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=1200&auto=format&fit=crop',
+    foto_url: '/assets/lume_icon.webp',
+    foto_capa_url: '/assets/galeria/recepcao.webp',
     onboarding_concluido: true,
   }
 
@@ -151,7 +152,7 @@ async function seed() {
       duracao_minutos: 120,
       preco: 220.00,
       intervalo_manutencao_dias: 21,
-      foto_url: 'https://images.unsplash.com/photo-1583001931096-959e9a1a6223?q=80&w=600&auto=format&fit=crop',
+      foto_url: '/assets/galeria/volume_russo.webp',
       ativo: true,
     },
     {
@@ -160,7 +161,7 @@ async function seed() {
       duracao_minutos: 90,
       preco: 170.00,
       intervalo_manutencao_dias: 15,
-      foto_url: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=600&auto=format&fit=crop',
+      foto_url: '/assets/galeria/procedimentos.webp',
       ativo: true,
     },
     {
@@ -169,7 +170,7 @@ async function seed() {
       duracao_minutos: 120,
       preco: 250.00,
       intervalo_manutencao_dias: 20,
-      foto_url: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?q=80&w=600&auto=format&fit=crop',
+      foto_url: '/assets/galeria/volume_russo.webp',
       ativo: true,
     },
     {
@@ -178,7 +179,7 @@ async function seed() {
       duracao_minutos: 60,
       preco: 130.00,
       intervalo_manutencao_dias: 21,
-      foto_url: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=600&auto=format&fit=crop',
+      foto_url: '/assets/funcionalidades/studio.webp',
       ativo: true,
     },
     {
@@ -187,7 +188,7 @@ async function seed() {
       duracao_minutos: 60,
       preco: 150.00,
       intervalo_manutencao_dias: 45,
-      foto_url: 'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?q=80&w=600&auto=format&fit=crop',
+      foto_url: '/assets/galeria/procedimentos.webp',
       ativo: true,
     },
     {
@@ -196,7 +197,7 @@ async function seed() {
       duracao_minutos: 45,
       preco: 75.00,
       intervalo_manutencao_dias: 15,
-      foto_url: 'https://images.unsplash.com/photo-1597225244660-1cd128c64284?q=80&w=600&auto=format&fit=crop',
+      foto_url: '/assets/galeria/sobrancelhas.webp',
       ativo: true,
     },
     {
@@ -302,7 +303,8 @@ async function seed() {
     { startH: 9, startM: 0, endH: 10, endM: 30 },
     { startH: 11, startM: 0, endH: 12, endM: 30 },
     { startH: 14, startM: 0, endH: 15, endM: 30 },
-    { startH: 16, startM: 0, endH: 18, endM: 0 },
+    { startH: 16, startM: 30, endH: 18, endM: 0 },
+    { startH: 18, startM: 30, endH: 20, endM: 0 },
   ]
 
   const formasPagamento = ['pix', 'cartao_credito', 'pix', 'cartao_debito', 'pix', 'dinheiro', 'cartao_credito']
@@ -325,7 +327,6 @@ async function seed() {
   const avaliacoesToInsert = []
   const agendamentoServicosToInsert = []
 
-  // Gerar dias do passado (de 90 dias atrás até ontem)
   // De -90 dias até +14 dias
   let globalIndex = 0
 
@@ -334,11 +335,11 @@ async function seed() {
     currentDate.setDate(baseNow.getDate() + dayOffset)
 
     const diaSemana = currentDate.getDay()
-    // Domingo não trabalha
-    if (diaSemana === 0) continue
+    // Domingo não trabalha (exceto se for hoje para testes de mockup)
+    if (diaSemana === 0 && dayOffset !== 0) continue
 
-    // Quantidade de atendimentos por dia (2 a 4)
-    const slotsCount = diaSemana === 6 ? 3 : (dayOffset % 2 === 0 ? 4 : 3)
+    // Quantidade de atendimentos por dia (3 a 5)
+    const slotsCount = dayOffset === 0 ? 5 : (diaSemana === 6 ? 3 : (dayOffset % 2 === 0 ? 4 : 3))
 
     for (let s = 0; s < slotsCount; s++) {
       const slot = timeSlots[s]
@@ -358,17 +359,17 @@ async function seed() {
       let valorCobrado = Number(service.preco)
 
       if (dayOffset > 0) {
-        // Futuro
+        // Futuro (Próximos agendamentos)
         status = 'confirmado'
         pago = globalIndex % 3 === 0 // alguns já pré-pagaram por pix
       } else if (dayOffset === 0) {
-        // Hoje (17 de Agosto)
-        if (s < 2) {
+        // Hoje: 3 concluídos pela manhã/tarde, e 2 confirmados (tarde/noite)
+        if (s < 3) {
           status = 'concluido'
           pago = true
         } else {
           status = 'confirmado'
-          pago = s === 2
+          pago = s === 3 // um pago por cartão, o outro pendente no local
         }
       } else {
         // Passado: 92% concluído, 5% cancelado, 3% no_show
@@ -509,7 +510,7 @@ async function seed() {
       status: 'pendente',
       forma_pagamento: 'pix',
       data_vencimento: new Date(baseNow.getFullYear(), baseNow.getMonth() + 1, 15).toISOString(),
-      link_pagamento: 'https://pagamento.lume.app/fatura/camila-setembro',
+      link_pagamento: 'https://pagamento.lumebr.app/fatura/camila-setembro',
       codigo_pix: '00020126580014BR.GOV.BCB.PIX0136lume-saas-pagamento-future-520400005303986540569.905802BR5915LUME TECNOLOGIA6009SAO PAULO62070503***6304WXYZ',
     },
   ]
@@ -565,6 +566,26 @@ async function seed() {
       profissional_id: userId,
       data: nextMonthDate.toISOString().split('T')[0],
       motivo: 'Masterclass Internacional de Mega Volume e Biossegurança',
+    },
+  ])
+
+  // 12. Metas Mensais para Relatórios & Metas
+  console.log('🎯 Configurando metas de faturamento para relatórios...')
+  const primeiroDiaMesAtual = new Date(baseNow.getFullYear(), baseNow.getMonth(), 1).toISOString().split('T')[0]
+  const primeiroDiaMesAnterior = new Date(baseNow.getFullYear(), baseNow.getMonth() - 1, 1).toISOString().split('T')[0]
+
+  await supabase.from('metas_mensais').insert([
+    {
+      profissional_id: userId,
+      mes_referencia: primeiroDiaMesAtual,
+      tipo_meta: 'faturamento',
+      valor_meta: 8500.0,
+    },
+    {
+      profissional_id: userId,
+      mes_referencia: primeiroDiaMesAnterior,
+      tipo_meta: 'faturamento',
+      valor_meta: 7500.0,
     },
   ])
 

@@ -26,8 +26,6 @@ import {
   Instagram,
   Users,
 } from 'lucide-react'
-import { copyToClipboard } from '@/lib/utils/clipboard'
-import StoriesShareModal from '@/components/profile/StoriesShareModal'
 
 interface SubscriptionSectionProps {
   initialData: SubscriptionData
@@ -59,17 +57,6 @@ export default function SubscriptionSection({ initialData }: SubscriptionSection
 
   // Mini Card de Detalhes da Fatura
   const [selectedInvoiceDetail, setSelectedInvoiceDetail] = useState<SubscriptionData['faturas'][0] | null>(null)
-
-  // Indique e Ganhe
-  const [copiedReferral, setCopiedReferral] = useState(false)
-  const [showReferralStoriesModal, setShowReferralStoriesModal] = useState(false)
-
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://lume.com.br'
-  const referralCode = data.referral?.codigoIndicacao || ''
-  const referralLink = `${origin}/cadastro?ref=${referralCode}`
-  const indicadasAtivas = data.referral?.indicadasAtivas || 0
-  const descontoPct = data.referral?.descontoPercentual || 0
-  const progressoPct = Math.min(100, Math.round((indicadasAtivas / 3) * 100))
 
   // Status visual formatado
   const getStatusBadge = (status: SubscriptionData['statusConta']) => {
@@ -291,103 +278,7 @@ export default function SubscriptionSection({ initialData }: SubscriptionSection
         </div>
       </div>
 
-      {/* 3. Indique e Ganhe — Até 30% de Desconto na Mensalidade */}
-      <div className="rounded-3xl border border-purple-200/80 bg-gradient-to-b from-purple-50/40 via-white to-white p-6 sm:p-7 shadow-xs space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-100 text-[#4A3F5C] shadow-2xs shrink-0">
-              <Gift className="h-6 w-6 text-[#8675A9]" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-[#4A3F5C] flex items-center gap-2">
-                <span>Indique e Ganhe</span>
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
-                  Até 30% OFF
-                </span>
-              </h3>
-              <p className="text-xs text-gray-500 font-medium mt-0.5">
-                Cada profissional ativa indicada garante 10% de desconto na sua mensalidade.
-              </p>
-            </div>
-          </div>
-
-          <div className="text-left sm:text-right bg-white p-2.5 rounded-2xl border border-gray-200/80 shrink-0">
-            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Sua Mensalidade</span>
-            <span className="text-base font-bold text-[#4A3F5C]">
-              R$ {data.valorMensalidade.toFixed(2).replace('.', ',')}
-              <span className="text-xs font-normal text-gray-400">/mês</span>
-            </span>
-          </div>
-        </div>
-
-        {/* Barra de Progresso Visual */}
-        <div className="space-y-2 bg-white p-4 rounded-2xl border border-gray-100 shadow-2xs">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-bold text-[#4A3F5C]">
-              {indicadasAtivas >= 3
-                ? 'Você atingiu o desconto máximo de 30%!'
-                : `${indicadasAtivas} de 3 indicações ativas para o desconto máximo`}
-            </span>
-          </div>
-
-          <div className="h-3 w-full rounded-full bg-gray-100 p-0.5 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-[#B8A9D9] to-emerald-500 transition-all duration-500"
-              style={{ width: `${progressoPct}%` }}
-            />
-          </div>
-
-          <div className="flex justify-between text-[11px] text-gray-400 font-medium pt-1">
-            <span>0% (0 ativas)</span>
-            <span>10% (1 ativa)</span>
-            <span>20% (2 ativas)</span>
-            <span>30% (3+ ativas)</span>
-          </div>
-        </div>
-
-        {/* Link de Indicação & Compartilhamento */}
-        <div className="space-y-3 pt-1">
-          <label className="block text-xs font-bold text-[#4A3F5C]">
-            Seu Link Exclusivo de Indicação:
-          </label>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                readOnly
-                value={referralLink}
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50/50 py-3 px-4 text-xs font-bold text-[#4A3F5C] focus:outline-none cursor-default font-mono"
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={async () => {
-                const ok = await copyToClipboard(referralLink)
-                if (ok) {
-                  setCopiedReferral(true)
-                  setTimeout(() => setCopiedReferral(false), 2500)
-                }
-              }}
-              className="px-4 py-3 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 text-[#4A3F5C] text-xs font-bold transition shrink-0 flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
-            >
-              {copiedReferral ? (
-                <>
-                  <Check className="h-4 w-4 text-emerald-600" />
-                  <span className="text-emerald-700">Link Copiado!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4 text-[#B8A9D9]" />
-                  <span>Copiar Link</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. Resgate de Cupons de Desconto */}
+      {/* 3. Resgate de Cupons de Desconto */}
       <div className="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-xs space-y-4">
         <div className="flex items-center gap-2.5">
           <Tag className="h-5 w-5 text-purple-600" />
@@ -775,17 +666,6 @@ export default function SubscriptionSection({ initialData }: SubscriptionSection
             </div>
           </div>
         </div>
-      )}
-      {/* Modal de Divulgação de Indicação nos Stories */}
-      {showReferralStoriesModal && (
-        <StoriesShareModal
-          isOpen={showReferralStoriesModal}
-          onClose={() => setShowReferralStoriesModal(false)}
-          mode="indicacao"
-          url={referralLink}
-          nomeProfissional="Lumê — Programa de Indicação"
-          fotoUrl={null}
-        />
       )}
     </div>
   )

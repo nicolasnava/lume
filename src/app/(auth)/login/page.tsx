@@ -9,6 +9,7 @@ import { loginSchema } from '@/lib/validations'
 import Toast from '@/components/ui/Toast'
 import { Lock, Mail, Loader2, Eye, EyeOff, X, KeyRound, CheckCircle2, ArrowRight } from 'lucide-react'
 import { getPostLoginRedirectAction } from '@/app/actions/admin2fa'
+import { translateAuthError } from '@/lib/utils/errorTranslations'
 
 function getSafeRedirectUrl(target: string | null): string {
   const defaultUrl = '/dashboard/geral'
@@ -63,16 +64,13 @@ function LoginForm() {
     setLoading(true)
     const supabase = createClient()
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password: senha,
     })
 
     if (authError) {
-      const msg =
-        authError.message === 'Invalid login credentials'
-          ? 'E-mail ou senha incorretos. Verifique suas credenciais.'
-          : authError.message
+      const msg = translateAuthError(authError)
       setToast({
         show: true,
         message: msg,
@@ -87,11 +85,14 @@ function LoginForm() {
     let needs2fa = false
 
     try {
-      const postLogin = await getPostLoginRedirectAction()
+      const postLogin = await getPostLoginRedirectAction(
+        authData.user?.id,
+        authData.user?.email || email
+      )
       if (postLogin && postLogin.isAdmin) {
         targetUrl = postLogin.redirectUrl || '/admin'
+        needs2fa = !!postLogin.needs2fa
       }
-      needs2fa = !!(postLogin && postLogin.needs2fa)
     } catch (err) {
       console.warn('[Login] Erro ao verificar pós-login admin, seguindo fluxo padrão:', err)
     }
@@ -100,14 +101,15 @@ function LoginForm() {
       show: true,
       message: needs2fa
         ? 'Verificação 2FA necessária. Redirecionando...'
+        : targetUrl.startsWith('/admin')
+        ? 'Acesso administrativo confirmado! Entrando no painel...'
         : 'Login realizado! Entrando no painel...',
       type: 'success',
     })
 
     setTimeout(() => {
-      router.push(targetUrl)
-      router.refresh()
-    }, 600)
+      window.location.href = targetUrl
+    }, 500)
   }
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -132,7 +134,7 @@ function LoginForm() {
       if (error) {
         setToast({
           show: true,
-          message: error.message,
+          message: translateAuthError(error),
           type: 'error',
         })
       } else {

@@ -85,152 +85,158 @@ export default function InstalarPage() {
         </div>
       </section>
 
-      {/* 2 Instruções Visuais: iPhone vs Android */}
+      {/* 2 Instruções Visuais: iPhone vs Android com Layout Editorial */}
       <section className="py-16 sm:py-24 bg-white border-y border-[#E8DFD8]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-16">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 space-y-16">
           
           <div className="text-center space-y-3 max-w-2xl mx-auto">
-            <div className="flex items-center justify-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[#8C5383]">
-              <span className="w-5 h-0.5 bg-[#8C5383]/50 rounded-full" />
-              <span>Instalação em 20 segundos</span>
-              <span className="w-5 h-0.5 bg-[#8C5383]/50 rounded-full" />
-            </div>
+            <span className="text-xs font-bold uppercase tracking-widest text-[#8C5383]">
+              Passo a Passo Rápido • Menos de 20 segundos
+            </span>
             <h2 className="text-2xl sm:text-4xl font-bold text-[#3D2E4D] tracking-tight">
-              Escolha o sistema do seu celular
+              Como adicionar no seu aparelho
             </h2>
             <p className="text-sm sm:text-base text-[#6B5E7A]">
-              Siga o passo a passo ilustrado para fixar o Lumê como aplicativo na sua tela principal.
+              Siga as instruções diretas de acordo com o modelo do seu celular.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-16">
             
             {/* Guia iPhone (iOS Safari) */}
-            <div className="bg-[#FAF8F5] p-8 sm:p-10 rounded-3xl border border-[#E8DFD8] space-y-6 shadow-sm text-left">
+            <div className="space-y-8 text-left">
               <div className="flex items-center justify-between border-b border-[#E8DFD8] pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-2xl bg-white border border-[#E8DFD8] flex items-center justify-center text-[#3D2E4D] shadow-2xs">
-                    <Smartphone className="h-6 w-6" />
+                  <div className="h-10 w-10 rounded-xl bg-[#FAF8F5] border border-[#E8DFD8] flex items-center justify-center text-[#3D2E4D]">
+                    <Smartphone className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-[#3D2E4D]">No iPhone (iOS)</h3>
-                    <p className="text-xs text-[#6B5E7A] font-medium">Usando o navegador Safari</p>
+                    <h3 className="text-base font-bold text-[#3D2E4D]">iPhone (iOS)</h3>
+                    <p className="text-xs text-[#6B5E7A]">Pelo navegador Safari</p>
                   </div>
                 </div>
-                <span className="text-xs font-extrabold bg-[#FAF0F5] text-[#8C5383] px-3 py-1 rounded-full border border-[#E8DFD8]">
+                <span className="text-xs font-bold bg-[#FAF8F5] text-[#8C5383] px-3 py-1 rounded-full border border-[#E8DFD8]">
                   Safari
                 </span>
               </div>
 
-              <ol className="space-y-4 text-xs sm:text-sm font-medium text-[#3D2E4D]">
-                <li className="flex items-start gap-3.5 bg-white p-4 rounded-2xl border border-gray-200/80">
-                  <span className="h-6 w-6 rounded-full bg-[#3D2E4D] text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+              <div className="space-y-6">
+                <div className="flex items-start gap-4">
+                  <span className="h-7 w-7 rounded-full bg-[#3D2E4D] text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
                     1
                   </span>
-                  <div>
-                    <strong>Abra o Lumê no Safari</strong>
-                    <p className="text-[#6B5E7A] text-xs pt-0.5">Acesse o endereço da sua conta pelo navegador Safari no iPhone.</p>
+                  <div className="space-y-0.5">
+                    <strong className="text-sm font-bold text-[#3D2E4D]">Abra o Lumê no Safari</strong>
+                    <p className="text-xs text-[#6B5E7A] leading-relaxed">
+                      Acesse sua conta ou vitrine no navegador Safari do iPhone.
+                    </p>
                   </div>
-                </li>
+                </div>
 
-                <li className="flex items-start gap-3.5 bg-white p-4 rounded-2xl border border-gray-200/80">
-                  <span className="h-6 w-6 rounded-full bg-[#3D2E4D] text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                <div className="flex items-start gap-4">
+                  <span className="h-7 w-7 rounded-full bg-[#3D2E4D] text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
                     2
                   </span>
-                  <div>
-                    <strong>Toque em Compartilhar</strong>
-                    <p className="text-[#6B5E7A] text-xs pt-0.5">
-                      Toque no ícone de quadrado com seta para cima (<Share className="h-3.5 w-3.5 inline text-[#8C5383]" />) na barra inferior da tela.
+                  <div className="space-y-0.5">
+                    <strong className="text-sm font-bold text-[#3D2E4D]">Toque em Compartilhar</strong>
+                    <p className="text-xs text-[#6B5E7A] leading-relaxed">
+                      Toque no ícone de quadrado com seta para cima (<Share className="h-3.5 w-3.5 inline text-[#8C5383]" />) na barra inferior central.
                     </p>
                   </div>
-                </li>
+                </div>
 
-                <li className="flex items-start gap-3.5 bg-white p-4 rounded-2xl border border-gray-200/80">
-                  <span className="h-6 w-6 rounded-full bg-[#3D2E4D] text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                <div className="flex items-start gap-4">
+                  <span className="h-7 w-7 rounded-full bg-[#3D2E4D] text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
                     3
                   </span>
-                  <div>
-                    <strong>Adicionar à Tela de Início</strong>
-                    <p className="text-[#6B5E7A] text-xs pt-0.5">
-                      Role as opções para baixo e selecione <PlusSquare className="h-3.5 w-3.5 inline text-[#8C5383]" /> <strong>&quot;Adicionar à Tela de Início&quot;</strong>.
+                  <div className="space-y-0.5">
+                    <strong className="text-sm font-bold text-[#3D2E4D]">Adicionar à Tela de Início</strong>
+                    <p className="text-xs text-[#6B5E7A] leading-relaxed">
+                      Role o menu para cima e selecione <PlusSquare className="h-3.5 w-3.5 inline text-[#8C5383]" /> <strong>&quot;Adicionar à Tela de Início&quot;</strong>.
                     </p>
                   </div>
-                </li>
+                </div>
 
-                <li className="flex items-start gap-3.5 bg-white p-4 rounded-2xl border border-gray-200/80">
-                  <span className="h-6 w-6 rounded-full bg-[#3D2E4D] text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                <div className="flex items-start gap-4">
+                  <span className="h-7 w-7 rounded-full bg-[#3D2E4D] text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
                     4
                   </span>
-                  <div>
-                    <strong>Confirmar</strong>
-                    <p className="text-[#6B5E7A] text-xs pt-0.5">Toque no botão <strong>&quot;Adicionar&quot;</strong> no canto superior direito. Pronto!</p>
+                  <div className="space-y-0.5">
+                    <strong className="text-sm font-bold text-[#3D2E4D]">Confirmar</strong>
+                    <p className="text-xs text-[#6B5E7A] leading-relaxed">
+                      Toque em <strong>&quot;Adicionar&quot;</strong> no canto superior direito. O ícone oficial do Lumê surgirá na tela.
+                    </p>
                   </div>
-                </li>
-              </ol>
+                </div>
+              </div>
             </div>
 
             {/* Guia Android (Chrome) */}
-            <div className="bg-[#FAF8F5] p-8 sm:p-10 rounded-3xl border border-[#E8DFD8] space-y-6 shadow-sm text-left">
+            <div className="space-y-8 text-left">
               <div className="flex items-center justify-between border-b border-[#E8DFD8] pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-2xl bg-white border border-[#E8DFD8] flex items-center justify-center text-emerald-700 shadow-2xs">
-                    <Smartphone className="h-6 w-6" />
+                  <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+                    <Smartphone className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-[#3D2E4D]">No Android</h3>
-                    <p className="text-xs text-[#6B5E7A] font-medium">Usando o Google Chrome</p>
+                    <h3 className="text-base font-bold text-[#3D2E4D]">Android</h3>
+                    <p className="text-xs text-[#6B5E7A]">Pelo Google Chrome</p>
                   </div>
                 </div>
-                <span className="text-xs font-extrabold bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full border border-emerald-200">
+                <span className="text-xs font-bold bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full border border-emerald-200">
                   Chrome
                 </span>
               </div>
 
-              <ol className="space-y-4 text-xs sm:text-sm font-medium text-[#3D2E4D]">
-                <li className="flex items-start gap-3.5 bg-white p-4 rounded-2xl border border-gray-200/80">
-                  <span className="h-6 w-6 rounded-full bg-emerald-700 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+              <div className="space-y-6">
+                <div className="flex items-start gap-4">
+                  <span className="h-7 w-7 rounded-full bg-emerald-700 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
                     1
                   </span>
-                  <div>
-                    <strong>Abra o Lumê no Chrome</strong>
-                    <p className="text-[#6B5E7A] text-xs pt-0.5">Acesse o endereço da sua conta pelo navegador Google Chrome.</p>
+                  <div className="space-y-0.5">
+                    <strong className="text-sm font-bold text-[#3D2E4D]">Abra o Lumê no Chrome</strong>
+                    <p className="text-xs text-[#6B5E7A] leading-relaxed">
+                      Acesse sua conta ou vitrine pelo Google Chrome no celular.
+                    </p>
                   </div>
-                </li>
+                </div>
 
-                <li className="flex items-start gap-3.5 bg-white p-4 rounded-2xl border border-gray-200/80">
-                  <span className="h-6 w-6 rounded-full bg-emerald-700 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                <div className="flex items-start gap-4">
+                  <span className="h-7 w-7 rounded-full bg-emerald-700 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
                     2
                   </span>
-                  <div>
-                    <strong>Toque no menu de 3 pontos</strong>
-                    <p className="text-[#6B5E7A] text-xs pt-0.5">
-                      Toque no ícone de 3 pontinhos (<MoreVertical className="h-3.5 w-3.5 inline text-[#8C5383]" />) no canto superior direito do navegador.
+                  <div className="space-y-0.5">
+                    <strong className="text-sm font-bold text-[#3D2E4D]">Toque no menu de 3 pontos</strong>
+                    <p className="text-xs text-[#6B5E7A] leading-relaxed">
+                      Toque no ícone (<MoreVertical className="h-3.5 w-3.5 inline text-[#8C5383]" />) no topo direito da tela.
                     </p>
                   </div>
-                </li>
+                </div>
 
-                <li className="flex items-start gap-3.5 bg-white p-4 rounded-2xl border border-gray-200/80">
-                  <span className="h-6 w-6 rounded-full bg-emerald-700 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                <div className="flex items-start gap-4">
+                  <span className="h-7 w-7 rounded-full bg-emerald-700 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
                     3
                   </span>
-                  <div>
-                    <strong>Instalar ou Adicionar</strong>
-                    <p className="text-[#6B5E7A] text-xs pt-0.5">
-                      Selecione <strong>&quot;Instalar aplicativo&quot;</strong> ou <strong>&quot;Adicionar à tela inicial&quot;</strong>.
+                  <div className="space-y-0.5">
+                    <strong className="text-sm font-bold text-[#3D2E4D]">Instalar ou Adicionar</strong>
+                    <p className="text-xs text-[#6B5E7A] leading-relaxed">
+                      Escolha <strong>&quot;Instalar aplicativo&quot;</strong> ou <strong>&quot;Adicionar à tela inicial&quot;</strong>.
                     </p>
                   </div>
-                </li>
+                </div>
 
-                <li className="flex items-start gap-3.5 bg-white p-4 rounded-2xl border border-gray-200/80">
-                  <span className="h-6 w-6 rounded-full bg-emerald-700 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                <div className="flex items-start gap-4">
+                  <span className="h-7 w-7 rounded-full bg-emerald-700 text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
                     4
                   </span>
-                  <div>
-                    <strong>Confirmar</strong>
-                    <p className="text-[#6B5E7A] text-xs pt-0.5">Confirme tocando em <strong>&quot;Instalar&quot;</strong> ou <strong>&quot;Adicionar&quot;</strong>. O ícone aparecerá junto aos seus apps.</p>
+                  <div className="space-y-0.5">
+                    <strong className="text-sm font-bold text-[#3D2E4D]">Confirmar</strong>
+                    <p className="text-xs text-[#6B5E7A] leading-relaxed">
+                      Toque em <strong>&quot;Instalar&quot;</strong> e o aplicativo estará pronto na sua grade de apps.
+                    </p>
                   </div>
-                </li>
-              </ol>
+                </div>
+              </div>
             </div>
 
           </div>
@@ -238,62 +244,60 @@ export default function InstalarPage() {
         </div>
       </section>
 
-      {/* Seção "Por que instalar?" */}
+      {/* Vantagens em Layout Editorial Linear com Divisórias */}
       <section className="py-16 sm:py-24 bg-[#FAF8F5]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 space-y-14">
           
           <div className="text-center space-y-3 max-w-2xl mx-auto">
-            <div className="flex items-center justify-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[#8C5383]">
-              <span className="w-5 h-0.5 bg-[#8C5383]/50 rounded-full" />
-              <span>Vantagens do Aplicativo</span>
-              <span className="w-5 h-0.5 bg-[#8C5383]/50 rounded-full" />
-            </div>
+            <span className="text-xs font-bold uppercase tracking-widest text-[#8C5383]">
+              Tecnologia PWA • Leve e Rápida
+            </span>
             <h2 className="text-2xl sm:text-4xl font-bold text-[#3D2E4D] tracking-tight">
-              Por que adicionar à tela inicial?
+              A agilidade de um app nativo, sem complicações
             </h2>
             <p className="text-sm sm:text-base text-[#6B5E7A]">
-              Toda a potência de um app nativo, sem a lentidão nem o consumo de armazenamento.
+              Tudo o que você precisa sem ocupar a memória de fotos e vídeos do seu aparelho.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
-            <div className="bg-white p-6 rounded-3xl border border-[#E8DFD8] shadow-xs space-y-3">
-              <div className="h-11 w-11 rounded-2xl bg-[#FAF8F5] flex items-center justify-center text-[#3D2E4D]">
-                <Zap className="h-5 w-5" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 text-left border-y border-[#E8DFD8] py-10">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-[#3D2E4D]">
+                <Zap className="h-5 w-5 text-[#8C5383]" />
+                <h3 className="text-sm font-bold text-[#3D2E4D]">1 Toque na Tela</h3>
               </div>
-              <h3 className="text-base font-bold text-[#3D2E4D]">Acesso com 1 Toque</h3>
-              <p className="text-xs text-[#6B5E7A] leading-relaxed font-medium">
-                Abra sua agenda em tela cheia direto pelo ícone, sem precisar digitar endereço nem abrir abas no navegador.
+              <p className="text-xs text-[#6B5E7A] leading-relaxed">
+                Abre em tela cheia direto pelo ícone, sem digitar endereços ou navegar por abas.
               </p>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-[#E8DFD8] shadow-xs space-y-3">
-              <div className="h-11 w-11 rounded-2xl bg-[#FAF8F5] flex items-center justify-center text-[#8C5383]">
-                <Calendar className="h-5 w-5" />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-[#3D2E4D]">
+                <Calendar className="h-5 w-5 text-[#8C5383]" />
+                <h3 className="text-sm font-bold text-[#3D2E4D]">Visão Rápida do Dia</h3>
               </div>
-              <h3 className="text-base font-bold text-[#3D2E4D]">Próximos Clientes</h3>
-              <p className="text-xs text-[#6B5E7A] leading-relaxed font-medium">
-                Consulte em segundos qual o próximo procedimento, horários vagos e telefones das clientes do dia.
+              <p className="text-xs text-[#6B5E7A] leading-relaxed">
+                Consulte horários vagos, próximos procedimentos e contatos das clientes em segundos.
               </p>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-[#E8DFD8] shadow-xs space-y-3">
-              <div className="h-11 w-11 rounded-2xl bg-[#FAF8F5] flex items-center justify-center text-[#8C5383]">
-                <TrendingUp className="h-5 w-5" />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-[#3D2E4D]">
+                <TrendingUp className="h-5 w-5 text-[#8C5383]" />
+                <h3 className="text-sm font-bold text-[#3D2E4D]">Financeiro em Tempo Real</h3>
               </div>
-              <h3 className="text-base font-bold text-[#3D2E4D]">Controle Financeiro</h3>
-              <p className="text-xs text-[#6B5E7A] leading-relaxed font-medium">
-                Veja o faturamento realizado no dia e no mês com números atualizados em tempo real.
+              <p className="text-xs text-[#6B5E7A] leading-relaxed">
+                Confira recebimentos do dia e saldo acumulado a qualquer instante com dados sincronizados.
               </p>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-[#E8DFD8] shadow-xs space-y-3">
-              <div className="h-11 w-11 rounded-2xl bg-[#FAF8F5] flex items-center justify-center text-emerald-700">
-                <ShieldCheck className="h-5 w-5" />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-[#3D2E4D]">
+                <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                <h3 className="text-sm font-bold text-[#3D2E4D]">Menos de 1 MB</h3>
               </div>
-              <h3 className="text-base font-bold text-[#3D2E4D]">Memória Livre</h3>
-              <p className="text-xs text-[#6B5E7A] leading-relaxed font-medium">
-                Pesa menos de 1 MB e não ocupa a memória de fotos e vídeos do seu smartphone.
+              <p className="text-xs text-[#6B5E7A] leading-relaxed">
+                Não consome memória do aparelho e não exige atualizações manuais na loja de apps.
               </p>
             </div>
           </div>
@@ -301,33 +305,33 @@ export default function InstalarPage() {
         </div>
       </section>
 
-      {/* Solução de Problemas */}
-      <section className="py-16 sm:py-24 bg-white border-t border-[#E8DFD8]">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 space-y-8 text-left">
+      {/* Dúvidas Frequentes de Instalação */}
+      <section className="py-16 sm:py-20 bg-white border-t border-[#E8DFD8]">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 space-y-8 text-left">
           
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl sm:text-3xl font-bold text-[#3D2E4D]">Solução de dúvidas comuns</h2>
-            <p className="text-xs sm:text-sm text-[#6B5E7A]">Se não encontrou a opção de adicionar, veja o que fazer:</p>
+          <div className="space-y-2">
+            <span className="text-xs font-bold uppercase tracking-widest text-[#8C5383]">Suporte</span>
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#3D2E4D] tracking-tight">Dúvidas sobre a instalação</h2>
           </div>
 
-          <div className="space-y-4">
-            <div className="bg-[#FAF8F5] p-5 rounded-2xl border border-[#E8DFD8] space-y-1">
-              <h3 className="text-xs sm:text-sm font-bold text-[#3D2E4D] flex items-center gap-2">
-                <HelpCircle className="h-4 w-4 text-[#8C5383]" />
-                <span>Não encontrei o botão de compartilhar no iPhone?</span>
+          <div className="divide-y divide-[#E8DFD8]">
+            <div className="py-5 space-y-1.5">
+              <h3 className="text-sm font-bold text-[#3D2E4D] flex items-center gap-2">
+                <HelpCircle className="h-4 w-4 text-[#8C5383] shrink-0" />
+                <span>Não encontrei a opção de compartilhar no iPhone?</span>
               </h3>
-              <p className="text-xs text-[#6B5E7A] leading-relaxed font-medium pl-6">
-                Certifique-se de que está abrindo o link pelo navegador <strong>Safari</strong> nativo da Apple. Se abriu pelo navegador interno do Instagram ou WhatsApp, toque nos 3 pontinhos e selecione &quot;Abrir no Safari&quot;.
+              <p className="text-xs sm:text-sm text-[#6B5E7A] leading-relaxed pl-6">
+                Abra o endereço no aplicativo nativo <strong>Safari</strong> (ícone de bússola azul). Caso você tenha aberto através do Instagram ou WhatsApp, clique nos 3 pontinhos e escolha &quot;Abrir no Safari&quot;.
               </p>
             </div>
 
-            <div className="bg-[#FAF8F5] p-5 rounded-2xl border border-[#E8DFD8] space-y-1">
-              <h3 className="text-xs sm:text-sm font-bold text-[#3D2E4D] flex items-center gap-2">
-                <HelpCircle className="h-4 w-4 text-[#8C5383]" />
-                <span>Não aparece &quot;Instalar aplicativo&quot; no Android?</span>
+            <div className="py-5 space-y-1.5">
+              <h3 className="text-sm font-bold text-[#3D2E4D] flex items-center gap-2">
+                <HelpCircle className="h-4 w-4 text-[#8C5383] shrink-0" />
+                <span>Não vejo &quot;Instalar aplicativo&quot; no Android?</span>
               </h3>
-              <p className="text-xs text-[#6B5E7A] leading-relaxed font-medium pl-6">
-                Abra pelo <strong>Google Chrome</strong>. No menu de 3 pontinhos, você também pode usar a opção &quot;Adicionar à tela inicial&quot;, que funciona exatamente da mesma forma.
+              <p className="text-xs sm:text-sm text-[#6B5E7A] leading-relaxed pl-6">
+                Certifique-se de usar o <strong>Google Chrome</strong>. No menu de 3 pontos, a opção &quot;Adicionar à tela inicial&quot; tem exatamente o mesmo efeito de instalação.
               </p>
             </div>
           </div>

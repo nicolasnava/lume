@@ -13,7 +13,6 @@ interface StoriesShareModalProps {
   tagline?: string | null
   corPrimaria?: string
   corSecundaria?: string
-  mode?: 'vitrine' | 'indicacao'
 }
 
 export default function StoriesShareModal({
@@ -23,7 +22,6 @@ export default function StoriesShareModal({
   nomeProfissional,
   fotoUrl,
   tagline,
-  mode = 'vitrine',
 }: StoriesShareModalProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -113,25 +111,21 @@ export default function StoriesShareModal({
 
     ctx.font = '600 30px sans-serif'
     ctx.fillStyle = '#7A6E89'
-    const subText = mode === 'indicacao'
-      ? 'Convite especial para o Lumê'
-      : tagline?.trim() || 'Reserve seu horário online com facilidade'
+    const subText = tagline?.trim() || 'Reserve seu horário online com facilidade'
     ctx.fillText(subText, 540, 605)
     ctx.restore()
 
-    // 4. Textos de Chamada para Agendamento / Indicação (Direto na tela lisa pastel)
+    // 4. Textos de Chamada para Agendamento (Direto na tela lisa pastel)
     ctx.save()
     ctx.textAlign = 'center'
     ctx.font = '700 38px sans-serif'
     ctx.fillStyle = '#4A3F5C'
-    const callTitle = mode === 'indicacao' ? 'Aponte a câmera e cadastre-se' : 'Aponte a câmera e agende'
+    const callTitle = 'Aponte a câmera e agende'
     ctx.fillText(callTitle, 540, 710)
 
     ctx.font = '500 26px sans-serif'
     ctx.fillStyle = '#8E8299'
-    const callSub = mode === 'indicacao'
-      ? 'Gerencie sua agenda de beleza com inteligência'
-      : 'Escolha o serviço e horário desejado em instantes'
+    const callSub = 'Escolha o serviço e horário desejado em instantes'
     ctx.fillText(callSub, 540, 755)
     ctx.restore()
 
@@ -413,7 +407,7 @@ export default function StoriesShareModal({
             <Instagram className="h-5 w-5" />
           </div>
           <h3 className="text-base font-bold text-[#4A3F5C]">
-            {mode === 'indicacao' ? 'Divulgar Indicação nos Stories' : 'Divulgar no Instagram Stories'}
+            Divulgar no Instagram Stories
           </h3>
           <p className="text-xs text-gray-500 font-medium">
             Imagem em 1080x1920 com a identidade Lumê, QR Code oficial e pronta para postar

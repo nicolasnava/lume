@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function POST(request: Request) {
   const requestUrl = new URL(request.url)
-  const baseUrl = requestUrl.origin || 'http://localhost:3000'
+  const baseUrl = requestUrl.origin || process.env.NEXT_PUBLIC_SITE_URL || 'https://lumebr.app'
 
   const supabase = await createClient()
   const {

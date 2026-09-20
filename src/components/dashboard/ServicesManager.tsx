@@ -33,6 +33,7 @@ import {
   ChevronDown,
   User,
   Phone,
+  ShoppingBag,
 } from 'lucide-react'
 import {
   ComboItem,
@@ -42,6 +43,13 @@ import {
   toggleComboStatusAction,
   getCombosProfissionalAction,
 } from '@/app/actions/combos'
+import {
+  ComandaProduto,
+  createComandaProdutoAction,
+  updateComandaProdutoAction,
+  deleteComandaProdutoAction,
+  toggleComandaProdutoStatusAction,
+} from '@/app/actions/comanda'
 
 export interface ServicePendingBooking {
   id: string
@@ -71,6 +79,7 @@ export interface ServiceRow {
 interface ServicesManagerProps {
   initialServices: ServiceRow[]
   initialCombos?: ComboItem[]
+  initialComanda?: ComandaProduto[]
   profissionalId?: string
 }
 
@@ -84,10 +93,11 @@ function getStoragePathFromPublicUrl(url: string, bucketName: string): string | 
   return null
 }
 
-export default function ServicesManager({ initialServices, initialCombos, profissionalId }: ServicesManagerProps) {
-  const [activeTab, setActiveTab] = useState<'servicos' | 'combos'>('servicos')
+export default function ServicesManager({ initialServices, initialCombos, initialComanda, profissionalId }: ServicesManagerProps) {
+  const [activeTab, setActiveTab] = useState<'servicos' | 'combos' | 'comanda'>('servicos')
   const [services, setServices] = useState<ServiceRow[]>(initialServices)
   const [combos, setCombos] = useState<ComboItem[]>(initialCombos || [])
+  const [comandaProdutos, setComandaProdutos] = useState<ComandaProduto[]>(initialComanda || [])
   const [expandedComboId, setExpandedComboId] = useState<string | null>(null)
 
   // Ordenar serviços: ativos no topo, desativados descem para o fim da lista
@@ -132,6 +142,19 @@ export default function ServicesManager({ initialServices, initialCombos, profis
   const [comboUploading, setComboUploading] = useState(false)
   const [isComboDragging, setIsComboDragging] = useState(false)
   const [deletingComboId, setDeletingComboId] = useState<string | null>(null)
+
+  // Comanda Digital / Produtos State
+  const [showComandaModal, setShowComandaModal] = useState(false)
+  const [editingComandaProduto, setEditingComandaProduto] = useState<ComandaProduto | null>(null)
+  const [comandaNome, setComandaNome] = useState('')
+  const [comandaDescricao, setComandaDescricao] = useState('')
+  const [comandaPreco, setComandaPreco] = useState('')
+  const [comandaFotoUrl, setComandaFotoUrl] = useState('')
+  const [comandaPreviousFotoUrl, setComandaPreviousFotoUrl] = useState<string | null>(null)
+  const [comandaSaving, setComandaSaving] = useState(false)
+  const [comandaUploading, setComandaUploading] = useState(false)
+  const [isComandaDragging, setIsComandaDragging] = useState(false)
+  const [deletingComandaId, setDeletingComandaId] = useState<string | null>(null)
 
   // Seleção de serviços do combo (Simples ou Múltipla com Dropdown Rico idêntico ao agendamento)
   const [isComboMultiSelect, setIsComboMultiSelect] = useState(false)
@@ -416,6 +439,226 @@ export default function ServicesManager({ initialServices, initialCombos, profis
     }
   }
 
+  // Comanda Digital Handlers
+  const openCreateComandaModal = () => {
+    setEditingComandaProduto(null)
+    setComandaNome('')
+    setComandaDescricao('')
+    setComandaPreco('')
+    setComandaFotoUrl('')
+    setComandaPreviousFotoUrl(null)
+    setShowComandaModal(true)
+  }
+
+  const openEditComandaModal = (p: ComandaProduto) => {
+    setEditingComandaProduto(p)
+    setComandaNome(p.nome)
+    setComandaDescricao(p.descricao || '')
+    setComandaPreco(String(p.preco))
+    setComandaFotoUrl(p.foto_url || '')
+    setComandaPreviousFotoUrl(p.foto_url || null)
+    setShowComandaModal(true)
+  }
+
+  const handleComandaPhotoUpload = async (file: File) => {
+    if (!file) return
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    if (!allowedTypes.includes(file.type)) {
+      setToast({
+        show: true,
+        message: 'Formato inválido. Selecione uma imagem JPG, PNG, WEBP ou GIF.',
+        type: 'error',
+      })
+      return
+    }
+
+    const maxSize = 5 * 1024 * 1024
+    if (file.size > maxSize) {
+      setToast({
+        show: true,
+        message: 'A imagem excede o tamanho máximo de 5MB.',
+        type: 'error',
+      })
+      return
+    }
+
+    setComandaUploading(true)
+
+    try {
+      const validation = await validateImageMagicBytes(file)
+      if (!validation.valid) {
+        setToast({
+          show: true,
+          message: validation.error || 'Arquivo de imagem inválido.',
+          type: 'error',
+        })
+        return
+      }
+
+      const supabase = createClient()
+      let profId = profissionalId
+      if (!profId) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        profId = user?.id
+      }
+
+      if (!profId) throw new Error('Usuário não autenticado.')
+
+      const fileExt = validation.detectedType || file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const filePath = `${profId}/comanda-${Date.now()}.${fileExt}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('servicos')
+        .upload(filePath, file, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data: publicUrlData } = supabase.storage
+        .from('servicos')
+        .getPublicUrl(filePath)
+
+      if (comandaPreviousFotoUrl) {
+        const oldStoragePath = getStoragePathFromPublicUrl(comandaPreviousFotoUrl, 'servicos')
+        if (oldStoragePath) {
+          try {
+            await supabase.storage.from('servicos').remove([oldStoragePath])
+          } catch (e) {
+            console.error('Erro ao remover foto antiga:', e)
+          }
+        }
+      }
+
+      const newUrl = publicUrlData.publicUrl
+      setComandaFotoUrl(newUrl)
+      setComandaPreviousFotoUrl(newUrl)
+      setToast({
+        show: true,
+        message: 'Foto do produto enviada com sucesso!',
+        type: 'success',
+      })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao enviar foto'
+      setToast({ show: true, message: msg, type: 'error' })
+    } finally {
+      setComandaUploading(false)
+    }
+  }
+
+  const handleRemoveComandaPhoto = async () => {
+    if (comandaPreviousFotoUrl) {
+      const oldStoragePath = getStoragePathFromPublicUrl(comandaPreviousFotoUrl, 'servicos')
+      if (oldStoragePath) {
+        try {
+          const supabase = createClient()
+          await supabase.storage.from('servicos').remove([oldStoragePath])
+        } catch (e) {
+          console.error('Erro ao remover foto antiga:', e)
+        }
+      }
+    }
+    setComandaFotoUrl('')
+    setComandaPreviousFotoUrl(null)
+  }
+
+  const handleComandaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!comandaNome.trim()) {
+      setToast({ show: true, message: 'Informe o nome do item.', type: 'error' })
+      return
+    }
+
+    const precoNum = Number(comandaPreco.replace(',', '.'))
+    if (isNaN(precoNum) || precoNum < 0) {
+      setToast({ show: true, message: 'Informe um valor válido para o item.', type: 'error' })
+      return
+    }
+
+    setComandaSaving(true)
+    try {
+      if (editingComandaProduto) {
+        const res = await updateComandaProdutoAction(editingComandaProduto.id, {
+          nome: comandaNome,
+          descricao: comandaDescricao || null,
+          preco: precoNum,
+          foto_url: comandaFotoUrl || null,
+        })
+        if (!res.success) {
+          setToast({ show: true, message: res.message || 'Erro ao atualizar item.', type: 'error' })
+        } else {
+          setComandaProdutos((prev) =>
+            prev.map((p) =>
+              p.id === editingComandaProduto.id
+                ? {
+                    ...p,
+                    nome: comandaNome.trim(),
+                    descricao: comandaDescricao.trim() || null,
+                    preco: precoNum,
+                    foto_url: comandaFotoUrl || null,
+                  }
+                : p
+            )
+          )
+          setShowComandaModal(false)
+          setToast({ show: true, message: 'Item atualizado com sucesso!', type: 'success' })
+        }
+      } else {
+        const res = await createComandaProdutoAction({
+          nome: comandaNome,
+          descricao: comandaDescricao || null,
+          preco: precoNum,
+          foto_url: comandaFotoUrl || null,
+        })
+        if (!res.success) {
+          setToast({ show: true, message: res.message || 'Erro ao cadastrar item.', type: 'error' })
+        } else if (res.data) {
+          setComandaProdutos((prev) => [res.data!, ...prev])
+          setShowComandaModal(false)
+          setToast({ show: true, message: 'Item adicionado à comanda!', type: 'success' })
+        }
+      }
+    } finally {
+      setComandaSaving(false)
+    }
+  }
+
+  const handleToggleComandaStatus = async (id: string, currentAtivo: boolean) => {
+    const nextAtivo = !currentAtivo
+    setComandaProdutos((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, ativo: nextAtivo } : p))
+    )
+    const res = await toggleComandaProdutoStatusAction(id, nextAtivo)
+    if (!res.success) {
+      setComandaProdutos((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, ativo: currentAtivo } : p))
+      )
+      setToast({ show: true, message: res.message || 'Erro ao alterar status.', type: 'error' })
+    } else {
+      setToast({
+        show: true,
+        message: nextAtivo ? 'Item ativado na comanda!' : 'Item pausado da comanda.',
+        type: 'info',
+      })
+    }
+  }
+
+  const handleDeleteComanda = async (id: string) => {
+    if (!confirm('Deseja realmente remover este item da comanda?')) {
+      return
+    }
+    setDeletingComandaId(id)
+    const res = await deleteComandaProdutoAction(id)
+    setDeletingComandaId(null)
+    if (!res.success) {
+      setToast({ show: true, message: res.message || 'Erro ao remover item.', type: 'error' })
+    } else {
+      setComandaProdutos((prev) => prev.filter((p) => p.id !== id))
+      setToast({ show: true, message: 'Item removido da comanda!', type: 'success' })
+    }
+  }
+
   const openCreateModal = () => {
     setEditingService(null)
     setNome('')
@@ -670,19 +913,24 @@ export default function ServicesManager({ initialServices, initialCombos, profis
 
   return (
     <div className="space-y-6">
-      {/* Seletor de Abas com Animação Suave: Serviços vs Pacotes (Itens 6, 7, 8 e 9) */}
-      <div className="relative flex items-center p-1 rounded-2xl bg-gray-100/90 border border-gray-200/80 max-w-md">
+      {/* Seletor de Abas: Serviços vs Pacotes vs Comanda Digital */}
+      <div className="relative flex items-center p-1 rounded-2xl bg-gray-100/90 border border-gray-200/80 max-w-xl">
         <div
           className="absolute top-1 bottom-1 rounded-xl bg-white shadow-xs transition-all duration-300 ease-out pointer-events-none"
           style={{
-            left: activeTab === 'servicos' ? '4px' : 'calc(50% + 2px)',
-            width: 'calc(50% - 6px)',
+            left:
+              activeTab === 'servicos'
+                ? '4px'
+                : activeTab === 'combos'
+                ? 'calc(33.333% + 2px)'
+                : 'calc(66.666% + 2px)',
+            width: 'calc(33.333% - 5px)',
           }}
         />
         <button
           type="button"
           onClick={() => setActiveTab('servicos')}
-          className={`relative z-10 flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-colors duration-200 flex items-center justify-center gap-2 cursor-pointer ${
+          className={`relative z-10 flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-xs font-bold transition-colors duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
             activeTab === 'servicos'
               ? 'text-[#4A3F5C]'
               : 'text-gray-500 hover:text-gray-700'
@@ -694,7 +942,7 @@ export default function ServicesManager({ initialServices, initialCombos, profis
         <button
           type="button"
           onClick={() => setActiveTab('combos')}
-          className={`relative z-10 flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-colors duration-200 flex items-center justify-center gap-2 cursor-pointer ${
+          className={`relative z-10 flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-xs font-bold transition-colors duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
             activeTab === 'combos'
               ? 'text-[#4A3F5C]'
               : 'text-gray-500 hover:text-gray-700'
@@ -703,9 +951,21 @@ export default function ServicesManager({ initialServices, initialCombos, profis
           <Package className="h-4 w-4 text-[#8675A9]" />
           <span>Pacotes ({combos.length})</span>
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('comanda')}
+          className={`relative z-10 flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-xs font-bold transition-colors duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
+            activeTab === 'comanda'
+              ? 'text-[#4A3F5C]'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <ShoppingBag className="h-4 w-4 text-[#8675A9]" />
+          <span>Comanda ({comandaProdutos.length})</span>
+        </button>
       </div>
 
-      {activeTab === 'servicos' ? (
+      {activeTab === 'servicos' && (
         <>
           {/* Card de Destaque + Botão Cadastrar Novo Serviço Esticado (Item 6) */}
           <div className="space-y-3">
@@ -888,7 +1148,9 @@ export default function ServicesManager({ initialServices, initialCombos, profis
         </div>
       )}
         </>
-      ) : (
+      )}
+
+      {activeTab === 'combos' && (
         <>
           {/* Aba de Pacotes: Header e Botão com espaçamento idêntico a Serviços (Itens 10 e 11) */}
           <div className="space-y-3">
@@ -1106,6 +1368,163 @@ export default function ServicesManager({ initialServices, initialCombos, profis
             )}
           </>
         )}
+
+      {activeTab === 'comanda' && (
+        <>
+          {/* Aba de Comanda Digital: Header e Botão com espaçamento idêntico a Serviços e Pacotes */}
+          <div className="space-y-3">
+            <div className="rounded-3xl bg-white p-5 border border-gray-200/80 shadow-2xs flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-50 text-[#4A3F5C] border border-[#B8A9D9]/30">
+                  <ShoppingBag className="h-5 w-5 text-[#B8A9D9]" />
+                </div>
+                <div>
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Total de Itens na Comanda</span>
+                  <strong className="text-xl font-bold text-[#4A3F5C]">
+                    {comandaProdutos.length} {comandaProdutos.length === 1 ? 'item' : 'itens'}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={openCreateComandaModal}
+              className="w-full py-3.5 rounded-2xl bg-[#4A3F5C] text-xs font-semibold text-white shadow-xs hover:bg-[#393047] transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Plus className="h-4 w-4 text-[#B8A9D9]" />
+              <span>Cadastrar Novo Item na Comanda</span>
+            </button>
+          </div>
+
+          {/* Lista de Itens da Comanda Digital */}
+          {comandaProdutos.length === 0 ? (
+            <div className="rounded-2xl bg-white p-12 text-center border border-gray-100 shadow-xs space-y-3">
+              <ShoppingBag className="mx-auto h-8 w-8 text-[#B8A9D9]" />
+              <h3 className="text-sm font-bold text-[#4A3F5C]">Nenhum item na comanda digital</h3>
+              <p className="text-xs text-gray-500 max-w-sm mx-auto">
+                Cadastre produtos de revenda, home care, cosméticos, kits pós-procedimento ou itens extras para oferecer às suas clientes na comanda digital e vitrine.
+              </p>
+              <button
+                type="button"
+                onClick={openCreateComandaModal}
+                className="mt-2 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-100 text-[#4A3F5C] text-xs font-bold hover:bg-purple-200 transition cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Cadastrar Primeiro Item</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {comandaProdutos.map((produto) => {
+                const isAtivo = produto.ativo !== false
+
+                return (
+                  <div
+                    key={produto.id}
+                    className={`rounded-3xl bg-white p-4 shadow-xs border transition flex flex-col justify-between h-full space-y-4 ${
+                      isAtivo
+                        ? 'border-gray-200/80 hover:border-[#B8A9D9]'
+                        : 'border-gray-200 opacity-60 bg-gray-50/50'
+                    }`}
+                  >
+                    <div className="space-y-3 flex-1 flex flex-col justify-between">
+                      <div className="space-y-2.5">
+                        {/* Imagem do Produto com Destaque Focado */}
+                        <div className="relative w-full h-44 rounded-2xl overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
+                          {produto.foto_url ? (
+                            <Image
+                              src={produto.foto_url}
+                              alt={produto.nome}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50">
+                              <ShoppingBag className="h-10 w-10 text-[#B8A9D9]" />
+                            </div>
+                          )}
+                          {!isAtivo && (
+                            <div className="absolute top-2.5 right-2.5 bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs">
+                              Pausado
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Nome do Produto */}
+                        <h4 className="text-sm font-extrabold text-[#4A3F5C] leading-snug">
+                          {produto.nome}
+                        </h4>
+
+                        {/* Descrição */}
+                        {produto.descricao ? (
+                          <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed font-normal">
+                            {produto.descricao}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-400 italic">Sem descrição adicional.</p>
+                        )}
+                      </div>
+
+                      {/* Valor do Produto */}
+                      <div className="pt-2 border-t border-gray-100">
+                        <span className="text-base font-black text-emerald-700">
+                          {new Intl.NumberFormat('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL',
+                          }).format(produto.preco)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Ações */}
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleComandaStatus(produto.id, isAtivo)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                          isAtivo
+                            ? 'border-gray-200 text-gray-600 hover:bg-gray-100'
+                            : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                        }`}
+                        title={isAtivo ? 'Pausar item' : 'Ativar item'}
+                      >
+                        <Power className="h-3.5 w-3.5" />
+                        <span>{isAtivo ? 'Pausar' : 'Ativar'}</span>
+                      </button>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => openEditComandaModal(produto)}
+                          className="p-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-[#4A3F5C] transition cursor-pointer"
+                          title="Editar item"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={deletingComandaId === produto.id}
+                          onClick={() => handleDeleteComanda(produto.id)}
+                          className="p-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 transition cursor-pointer disabled:opacity-50"
+                          title="Excluir item"
+                        >
+                          {deletingComandaId === produto.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </>
+      )}
 
       {/* Modal de Criação / Edição de Serviço (Item 10a: Responsivo para mobile) */}
       {showModal && (
@@ -1579,7 +1998,7 @@ export default function ServicesManager({ initialServices, initialCombos, profis
 
                     {/* Dropdown com Foto na Esquerda, Nome à Direita, Valor e Tempo */}
                     {isComboServiceDropdownOpen && (
-                      <div className="absolute left-0 right-0 top-full mt-2 z-40 max-h-72 overflow-y-auto rounded-3xl bg-white border border-gray-200 shadow-2xl p-2 space-y-1.5 animate-in fade-in duration-150">
+                      <div className="lume-smooth-dropdown absolute left-0 right-0 top-full mt-2 z-40 max-h-72 overflow-y-auto rounded-3xl bg-white border border-gray-200 shadow-2xl p-2 space-y-1.5">
                         <div className="px-2 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center justify-between border-b border-gray-100 pb-1.5">
                           <span>{isComboMultiSelect ? 'Marque os serviços desejados' : 'Selecione o serviço'}</span>
                           {isComboMultiSelect && (
@@ -1824,6 +2243,216 @@ export default function ServicesManager({ initialServices, initialCombos, profis
             >
               Fechar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Criação / Edição de Item da Comanda */}
+      {showComandaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-3xl bg-white p-4 sm:p-6 shadow-2xl space-y-5 relative max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-[#4A3F5C] border border-[#B8A9D9]/30">
+                  <ShoppingBag className="h-4 w-4 text-[#B8A9D9]" />
+                </div>
+                <h3 className="text-lg sm:text-xl font-bold text-[#4A3F5C]">
+                  {editingComandaProduto ? 'Editar Item da Comanda' : 'Novo Item na Comanda'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowComandaModal(false)}
+                className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleComandaSubmit} className="space-y-4">
+              {/* Nome do Produto / Item */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80 mb-1">
+                  Nome do Item / Produto *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={comandaNome}
+                  onChange={(e) => setComandaNome(e.target.value)}
+                  placeholder="Ex: Shampoo Espuma para Cílios ou Kit Pós-Lash"
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 px-4 text-sm text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-none"
+                />
+              </div>
+
+              {/* Valor / Preço */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80 mb-1">
+                  Valor de Venda (R$) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">
+                    R$
+                  </span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required
+                    value={comandaPreco}
+                    onChange={(e) => setComandaPreco(e.target.value)}
+                    placeholder="35,00"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50/50 py-3 pl-11 pr-4 text-sm font-bold text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Descrição */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80">
+                    Descrição (Opcional)
+                  </label>
+                  <span
+                    className={`text-[11px] font-bold ${
+                      comandaDescricao.length >= 100 ? 'text-amber-600' : 'text-gray-400'
+                    }`}
+                  >
+                    {comandaDescricao.length}/100
+                  </span>
+                </div>
+                <textarea
+                  rows={2}
+                  maxLength={100}
+                  value={comandaDescricao}
+                  onChange={(e) => setComandaDescricao(e.target.value.slice(0, 100))}
+                  placeholder="Ex: Fórmula suave de uso diário para higienização e maior durabilidade."
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50/50 p-3 text-xs text-[#4A3F5C] focus:border-[#B8A9D9] focus:bg-white focus:outline-none"
+                />
+              </div>
+
+              {/* Foto do Produto */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80 mb-2">
+                  Foto do Item (Foco no Produto)
+                </label>
+
+                {comandaUploading ? (
+                  <div className="flex flex-col items-center justify-center p-6 rounded-2xl border-2 border-dashed border-[#B8A9D9] bg-purple-50/40 text-center space-y-2">
+                    <Loader2 className="h-7 w-7 animate-spin text-[#4A3F5C]" />
+                    <p className="text-xs font-semibold text-[#4A3F5C]">Enviando foto...</p>
+                    <p className="text-[11px] text-gray-500">Aguarde o término do upload.</p>
+                  </div>
+                ) : comandaFotoUrl ? (
+                  <div className="relative rounded-2xl border border-gray-200 p-3 bg-gray-50/50 flex items-center gap-4">
+                    <div className="relative h-20 w-20 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 shadow-2xs">
+                      <Image
+                        src={comandaFotoUrl}
+                        alt={comandaNome || 'Preview do item'}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <p className="text-xs text-emerald-700 font-semibold flex items-center gap-1.5">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                        <span>Foto do produto carregada</span>
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <label className="cursor-pointer inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-gray-300 bg-white text-xs font-semibold text-[#4A3F5C] hover:bg-gray-100 transition shadow-2xs">
+                          <Camera className="h-3.5 w-3.5 text-[#B8A9D9]" />
+                          <span>Trocar</span>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            className="hidden"
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                handleComandaPhotoUpload(e.target.files[0])
+                              }
+                            }}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleRemoveComandaPhoto}
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-red-200 bg-white text-xs font-semibold text-red-600 hover:bg-red-50 transition shadow-2xs cursor-pointer"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          <span>Remover</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      setIsComandaDragging(true)
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault()
+                      setIsComandaDragging(false)
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      setIsComandaDragging(false)
+                      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                        handleComandaPhotoUpload(e.dataTransfer.files[0])
+                      }
+                    }}
+                    className={`rounded-2xl border-2 border-dashed p-5 text-center transition cursor-pointer flex flex-col items-center justify-center ${
+                      isComandaDragging
+                        ? 'border-[#4A3F5C] bg-purple-50/70 scale-102'
+                        : 'border-gray-200 bg-gray-50/50 hover:bg-gray-100/50 hover:border-gray-300'
+                    }`}
+                  >
+                    <UploadCloud className="h-8 w-8 text-[#8675A9] mb-1.5" />
+                    <p className="text-xs font-bold text-[#4A3F5C]">
+                      Clique para escolher ou arraste uma foto aqui
+                    </p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">JPG, PNG ou WEBP até 5MB</p>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="hidden"
+                      id="comanda-photo-input"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          handleComandaPhotoUpload(e.target.files[0])
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor="comanda-photo-input"
+                      className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-[#4A3F5C] shadow-2xs border border-gray-200 hover:bg-gray-50 transition cursor-pointer"
+                    >
+                      <Camera className="h-3.5 w-3.5 text-[#8675A9]" />
+                      <span>Selecionar Imagem</span>
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Botões do Modal */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setShowComandaModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-bold text-gray-600 hover:bg-gray-100 transition cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={comandaSaving || comandaUploading}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#4A3F5C] text-xs font-bold text-white shadow-xs hover:bg-[#393047] transition cursor-pointer disabled:opacity-50"
+                >
+                  {comandaSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                  <span>{editingComandaProduto ? 'Salvar Alterações' : 'Cadastrar Item'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

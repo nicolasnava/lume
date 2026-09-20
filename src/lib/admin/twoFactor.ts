@@ -2,6 +2,9 @@ import crypto from 'crypto'
 import { cookies, headers } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
 
+import { getResendClient, DEFAULT_FROM_EMAIL } from '@/lib/email/resend'
+import { renderTwoFactorEmailHtml } from '@/lib/email/templates/twoFactorEmail'
+
 import {
   ADMIN_2FA_COOKIE_NAME,
   SESSION_EXPIRATION_HOURS,
@@ -14,6 +17,57 @@ export { ADMIN_2FA_COOKIE_NAME, SESSION_EXPIRATION_HOURS }
 const OTP_EXPIRATION_MINUTES = 10
 const MAX_REQUESTS_PER_WINDOW = 3
 const RATE_LIMIT_WINDOW_MINUTES = 15
+
+/**
+ * Envia o código 2FA e link de 1 clique utilizando o Resend com template HTML da identidade Lumê
+ */
+export async function sendResendOtp({
+  toEmail,
+  toName,
+  codigo,
+  linkVerificacao,
+}: {
+  toEmail: string
+  toName: string
+  codigo: string
+  linkVerificacao: string
+}): Promise<{ success: boolean; message?: string }> {
+  const resend = getResendClient()
+  if (!resend) {
+    return { success: false, message: 'RESEND_API_KEY não configurada' }
+  }
+
+  try {
+    const htmlContent = renderTwoFactorEmailHtml({
+      nome: toName,
+      codigo,
+      linkVerificacao,
+      email: toEmail,
+    })
+
+    const codigoAssunto = codigo.length === 6 ? `${codigo.slice(0, 3)}-${codigo.slice(3)}` : codigo
+    const { error } = await resend.emails.send({
+      from: DEFAULT_FROM_EMAIL,
+      to: toEmail,
+      subject: `Código de verificação Lumê: ${codigoAssunto}`,
+      html: htmlContent,
+    })
+
+    if (error) {
+      console.error('[2FA Resend] Erro ao enviar:', error)
+      return { success: false, message: error.message }
+    }
+
+    return { success: true }
+  } catch (err: any) {
+    console.error('[2FA Resend] Exceção ao enviar e-mail:', err)
+    return { success: false, message: err?.message || 'Erro ao conectar ao Resend' }
+  }
+}
+
+/**
+ * Envia o código 2FA e link de 1 clique por e-mail utilizando a API REST do EmailJS no servidor
+ */
 
 async function getClientIp(): Promise<string> {
   try {
@@ -186,7 +240,7 @@ export async function generateAndSendAdminOtp(
   const expiraEm = new Date(Date.now() + OTP_EXPIRATION_MINUTES * 60 * 1000).toISOString()
 
   // 3. Montar link de verificação de 1 clique
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://lumebr.app'
   const linkVerificacao = `${siteUrl}/api/auth/admin-2fa/verify?token=${tokenLink}`
 
   // 4. Inserir no banco
@@ -209,7 +263,21 @@ export async function generateAndSendAdminOtp(
     }
   }
 
-  // 5. Enviar por e-mail via EmailJS
+  // 5. Enviar por e-mail: prioriza Resend com template HTML Lumê, com fallback para EmailJS
+  if (process.env.RESEND_API_KEY) {
+    const resendResult = await sendResendOtp({
+      toEmail: email,
+      toName: name,
+      codigo,
+      linkVerificacao,
+    })
+    if (resendResult.success) {
+      return { success: true }
+    }
+    console.warn('[2FA] Resend falhou, tentando fallback para EmailJS:', resendResult.message)
+  }
+
+  // Fallback para EmailJS (ou modo dev)
   const emailResult = await sendEmailJsOtp({
     toEmail: email,
     toName: name,

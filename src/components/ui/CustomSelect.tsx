@@ -119,19 +119,19 @@ export default function CustomSelect({
   const isDark = variant === 'dark'
 
   const buttonVariantClasses = isDark
-    ? 'bg-zinc-900 border-zinc-800 text-zinc-200 hover:border-zinc-700 focus:border-purple-500'
+    ? 'bg-[#171520] border-white/[0.07] text-white hover:border-white/20 focus:border-[#906cd9]'
     : 'bg-[#FAF8F5] border-gray-200 text-[#4A3F5C] hover:border-[#B8A9D9] focus:border-[#8C5383] focus:bg-white'
 
   const dropdownVariantClasses = isDark
-    ? 'bg-zinc-900 border-zinc-800 text-zinc-200 shadow-2xl shadow-black/80'
+    ? 'bg-[#171520] border-white/[0.07] text-white shadow-2xl shadow-black/80'
     : 'bg-white border-gray-100 text-[#4A3F5C] shadow-xl shadow-purple-900/10'
 
   const itemHoverClasses = isDark
-    ? 'hover:bg-zinc-800 text-zinc-300 hover:text-white'
+    ? 'hover:bg-white/[0.04] text-slate-300 hover:text-white'
     : 'hover:bg-[#FAF8F5] text-[#4A3F5C] hover:text-[#3D2E4D]'
 
   const itemSelectedClasses = isDark
-    ? 'bg-purple-950/40 text-purple-300 font-bold'
+    ? 'bg-[#906cd9]/20 text-[#bfa4f4] font-bold'
     : 'bg-[#FAF1EE] text-[#C86D51] font-bold'
 
   // Rolar automaticamente para a opção selecionada ao abrir apenas quando não for pesquisável
@@ -163,7 +163,7 @@ export default function CustomSelect({
         aria-selected={isSelected}
         disabled={opt.disabled}
         onClick={() => handleSelect(opt.value, opt.disabled)}
-        className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm text-left transition duration-100 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+        className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-xs sm:text-sm text-left transition duration-150 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed lume-smooth-dropdown-item active:scale-[0.98] ${
           isSelected ? itemSelectedClasses : itemHoverClasses
         }`}
       >
@@ -237,7 +237,7 @@ export default function CustomSelect({
         <div
           ref={listboxRef}
           role="listbox"
-          className={`absolute left-0 min-w-full w-max max-w-[280px] top-full mt-1.5 z-[100] max-h-60 overflow-y-auto rounded-2xl border p-1.5 transition-all duration-150 animate-in fade-in slide-in-from-top-1 shadow-2xl ${dropdownVariantClasses} ${dropdownClassName}`}
+          className={`lume-smooth-dropdown absolute left-0 min-w-full w-max max-w-[280px] top-full mt-1.5 z-[100] max-h-60 overflow-y-auto rounded-2xl border p-1.5 shadow-2xl backdrop-blur-md ${dropdownVariantClasses} ${dropdownClassName}`}
         >
           {normalizedOptions.length === 0 ? (
             <div className="py-3 px-3 text-xs text-gray-400 text-center">
@@ -262,7 +262,7 @@ export default function CustomSelect({
                     onKeyDown={(e) => e.stopPropagation()}
                     className={`w-full pl-7 pr-6 py-1.5 text-xs rounded-xl border focus:outline-hidden font-medium ${
                       isDark
-                        ? 'bg-zinc-800 border-zinc-700 text-zinc-200 placeholder-zinc-500 focus:border-purple-500'
+                        ? 'bg-[#121019] border-white/[0.07] text-white placeholder-gray-500 focus:border-[#906cd9]'
                         : 'bg-[#FAF8F5] border-gray-200 text-[#4A3F5C] placeholder-gray-400 focus:border-[#B8A9D9] focus:bg-white'
                     }`}
                   />

@@ -130,3 +130,12 @@ export function parseModalidades(modalidade: unknown): string[] {
   return ['studio']
 }
 
+/**
+ * Retorna uma string elegante para exibição da categoria principal ou combinada
+ */
+export function formatCategoryDisplay(categoria: unknown): string {
+  const cats = parseCategorias(categoria)
+  if (cats.length === 0) return 'Estética & Beleza'
+  return cats.slice(0, 2).map((c) => getCategoryLabel(c, true)).join(' • ')
+}
+

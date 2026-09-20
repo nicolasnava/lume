@@ -180,8 +180,8 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
       ? `${window.location.origin}/studio/${studioInfo.studioSlug}/${studioInfo.userSlug}`
       : `${window.location.origin}/p/${currentSlug}`
     : studioInfo
-      ? `https://lume.com.br/studio/${studioInfo.studioSlug}/${studioInfo.userSlug}`
-      : `https://lume.com.br/p/${currentSlug}`
+      ? `https://lumebr.app/studio/${studioInfo.studioSlug}/${studioInfo.userSlug}`
+      : `https://lumebr.app/p/${currentSlug}`
 
   // Autosave Status: 'idle' | 'saving' | 'saved'
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -475,7 +475,7 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
     }
   }
 
-  const originUrl = typeof window !== 'undefined' ? window.location.origin : 'https://lume.com'
+  const originUrl = typeof window !== 'undefined' ? window.location.origin : 'https://lumebr.app'
   const publicUrlStr = `${originUrl}/p/${currentSlug}`
 
   return (
@@ -877,7 +877,7 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
                 <button
                   type="button"
                   onClick={async () => {
-                    const personalUrl = typeof window !== 'undefined' ? `${window.location.origin}/p/${currentSlug}` : `https://lume.com.br/p/${currentSlug}`
+                    const personalUrl = typeof window !== 'undefined' ? `${window.location.origin}/p/${currentSlug}` : `https://lumebr.app/p/${currentSlug}`
                     const success = await copyToClipboard(personalUrl)
                     if (success) {
                       setToast({ show: true, message: 'Link pessoal copiado com sucesso!', type: 'success' })

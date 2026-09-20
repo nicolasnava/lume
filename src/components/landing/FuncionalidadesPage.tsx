@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import LandingHeader from './LandingHeader'
 import LandingFooter from './LandingFooter'
+import CornerFillButton from '@/components/ui/CornerFillButton'
 
 export default function FuncionalidadesPage() {
   return (
@@ -31,13 +32,14 @@ export default function FuncionalidadesPage() {
           </p>
 
           <div className="pt-4">
-            <Link
+            <CornerFillButton
               href="/cadastro"
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#3D2E4D] px-8 py-4 text-sm font-bold text-white shadow-xl hover:bg-[#2E223B] transition transform hover:-translate-y-0.5 cursor-pointer"
+              variant="dark"
+              className="px-8 py-4 text-sm font-bold shadow-xl"
+              icon={<ArrowRight className="h-4 w-4 shrink-0" />}
             >
               <span>Conhecer o Lumê grátis</span>
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            </CornerFillButton>
           </div>
         </div>
       </section>
@@ -226,19 +228,62 @@ export default function FuncionalidadesPage() {
             </div>
           </div>
 
+          {/* Pilar 5: Lumê Studio (Para Salões e Espaços Compartilhados) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+            <div className="lg:col-span-6 space-y-5 text-left order-1">
+              <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[#8C5383]">
+                <span className="w-5 h-0.5 bg-[#8C5383] rounded-full" />
+                <span>Lumê Studio</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#3D2E4D] tracking-tight leading-[1.18] [text-wrap:balance]">
+                Para salões e espaços compartilhados.
+              </h2>
+              <p className="text-sm sm:text-base text-[#6B5E7A] leading-relaxed [text-wrap:pretty]">
+                Reúna todas as profissionais do seu espaço em uma só vitrine coletiva.
+              </p>
+              <ul className="space-y-2.5 text-xs sm:text-sm font-medium text-[#3D2E4D] pt-2">
+                <li className="flex items-center gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <span>Vitrine unificada para a equipe</span>
+                </li>
+                <li className="flex items-center gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <span>Cálculo automático de comissões</span>
+                </li>
+                <li className="flex items-center gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <span>Aluguel de cadeira e coworking</span>
+                </li>
+                <li className="flex items-center gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <span>Privacidade para cada profissional</span>
+                </li>
+              </ul>
+            </div>
+            <div className="lg:col-span-6 flex justify-center order-2">
+              <div className="w-full max-w-[460px] aspect-[4/3] rounded-3xl overflow-hidden border border-[#E8DFD8] shadow-md relative bg-white">
+                <Image
+                  src="/assets/funcionalidades/studio.webp"
+                  alt="Espaço Lumê Studio para salões e clínicas"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover"
+                />
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 
-      {/* Seção "Feito para a sua rotina" */}
+      {/* Seção "Feito para a sua rotina" em Formato Editorial */}
       <section className="py-16 sm:py-24 bg-[#FAF8F5]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12 text-center">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 space-y-12">
           
-          <div className="space-y-3 max-w-2xl mx-auto">
-            <div className="flex items-center justify-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[#8C5383]">
-              <span className="w-5 h-0.5 bg-[#8C5383]/50 rounded-full" />
-              <span>Feito para a sua rotina</span>
-              <span className="w-5 h-0.5 bg-[#8C5383]/50 rounded-full" />
-            </div>
+          <div className="space-y-3 max-w-2xl mx-auto text-center">
+            <span className="text-xs font-bold uppercase tracking-widest text-[#8C5383]">
+              Feito para a sua rotina real
+            </span>
             <h2 className="text-2xl sm:text-4xl font-bold text-[#3D2E4D] tracking-tight">
               A tranquilidade que seu atendimento merece
             </h2>
@@ -247,44 +292,44 @@ export default function FuncionalidadesPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
-            <div className="bg-white p-6 rounded-3xl border border-[#E8DFD8] shadow-xs space-y-3">
-              <div className="h-11 w-11 rounded-2xl bg-[#FAF1EE] flex items-center justify-center text-[#C86D51]">
-                <MessageCircle className="h-5 w-5" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 text-left border-y border-[#E8DFD8] py-10">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-[#3D2E4D]">
+                <MessageCircle className="h-5 w-5 text-[#8C5383]" />
+                <h3 className="text-sm font-bold text-[#3D2E4D]">Menos áudios repetitivos</h3>
               </div>
-              <h3 className="text-base font-bold text-[#3D2E4D]">Menos mensagens repetitivas</h3>
               <p className="text-xs text-[#6B5E7A] leading-relaxed">
-                Suas clientes agendam sozinhas pelo seu link sem depender de 10 mensagens de áudio enquanto você atende.
+                Suas clientes agendam sozinhas pelo seu link sem depender de trocar mensagens enquanto você está com a mão no procedimento.
               </p>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-[#E8DFD8] shadow-xs space-y-3">
-              <div className="h-11 w-11 rounded-2xl bg-[#FAF1EE] flex items-center justify-center text-[#8C5383]">
-                <Clock className="h-5 w-5" />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-[#3D2E4D]">
+                <Clock className="h-5 w-5 text-[#8C5383]" />
+                <h3 className="text-sm font-bold text-[#3D2E4D]">Zero choque de horários</h3>
               </div>
-              <h3 className="text-base font-bold text-[#3D2E4D]">Zero conflitos de horário</h3>
               <p className="text-xs text-[#6B5E7A] leading-relaxed">
-                Intervalos e durações calculados com precisão, integrados aos seus compromissos particulares.
+                Intervalos e durações calculados com precisão, integrados aos seus compromissos particulares do Google Agenda.
               </p>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-[#E8DFD8] shadow-xs space-y-3">
-              <div className="h-11 w-11 rounded-2xl bg-[#FAF1EE] flex items-center justify-center text-[#3D2E4D]">
-                <TrendingUp className="h-5 w-5" />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-[#3D2E4D]">
+                <TrendingUp className="h-5 w-5 text-[#8C5383]" />
+                <h3 className="text-sm font-bold text-[#3D2E4D]">Controle claro do dia</h3>
               </div>
-              <h3 className="text-base font-bold text-[#3D2E4D]">Mais controle do seu dia</h3>
               <p className="text-xs text-[#6B5E7A] leading-relaxed">
                 Saiba exatamente quantos atendimentos tem hoje, quanto vai faturar no mês e quem precisa de manutenção.
               </p>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-[#E8DFD8] shadow-xs space-y-3">
-              <div className="h-11 w-11 rounded-2xl bg-[#FAF1EE] flex items-center justify-center text-emerald-700">
-                <Heart className="h-5 w-5" />
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-[#3D2E4D]">
+                <Heart className="h-5 w-5 text-emerald-600" />
+                <h3 className="text-sm font-bold text-[#3D2E4D]">Foco na sua arte</h3>
               </div>
-              <h3 className="text-base font-bold text-[#3D2E4D]">Mais tempo para atender</h3>
               <p className="text-xs text-[#6B5E7A] leading-relaxed">
-                Foque na sua arte e no relacionamento com as clientes sem a ansiedade constante de mensagens acumuladas.
+                Foque na sua arte e no relacionamento com as clientes sem a ansiedade constante de mensagens acumuladas no WhatsApp.
               </p>
             </div>
           </div>
@@ -303,13 +348,14 @@ export default function FuncionalidadesPage() {
               Leva menos de 3 minutos para cadastrar seus serviços e compartilhar seu link exclusivo.
             </p>
             <div className="pt-2">
-              <Link
+              <CornerFillButton
                 href="/cadastro"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-sm font-bold text-[#3D2E4D] shadow-lg hover:bg-[#F4EAE4] transition transform hover:-translate-y-0.5 cursor-pointer"
+                variant="light"
+                className="px-8 py-4 text-sm font-bold shadow-lg"
+                icon={<ArrowRight className="h-4 w-4 shrink-0" />}
               >
                 <span>Criar minha agenda grátis</span>
-                <ArrowRight className="h-4 w-4 text-[#3D2E4D]" />
-              </Link>
+              </CornerFillButton>
             </div>
           </div>
         </div>

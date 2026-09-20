@@ -4,7 +4,7 @@ import { verifyAdminLinkToken } from '@/lib/admin/twoFactor'
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const token = requestUrl.searchParams.get('token')
-  const baseUrl = requestUrl.origin || 'http://localhost:3000'
+  const baseUrl = requestUrl.origin || process.env.NEXT_PUBLIC_SITE_URL || 'https://lumebr.app'
 
   if (!token) {
     return NextResponse.redirect(`${baseUrl}/admin/verificar?error=no_token`)

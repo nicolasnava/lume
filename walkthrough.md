@@ -60,7 +60,7 @@ Todas as 4 funcionalidades do **Prompt 59** foram desenvolvidas, integradas e va
     - Nome da profissional em tipografia elegante.
     - Tagline / chamada (*"Agende seu horário comigo!"*).
     - Card branco arredondado centralizado com o QR code em alta nitidez para leitura pela câmera de outros smartphones.
-    - Pílula inferior com o link legível da vitrine (`lume.com.br/p/slug`).
+    - Pílula inferior com o link legível da vitrine (`lumebr.app/p/slug`).
   - **Ações:**
     - **Baixar Imagem (PNG):** Baixa o arquivo pronto para upload manual nos Stories.
     - **Compartilhar Direto:** Usa a Web Share API (`navigator.share`) em smartphones (iOS/Android) para enviar diretamente para o Instagram ou WhatsApp.
@@ -140,7 +140,7 @@ As chaves VAPID foram geradas e já configuradas no arquivo `.env.local`:
 # Web Push API (VAPID Keys)
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=BFgvxWm6W2GeFpPByZi-vuBvdreMBENs100PEaQhhHpf8aAw7PK25fej67_3XrRlZJ8eYg0Pm-5hrQHVoOMIpOk
 VAPID_PRIVATE_KEY=ED8OJvoyc2N1Zb9klO5N1rlTUJkE5wYK3SMwGVNCpf4
-VAPID_SUBJECT=mailto:suporte@lume.com.br
+VAPID_SUBJECT=mailto:contato@lumebr.app
 ```
 
 > **Nota para Produção (Vercel / Hosting):** Configure essas três variáveis de ambiente no painel do seu provedor de hospedagem quando for realizar o deploy.

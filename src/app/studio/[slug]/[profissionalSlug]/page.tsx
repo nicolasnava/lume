@@ -4,6 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { Database } from '@/lib/supabase/database.types'
 import PublicShowcaseView from '@/components/booking/PublicShowcaseView'
 import { PublicReviewItem } from '@/components/reviews/PublicReviewsSection'
+import { getCombosProfissionalAction } from '@/app/actions/combos'
+import { getComandaProdutosAction } from '@/app/actions/comanda'
 
 interface MemberPageProps {
   params: Promise<{
@@ -88,30 +90,35 @@ export default async function StudioMemberProfilePage({ params }: MemberPageProp
     notFound()
   }
 
-  // 4. Buscar serviços cadastrados e ativos da profissional
-  const { data: servicosData } = await adminSupabase
-    .from('servicos')
-    .select('*')
-    .eq('profissional_id', prof.id)
-    .neq('ativo', false)
-    .order('nome', { ascending: true })
+  // 4. Buscar serviços, disponibilidades, avaliações, combos e comanda em paralelo
+  const [
+    { data: servicosData },
+    { data: disponibilidadesData },
+    { data: avaliacoesFullData },
+    combos,
+    comandaProdutos,
+  ] = await Promise.all([
+    adminSupabase
+      .from('servicos')
+      .select('*')
+      .eq('profissional_id', prof.id)
+      .neq('ativo', false)
+      .order('nome', { ascending: true }),
+    adminSupabase
+      .from('disponibilidade')
+      .select('*')
+      .eq('profissional_id', prof.id),
+    adminSupabase
+      .from('avaliacoes')
+      .select('id, nota, comentario, created_at, agendamentos(clientes(nome), servicos(nome))')
+      .eq('profissional_id', prof.id)
+      .order('created_at', { ascending: false }),
+    getCombosProfissionalAction(prof.id),
+    getComandaProdutosAction(prof.id, true),
+  ])
 
   const servicos = (servicosData || []) as ServicoRow[]
-
-  // 5. Buscar disponibilidades cadastradas
-  const { data: disponibilidadesData } = await adminSupabase
-    .from('disponibilidade')
-    .select('*')
-    .eq('profissional_id', prof.id)
-
   const disponibilidades = (disponibilidadesData || []) as DisponibilidadeRow[]
-
-  // 6. Buscar avaliações recebidas
-  const { data: avaliacoesFullData } = await adminSupabase
-    .from('avaliacoes')
-    .select('id, nota, comentario, created_at, agendamentos(clientes(nome), servicos(nome))')
-    .eq('profissional_id', prof.id)
-    .order('created_at', { ascending: false })
 
   const avaliacoes: PublicReviewItem[] = (avaliacoesFullData || []).map((item) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -132,6 +139,8 @@ export default async function StudioMemberProfilePage({ params }: MemberPageProp
       servicos={servicos}
       disponibilidades={disponibilidades}
       avaliacoes={avaliacoes}
+      combos={combos}
+      comandaProdutos={comandaProdutos}
       studioContext={{
         nome: estudio.nome,
         slug: estudio.slug,

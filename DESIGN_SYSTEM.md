@@ -233,3 +233,31 @@ Ao implementar ou refatorar qualquer tela do Lumê, confira:
 - [ ] O menu desktop permanece sem barras de rolagem estranhas no viewport padrão?
 - [ ] O contraste de cores respeita os padrões de legibilidade?
 - [ ] O comando `npx tsc --noEmit` roda com **0 erros**?
+
+---
+
+## 8. Trio Unificado de Design & Engenharia Visual (Canvas + Emil + Distill)
+
+Toda nova tela ou componente na plataforma Lumê é concebida sob o prisma integrado de 3 filosofias de excelência mundial:
+
+### 8.1 Distill (Impeccable — Pedro Bakaus)
+- **Eliminação Impiedosa de Ruído:** Remova qualquer elemento que não justifique sua existência.
+- **Estrutura sem Aninhamento Excessivo:** Proibido aninhar cards dentro de cards. Separe seções com espaçamento limpo (`gap-6`, `space-y-6`) e fundos contrastantes sutis.
+- **Zero Badges Desnecessários:** Elimine o arco-íris de pílulas coloridas. O status deve ser comunicado de forma sóbria por texto e indicador visual discreto.
+- **Foco 80/20:** Dê destaque máximo à ação principal (um botão primário claro). O resto é secundário ou progressivo.
+- **Cópia Sucinta:** Textos curtos, diretos e em voz ativa.
+
+### 8.2 Canvas Design (Anthropic)
+- **Acabamento Editorial de Museu:** Trate a composição visual com refinamento artístico.
+- **Respiração Espacial:** O espaço negativo é um elemento de design ativo que traz calma e sofisticação à profissional.
+- **Alinhamento e Ritmo:** Alinhamentos milimétricos e consistência geométrica.
+- **Cores Oficiais:** Aplicação rigorosa da paleta `#B8A9D9`, `#FAF7F5`, `#4A3F5C` e `emerald-700`.
+
+### 8.3 Emil Design Engineering (Emil Kowalski)
+- **Sensação Física no Toque:** Todo botão, card clicável e aba possui `:active:scale(0.97)` e transição suave de 150ms-200ms.
+- **Regra dos 300ms:** Nenhuma microinteração ou transição demora mais de 300ms.
+- **Curvas com Firmeza:** Nunca utilize `ease-in` em UI. Prefira `ease-out` ou curvas personalizadas `cubic-bezier(0.23, 1, 0.32, 1)`.
+- **Origem Coerente:** Menus e popovers emergem a partir de seus gatilhos físicos (`transform-origin`). Modais emergem centralizados.
+- **Nunca `scale(0)`:** Modais e alertas iniciam em `scale(0.95)` + `opacity: 0`.
+- **Aceleração Off-Thread:** Animações concentradas em `transform` e `opacity` para máxima performance a 60fps.
+

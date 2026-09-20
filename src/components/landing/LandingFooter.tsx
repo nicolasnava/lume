@@ -23,16 +23,17 @@ export default function LandingFooter() {
             />
           </Link>
 
-          {/* Linha © 2026 Lumê. Desenvolvido para profissionais autônomas da beleza. */}
+          {/* Linha de Direitos Autorais */}
           <p className="text-xs text-[#6B5E7A] font-medium leading-relaxed max-w-xs mx-auto">
-            © {currentYear} Lumê. Desenvolvido para profissionais autônomas da beleza.
+            © {currentYear} Lumê. Todos os direitos reservados.
           </p>
 
-          {/* Extremidades: Esquerda (Termos de Serviço) e Direita (Política de Privacidade) */}
-          <div className="flex items-center justify-between w-full pt-3 border-t border-[#E8DFD8]/70 text-xs font-semibold text-[#3D2E4D]">
+          {/* Links Centralizados no Mobile separados por ponto voador */}
+          <div className="flex items-center justify-center gap-2.5 w-full pt-3 border-t border-[#E8DFD8]/70 text-xs font-semibold text-[#3D2E4D]">
             <Link href="/termos" className="hover:text-[#8C5383] transition">
               Termos de Serviço
             </Link>
+            <span className="text-[#8C5383]/60 select-none" aria-hidden="true">•</span>
             <Link href="/privacidade" className="hover:text-[#8C5383] transition">
               Política de Privacidade
             </Link>
@@ -54,7 +55,7 @@ export default function LandingFooter() {
             </Link>
             <span className="text-[#E8DFD8]" aria-hidden="true">•</span>
             <span className="font-medium text-[#6B5E7A]">
-              © {currentYear} Lumê. Desenvolvido para profissionais autônomas da beleza.
+              © {currentYear} Lumê. Todos os direitos reservados.
             </span>
           </div>
 

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { cadastroMultiStepSchema, CadastroMultiStepInput, cadastroSchema, CadastroInput } from '@/lib/validations'
 import { generateUniqueSlug, normalizeSlug } from '@/lib/utils/slug'
+import { translateAuthError } from '@/lib/utils/errorTranslations'
 
 export type SignUpData = (CadastroMultiStepInput | CadastroInput) & { ref?: string }
 
@@ -22,7 +23,7 @@ export async function signUpAction(formData: SignUpData) {
       if (!basicValidation.success) {
         return {
           success: false,
-          message: multiStepValidation.error.errors[0]?.message || basicValidation.error.errors[0]?.message,
+          message: multiStepValidation.error.errors[0]?.message || basicValidation.error.errors[0]?.message || 'Dados de cadastro incompletos.',
         }
       }
       validData = {
@@ -67,6 +68,8 @@ export async function signUpAction(formData: SignUpData) {
     const adminSupabase = createAdminClient()
 
     // 2. Criar a conta de usuário no Supabase Auth
+    let finalAuthUser: { id: string } | null = null
+
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password: senha,
@@ -75,16 +78,61 @@ export async function signUpAction(formData: SignUpData) {
       },
     })
 
-    if (authError || !authData.user) {
-      console.error('[signUpAction] Erro ao criar conta no Supabase Auth:', authError)
-      return {
-        success: false,
-        message:
-          'Não foi possível concluir o cadastro com os dados informados. Se você já possui uma conta, tente fazer login ou recuperar sua senha.',
+    if (!authError && authData.user) {
+      // Se o Supabase Auth tiver confirmação de e-mail ativada e o e-mail já existir, ele retorna identities vazio
+      if (authData.user.identities && authData.user.identities.length === 0) {
+        console.warn('[signUpAction] Usuário já registrado (identities vazias):', email)
+        return {
+          success: false,
+          message: 'Este e-mail já está cadastrado no Lumê. Por favor, faça login ou utilize a opção de recuperação de senha.',
+        }
+      }
+      finalAuthUser = authData.user
+    } else {
+      console.warn('[signUpAction] signUp padrão falhou, avaliando motivo:', authError)
+
+      const isEmailSendIssue =
+        authError?.message?.toLowerCase().includes('confirmation email') ||
+        authError?.message?.toLowerCase().includes('error sending') ||
+        authError?.message?.toLowerCase().includes('smtp') ||
+        authError?.status === 500
+
+      if (isEmailSendIssue) {
+        // Fallback resiliente: se o serviço de SMTP padrão do Supabase falhou ao enviar confirmação,
+        // cria via admin com email_confirm: true para que a profissional não seja barrada!
+        console.info('[signUpAction] Tentando criação direta via admin com e-mail confirmado...')
+        const { data: adminCreated, error: adminErr } = await adminSupabase.auth.admin.createUser({
+          email,
+          password: senha,
+          email_confirm: true,
+          user_metadata: { nome },
+        })
+
+        if (!adminErr && adminCreated.user) {
+          finalAuthUser = adminCreated.user
+        } else {
+          console.error('[signUpAction] Erro também no fallback do admin.createUser:', adminErr)
+          return {
+            success: false,
+            message: adminErr ? translateAuthError(adminErr) : 'Falha temporária ao enviar o e-mail de confirmação. Tente novamente em alguns instantes.',
+          }
+        }
+      } else {
+        return {
+          success: false,
+          message: authError ? translateAuthError(authError) : 'Não foi possível registrar o usuário no sistema. Verifique os dados informados.',
+        }
       }
     }
 
-    const userId = authData.user.id
+    if (!finalAuthUser) {
+      return {
+        success: false,
+        message: 'Não foi possível concluir o cadastro no momento. Tente novamente em alguns instantes.',
+      }
+    }
+
+    const userId = finalAuthUser.id
 
     // 3. Garantir slug único válido
     const baseSlugToUse = preferredSlug ? normalizeSlug(preferredSlug) : normalizeSlug(nome)
@@ -92,34 +140,6 @@ export async function signUpAction(formData: SignUpData) {
 
     // Formatar instagram limpo (remover @ se houver)
     const cleanInstagram = instagram ? instagram.replace(/^@/, '').trim() : null
-
-    // 3.5. Tratar código de indicação (se presente)
-    let indicadoPorId: string | null = null
-    if (formData.ref && typeof formData.ref === 'string') {
-      try {
-        const cleanRef = formData.ref.trim().toUpperCase()
-        const { data: indicadora } = await adminSupabase
-          .from('profissionais')
-          .select('id')
-          .ilike('codigo_indicacao', cleanRef)
-          .is('deletado_em', null)
-          .maybeSingle()
-
-        if (indicadora && indicadora.id !== userId) {
-          indicadoPorId = indicadora.id
-        }
-      } catch (err) {
-        console.warn('[signUpAction] Erro ao buscar indicadora pelo código:', err)
-      }
-    }
-
-    // Gerar código de indicação único para a nova profissional
-    const baseCode = (finalSlug || nome || 'LUME')
-      .toUpperCase()
-      .replace(/[^A-Z0-9]/g, '')
-      .slice(0, 6)
-    const randSuffix = Math.floor(100 + Math.random() * 900)
-    const novoCodigoIndicacao = `${baseCode || 'LUME'}${randSuffix}`
 
     // 4. Inserir ou atualizar o registro na tabela 'profissionais' usando service_role (bypassing RLS)
     const profPayload: Record<string, unknown> = {
@@ -139,8 +159,6 @@ export async function signUpAction(formData: SignUpData) {
       slug: finalSlug,
       cor_primaria: cor_primaria || '#B8A9D9',
       cor_secundaria: cor_secundaria || '#FAF7F5',
-      codigo_indicacao: novoCodigoIndicacao,
-      indicado_por: indicadoPorId,
     }
 
     // Helper resiliente para salvar com fallback caso colunas do schema ainda estejam sendo migradas
@@ -176,6 +194,10 @@ export async function signUpAction(formData: SignUpData) {
     const saveResult = await saveProfissionalData(profPayload)
     if (!saveResult.success) {
       console.error('[signUpAction] Falha ao persistir dados do profissional:', saveResult.error)
+      return {
+        success: false,
+        message: 'Sua conta de acesso foi criada, mas ocorreu uma falha temporária ao salvar os dados do seu perfil. Por favor, tente novamente em instantes.',
+      }
     }
 
     // 5. Inserir horários de atendimento padrão na tabela 'disponibilidade'
@@ -211,11 +233,11 @@ export async function signUpAction(formData: SignUpData) {
         ? 'Conta criada com sucesso! Por favor, verifique seu e-mail para confirmar a conta antes de fazer login.'
         : 'Conta criada com sucesso!',
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('[signUpAction] Exceção inesperada:', error)
     return {
       success: false,
-      message: 'Não foi possível concluir o cadastro. Verifique os dados informados ou tente fazer login se já possuir uma conta.',
+      message: translateAuthError(error),
     }
   }
 }

@@ -102,12 +102,33 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  if (user && isProtectedRoute) {
+    // Se o usuário for administrador e estiver acessando rotas de dashboard, redirecionar diretamente para o painel admin
+    if (pathname === '/dashboard' || pathname === '/dashboard/geral') {
+      const adminSupabase = createAdminClient()
+      const { data: adminRecord } = await adminSupabase
+        .from('admin_users')
+        .select('id')
+        .or(`id.eq.${user.id},email.eq.${user.email}`)
+        .maybeSingle()
+
+      if (adminRecord) {
+        const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || request.headers.get('x-real-ip') || '127.0.0.1'
+        const twoFactorCookie = request.cookies.get(ADMIN_2FA_COOKIE_NAME)?.value
+        const is2faValid = await verify2faSessionTokenEdge(twoFactorCookie, adminRecord.id, clientIp)
+        const url = request.nextUrl.clone()
+        url.pathname = is2faValid ? '/admin' : '/admin/verificar'
+        return NextResponse.redirect(url)
+      }
+    }
+  }
+
   if (user && isAuthRoute) {
     const adminSupabase = createAdminClient()
     const { data: adminRecord } = await adminSupabase
       .from('admin_users')
       .select('id')
-      .eq('id', user.id)
+      .or(`id.eq.${user.id},email.eq.${user.email}`)
       .maybeSingle()
 
     const url = request.nextUrl.clone()

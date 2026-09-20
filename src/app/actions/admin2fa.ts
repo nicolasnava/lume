@@ -18,7 +18,10 @@ function maskEmail(email: string): string {
 /**
  * Avalia o perfil pós-login para definir o destino correto e acionar 2FA se for admin
  */
-export async function getPostLoginRedirectAction(): Promise<{
+export async function getPostLoginRedirectAction(
+  explicitUserId?: string,
+  explicitEmail?: string
+): Promise<{
   isAdmin: boolean
   needs2fa: boolean
   redirectUrl: string
@@ -31,16 +34,24 @@ export async function getPostLoginRedirectAction(): Promise<{
       data: { user },
     } = await supabase.auth.getUser()
 
-    if (!user) {
+    const userId = user?.id || explicitUserId
+    const userEmail = user?.email || explicitEmail
+
+    if (!userId && !userEmail) {
       return { isAdmin: false, needs2fa: false, redirectUrl: '/login' }
     }
 
     const adminSupabase = createAdminClient()
-    const { data: adminRecord } = await adminSupabase
-      .from('admin_users')
-      .select('*')
-      .eq('id', user.id)
-      .maybeSingle()
+    let query = adminSupabase.from('admin_users').select('*')
+    if (userId && userEmail) {
+      query = query.or(`id.eq.${userId},email.eq.${userEmail.toLowerCase().trim()}`)
+    } else if (userId) {
+      query = query.eq('id', userId)
+    } else {
+      query = query.eq('email', userEmail!.toLowerCase().trim())
+    }
+
+    const { data: adminRecord } = await query.maybeSingle()
 
     // Se o usuário NÃO for admin, segue fluxo normal da profissional
     if (!adminRecord) {
@@ -55,9 +66,10 @@ export async function getPostLoginRedirectAction(): Promise<{
     }
 
     // Se não tiver 2FA ativo, dispara o código por e-mail e redireciona para verificação
+    const emailToUse = adminRecord.email || userEmail || ''
     const sendResult = await generateAndSendAdminOtp(
       adminRecord.id,
-      adminRecord.email || user.email!,
+      emailToUse,
       adminRecord.nome
     )
 
@@ -65,7 +77,7 @@ export async function getPostLoginRedirectAction(): Promise<{
       isAdmin: true,
       needs2fa: true,
       redirectUrl: '/admin/verificar',
-      maskedEmail: maskEmail(adminRecord.email || user.email!),
+      maskedEmail: maskEmail(emailToUse),
       message: sendResult.message,
     }
   } catch (err) {

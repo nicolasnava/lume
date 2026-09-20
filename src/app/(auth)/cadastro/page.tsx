@@ -13,7 +13,9 @@ import { getCategoryLabel } from '@/lib/utils/categories'
 import Toast from '@/components/ui/Toast'
 import PaymentIcon from '@/components/common/PaymentIcon'
 import CustomSelect from '@/components/ui/CustomSelect'
+import CustomColorPickerModal from '@/components/ui/CustomColorPickerModal'
 import { TIME_OPTIONS_15MIN } from '@/lib/utils/timeOptions'
+import { translateAuthError } from '@/lib/utils/errorTranslations'
 import {
   Lock,
   Mail,
@@ -40,6 +42,7 @@ import {
   X,
   ExternalLink,
   MailCheck,
+  AlertCircle,
 } from 'lucide-react'
 
 // Cores Oficiais da Identidade Lumê
@@ -97,9 +100,6 @@ function formatPhone(value: string) {
 }
 
 function CadastroForm() {
-  const searchParams = useSearchParams()
-  const refCode = searchParams.get('ref') || undefined
-
   // Controle de Etapa (1 a 4)
   const [step, setStep] = useState(1)
   const [isCompleted, setIsCompleted] = useState(false)
@@ -150,12 +150,14 @@ function CadastroForm() {
 
   const [corPrimaria, setCorPrimaria] = useState('#B8A9D9')
   const [corSecundaria, setCorSecundaria] = useState('#FAF7F5')
+  const [colorModalTarget, setColorModalTarget] = useState<'primaria' | 'secundaria' | null>(null)
   const [diasAtendimento, setDiasAtendimento] = useState<number[]>([1, 2, 3, 4, 5]) // Seg a Sex
   const [horaInicio, setHoraInicio] = useState('09:00')
   const [horaFim, setHoraFim] = useState('18:00')
 
   // Feedback & Loading
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' } | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   // Força de Senha
@@ -320,18 +322,25 @@ function CadastroForm() {
   // Submissão Final do Cadastro (EXECUTADA EXCLUSIVAMENTE AO CLICAR NO BOTÃO DA ETAPA 4)
   const handleSubmitFinal = async () => {
     setToast(null)
+    setSubmitError(null)
 
     // Validações da etapa final
     if (slug.length < 3) {
-      setToast({ show: true, message: 'O link do seu studio deve ter pelo menos 3 caracteres.', type: 'error' })
+      const msg = 'O link do seu studio deve ter pelo menos 3 caracteres.'
+      setSubmitError(msg)
+      setToast({ show: true, message: msg, type: 'error' })
       return
     }
     if (!slugStatus.available) {
-      setToast({ show: true, message: 'Este link já está em uso. Por favor, ajuste o seu link.', type: 'error' })
+      const msg = 'Este link já está em uso. Por favor, escolha um endereço diferente.'
+      setSubmitError(msg)
+      setToast({ show: true, message: msg, type: 'error' })
       return
     }
     if (horaInicio >= horaFim) {
-      setToast({ show: true, message: 'O horário de início deve ser anterior ao horário de término.', type: 'error' })
+      const msg = 'O horário de início deve ser anterior ao horário de término.'
+      setSubmitError(msg)
+      setToast({ show: true, message: msg, type: 'error' })
       return
     }
 
@@ -360,23 +369,35 @@ function CadastroForm() {
       dias_atendimento: diasAtendimento,
       hora_inicio: horaInicio,
       hora_fim: horaFim,
-      ref: refCode,
     }
 
-    const res = await signUpAction(payload)
-    setLoading(false)
+    try {
+      const res = await signUpAction(payload)
+      setLoading(false)
 
-    if (!res.success) {
+      if (!res.success) {
+        const errorMsg = translateAuthError(res.message || 'Não foi possível concluir o cadastro com os dados informados.')
+        setSubmitError(errorMsg)
+        setToast({
+          show: true,
+          message: errorMsg,
+          type: 'error',
+        })
+        return
+      }
+
+      // Exibir a tela de confirmação de cadastro
+      setIsCompleted(true)
+    } catch (err: any) {
+      setLoading(false)
+      const errorMsg = translateAuthError(err)
+      setSubmitError(errorMsg)
       setToast({
         show: true,
-        message: res.message || 'Erro ao criar conta. Tente novamente.',
+        message: errorMsg,
         type: 'error',
       })
-      return
     }
-
-    // Exibir a tela de confirmação de cadastro
-    setIsCompleted(true)
   }
 
   // Progresso percentual
@@ -1049,7 +1070,7 @@ function CadastroForm() {
                 </p>
               </div>
 
-              {/* Cores da Marca: Primária e Secundária (Igual ao /perfil) */}
+              {/* Cores da Marca: Primária e Secundária com Seletor Personalizado Lumê */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-1">
                 {/* Cor Primária */}
                 <div className="space-y-2.5">
@@ -1057,19 +1078,31 @@ function CadastroForm() {
                     Cor Primária de Destaque
                   </label>
 
-                  <div className="flex items-center gap-2.5">
-                    <input
-                      type="color"
-                      value={corPrimaria}
-                      onChange={(e) => setCorPrimaria(e.target.value)}
-                      className="h-9 w-11 cursor-pointer rounded-lg border border-gray-200 p-1"
-                    />
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setColorModalTarget('primaria')}
+                      className="h-10 w-10 rounded-2xl border-2 border-white shadow-md ring-2 ring-purple-100 hover:ring-[#8C5383] cursor-pointer shrink-0 transition-transform duration-150 hover:scale-105 active:scale-95 flex items-center justify-center group"
+                      style={{ backgroundColor: corPrimaria }}
+                      title="Clique para personalizar a cor primária"
+                    >
+                      <Palette className="h-4 w-4 drop-shadow-xs transition-transform group-hover:rotate-12" style={{ color: getContrastingTextColor(corPrimaria) }} />
+                    </button>
                     <input
                       type="text"
                       value={corPrimaria}
                       onChange={(e) => setCorPrimaria(e.target.value)}
-                      className="w-24 rounded-xl border border-gray-200 bg-gray-50/50 p-2 text-xs font-mono text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-none font-bold"
+                      placeholder="#B8A9D9"
+                      maxLength={7}
+                      className="w-28 rounded-2xl border border-gray-200 bg-white p-2.5 text-xs font-mono text-[#4A3F5C] focus:border-[#8C5383] focus:ring-1 focus:ring-[#8C5383] focus:outline-hidden font-bold uppercase shadow-2xs"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setColorModalTarget('primaria')}
+                      className="text-xs font-bold text-[#8C5383] hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      <span>Personalizar</span>
+                    </button>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -1099,19 +1132,31 @@ function CadastroForm() {
                     Cor Secundária de Fundo
                   </label>
 
-                  <div className="flex items-center gap-2.5">
-                    <input
-                      type="color"
-                      value={corSecundaria}
-                      onChange={(e) => setCorSecundaria(e.target.value)}
-                      className="h-9 w-11 cursor-pointer rounded-lg border border-gray-200 p-1"
-                    />
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setColorModalTarget('secundaria')}
+                      className="h-10 w-10 rounded-2xl border-2 border-white shadow-md ring-2 ring-purple-100 hover:ring-[#8C5383] cursor-pointer shrink-0 transition-transform duration-150 hover:scale-105 active:scale-95 flex items-center justify-center group"
+                      style={{ backgroundColor: corSecundaria }}
+                      title="Clique para personalizar a cor secundária"
+                    >
+                      <Palette className="h-4 w-4 drop-shadow-xs transition-transform group-hover:rotate-12" style={{ color: getContrastingTextColor(corSecundaria) }} />
+                    </button>
                     <input
                       type="text"
                       value={corSecundaria}
                       onChange={(e) => setCorSecundaria(e.target.value)}
-                      className="w-24 rounded-xl border border-gray-200 bg-gray-50/50 p-2 text-xs font-mono text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-none font-bold"
+                      placeholder="#FAF7F5"
+                      maxLength={7}
+                      className="w-28 rounded-2xl border border-gray-200 bg-white p-2.5 text-xs font-mono text-[#4A3F5C] focus:border-[#8C5383] focus:ring-1 focus:ring-[#8C5383] focus:outline-hidden font-bold uppercase shadow-2xs"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setColorModalTarget('secundaria')}
+                      className="text-xs font-bold text-[#8C5383] hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      <span>Personalizar</span>
+                    </button>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -1278,6 +1323,38 @@ function CadastroForm() {
             </div>
           )}
 
+          {/* Alerta de Erro Detalhado de Submissão */}
+          {submitError && (
+            <div className="mt-5 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs sm:text-sm font-medium flex items-start gap-3 animate-in fade-in duration-200 text-left shadow-xs">
+              <AlertCircle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+              <div className="flex-1 space-y-1">
+                <strong className="block font-bold text-rose-950">
+                  Atenção ao concluir o cadastro:
+                </strong>
+                <p className="leading-relaxed text-rose-800 font-semibold">{submitError}</p>
+                {submitError.includes('já está cadastrado') && (
+                  <div className="pt-2">
+                    <Link
+                      href="/login"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#4A3F5C] text-white text-xs font-bold hover:bg-[#3D2E4D] transition shadow-2xs"
+                    >
+                      <span>Ir para o Login</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSubmitError(null)}
+                className="text-rose-400 hover:text-rose-700 cursor-pointer p-0.5"
+                title="Fechar aviso"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
           {/* ========================================================================= */}
           {/* BOTÕES DE NAVEGAÇÃO & AÇÕES */}
           {/* ========================================================================= */}
@@ -1285,7 +1362,10 @@ function CadastroForm() {
             {step > 1 ? (
               <button
                 type="button"
-                onClick={() => setStep(step - 1)}
+                onClick={() => {
+                  setSubmitError(null)
+                  setStep(step - 1)
+                }}
                 disabled={loading}
                 className="inline-flex items-center gap-1.5 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-xs font-bold text-[#4A3F5C] shadow-xs hover:bg-gray-50 transition cursor-pointer"
               >
@@ -1299,7 +1379,10 @@ function CadastroForm() {
             {step < 4 ? (
               <button
                 type="button"
-                onClick={handleNextStep}
+                onClick={() => {
+                  setSubmitError(null)
+                  handleNextStep()
+                }}
                 className="inline-flex items-center gap-2 rounded-2xl bg-[#B8A9D9] px-6 py-3 text-xs font-bold text-[#4A3F5C] shadow-md hover:bg-[#a695ca] hover:shadow-lg transition cursor-pointer"
               >
                 <span>Avançar</span>
@@ -1333,6 +1416,30 @@ function CadastroForm() {
           </Link>
         </div>
       </div>
+
+      {/* Modal Customizado de Cores (Paleta e Tonalidades Oficiais) */}
+      <CustomColorPickerModal
+        isOpen={colorModalTarget !== null}
+        onClose={() => setColorModalTarget(null)}
+        currentColor={colorModalTarget === 'primaria' ? corPrimaria : corSecundaria}
+        title={
+          colorModalTarget === 'primaria'
+            ? 'Cor Primária de Destaque'
+            : 'Cor Secundária de Fundo'
+        }
+        description={
+          colorModalTarget === 'primaria'
+            ? 'Essa cor será aplicada aos botões de agendamento e detalhes principais da sua vitrine.'
+            : 'Essa cor será o tom de fundo suave da sua página pública.'
+        }
+        onSelectColor={(hex) => {
+          if (colorModalTarget === 'primaria') {
+            setCorPrimaria(hex)
+          } else if (colorModalTarget === 'secundaria') {
+            setCorSecundaria(hex)
+          }
+        }}
+      />
 
       <Toast
         show={!!toast?.show}

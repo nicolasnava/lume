@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import ServicesManager, { ServiceRow } from '@/components/dashboard/ServicesManager'
 import { getCombosProfissionalAction } from '@/app/actions/combos'
+import { getComandaProdutosAction } from '@/app/actions/comanda'
 
 export const revalidate = 0
 export const dynamic = 'force-dynamic'
@@ -21,8 +22,8 @@ export default async function ServicosPage() {
   const adminSupabase = createAdminClient()
   const nowIso = new Date().toISOString()
 
-  // Buscar serviços, combos e agendamentos em paralelo para máxima velocidade
-  const [{ data: servicos }, { data: pendingBookings }, combos] = await Promise.all([
+  // Buscar serviços, combos, agendamentos e comanda em paralelo para máxima velocidade
+  const [{ data: servicos }, { data: pendingBookings }, combos, comandaProdutos] = await Promise.all([
     adminSupabase
       .from('servicos')
       .select('*')
@@ -35,6 +36,7 @@ export default async function ServicosPage() {
       .eq('status', 'confirmado')
       .gte('data_hora_inicio', nowIso),
     getCombosProfissionalAction(user.id),
+    getComandaProdutosAction(user.id),
   ])
 
   const pendingBookingsByService: Record<string, any[]> = {}
@@ -67,13 +69,14 @@ export default async function ServicosPage() {
           Gestão de Serviços
         </h1>
         <p className="text-xs sm:text-sm text-[#4A3F5C]/70 mt-1">
-          Cadastre os serviços oferecidos, valores, durações, combos promocionais e lembretes de manutenção
+          Cadastre os serviços oferecidos, valores, durações, pacotes promocionais e itens da comanda digital
         </p>
       </div>
 
       <ServicesManager
         initialServices={formattedServices}
         initialCombos={combos}
+        initialComanda={comandaProdutos}
         profissionalId={user.id}
       />
     </div>

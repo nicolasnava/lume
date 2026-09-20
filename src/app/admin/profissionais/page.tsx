@@ -1,10 +1,20 @@
+import { getAuthenticatedAdmin } from '@/lib/admin/checkAdmin'
+import { redirect } from 'next/navigation'
 import { getAdminProfissionais } from '@/app/actions/admin'
 import AdminProfissionaisClient from '@/components/admin/AdminProfissionaisClient'
 
-export const dynamic = 'force-dynamic'
+export const metadata = {
+  title: 'Profissionais | Lumê Admin',
+  description: 'Gestão cadastral de profissionais e vitrines ativas.',
+}
 
 export default async function AdminProfissionaisPage() {
-  const initialProfissionais = await getAdminProfissionais()
+  const admin = await getAuthenticatedAdmin()
+  if (!admin) {
+    redirect('/login')
+  }
 
-  return <AdminProfissionaisClient initialProfissionais={initialProfissionais} />
+  const profissionais = await getAdminProfissionais()
+
+  return <AdminProfissionaisClient initialProfissionais={profissionais} />
 }

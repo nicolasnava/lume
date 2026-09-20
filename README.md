@@ -83,15 +83,15 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-chave-anon-publica
 SUPABASE_SERVICE_ROLE_KEY=sua-chave-service-role-secreta
 
 # Domínio da Aplicação
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_SITE_URL=https://lumebr.app
 
 # Segurança Admin (Mínimo 16 caracteres)
 ADMIN_2FA_SECRET=seu-segredo-de-assinatura-hmac-2fa
 
-# Google Calendar OAuth (Opcional para testes locais)
+# Google Calendar OAuth
 GOOGLE_CLIENT_ID=seu-google-client-id
 GOOGLE_CLIENT_SECRET=seu-google-client-secret
-GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/google/callback
+GOOGLE_REDIRECT_URI=https://lumebr.app/api/auth/google/callback
 
 # EmailJS (Para envio de OTP e notificações)
 EMAILJS_SERVICE_ID=seu-service-id

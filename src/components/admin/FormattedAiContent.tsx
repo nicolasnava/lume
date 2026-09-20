@@ -72,7 +72,7 @@ function parseInlineMarkdown(rawText: string): InlineToken[] {
 }
 
 /**
- * Renderizador de formatação rica para mensagens da IA
+ * Renderizador de formatação rica para mensagens da IA no Design System Lumê
  */
 export default function FormattedAiContent({ content }: FormattedAiContentProps) {
   if (!content) return null
@@ -83,21 +83,21 @@ export default function FormattedAiContent({ content }: FormattedAiContentProps)
     return tokens.map((token, idx) => {
       if (token.bold && token.italic) {
         return (
-          <strong key={idx} className="font-bold text-white tracking-wide underline decoration-[#8C5383]/50">
+          <strong key={idx} className="font-bold text-white underline decoration-[#906cd9]">
             {token.text}
           </strong>
         )
       }
       if (token.bold) {
         return (
-          <strong key={idx} className="font-bold text-white tracking-wide">
+          <strong key={idx} className="font-bold text-white">
             {token.text}
           </strong>
         )
       }
       if (token.italic) {
         return (
-          <span key={idx} className="text-[#D8B4E2] font-medium">
+          <span key={idx} className="text-[#bfa4f4] font-medium">
             {token.text}
           </span>
         )
@@ -133,8 +133,8 @@ export default function FormattedAiContent({ content }: FormattedAiContentProps)
       const itemText = trimmed.replace(/^[\*\-•]\s+/, '')
       const tokens = parseInlineMarkdown(itemText)
       currentListItems.push(
-        <li key={lineIdx} className="flex items-start gap-2 text-zinc-200">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#8C5383] mt-2 shrink-0" />
+        <li key={lineIdx} className="flex items-start gap-2 text-slate-200">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#906cd9] mt-2 shrink-0" />
           <span className="leading-relaxed">{renderTokens(tokens)}</span>
         </li>
       )
@@ -148,8 +148,8 @@ export default function FormattedAiContent({ content }: FormattedAiContentProps)
       const headingText = trimmed.replace(/^#+\s+/, '').replace(/^\*\*|\*\*$/g, '')
       const tokens = parseInlineMarkdown(headingText)
       renderedElements.push(
-        <div key={lineIdx} className="pt-2.5 pb-1 text-sm font-bold text-white flex items-center gap-2 border-b border-zinc-800/80 mb-2">
-          <span className="text-[#E9C3F0]">{renderTokens(tokens)}</span>
+        <div key={lineIdx} className="pt-2.5 pb-1 text-sm font-bold text-white flex items-center gap-2 border-b border-white/[0.07] mb-2">
+          <span className="text-[#bfa4f4]">{renderTokens(tokens)}</span>
         </div>
       )
       return
@@ -158,7 +158,7 @@ export default function FormattedAiContent({ content }: FormattedAiContentProps)
     // Parágrafo regular
     const tokens = parseInlineMarkdown(trimmed)
     renderedElements.push(
-      <p key={lineIdx} className="leading-relaxed text-zinc-200 mb-2">
+      <p key={lineIdx} className="leading-relaxed text-slate-200 mb-2 text-xs sm:text-sm">
         {renderTokens(tokens)}
       </p>
     )

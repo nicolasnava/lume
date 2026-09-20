@@ -6,7 +6,6 @@ import {
   X,
   Send,
   Loader2,
-  Crown,
   User,
   RotateCcw,
   Sparkles,
@@ -131,18 +130,18 @@ export default function AdminAiChatDrawer({
         onClick={onClose}
       />
 
-      {/* Painel Lateral (Drawer) com Estética Premium */}
-      <div className="relative w-full max-w-md sm:max-w-lg bg-[#120F1D] border-l border-zinc-800/80 text-zinc-100 flex flex-col h-full shadow-2xl z-10 font-sans animate-in slide-in-from-right duration-200">
+      {/* Painel Lateral (Drawer) com Estética Lumê Luxo */}
+      <div className="relative w-full max-w-md sm:max-w-lg bg-white dark:bg-[#121019] border-l border-gray-200 dark:border-white/[0.07] text-[#4A3F5C] dark:text-white flex flex-col h-full shadow-2xl z-10 font-sans animate-in slide-in-from-right duration-200">
         
         {/* Cabeçalho do Chat */}
-        <div className="p-4 sm:p-5 border-b border-zinc-800/80 bg-[#161224]/90 flex items-center justify-between">
+        <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-white/[0.07] bg-white dark:bg-[#121019] flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#D8B4E2]" />
-            <h3 className="font-bold text-sm sm:text-base text-white tracking-tight">
+            <Sparkles className="w-4 h-4 text-[#8675A9] dark:text-[#bfa4f4]" />
+            <h3 className="font-bold text-sm sm:text-base text-[#4A3F5C] dark:text-white tracking-tight">
               Assistente do Chefe
             </h3>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#8C5383]/20 text-[#D8B4E2] border border-[#8C5383]/30 tracking-wider">
-              BETA
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#B8A9D9]/20 dark:bg-[#906cd9]/10 text-[#4A3F5C] dark:text-[#bfa4f4] border border-[#B8A9D9]/30 dark:border-[#906cd9]/20 tracking-wider">
+              INTELIGÊNCIA
             </span>
           </div>
 
@@ -152,7 +151,7 @@ export default function AdminAiChatDrawer({
                 type="button"
                 onClick={handleClearHistory}
                 title="Voltar ao início"
-                className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/80 transition cursor-pointer"
+                className="p-2 rounded-xl text-gray-400 dark:text-[#94a3b8] hover:text-[#4A3F5C] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#1c1926] transition cursor-pointer"
               >
                 <RotateCcw className="w-4 h-4" />
               </button>
@@ -161,7 +160,7 @@ export default function AdminAiChatDrawer({
               type="button"
               onClick={onClose}
               title="Fechar painel"
-              className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800/80 transition cursor-pointer"
+              className="p-2 rounded-xl text-gray-400 dark:text-[#94a3b8] hover:text-[#4A3F5C] dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#1c1926] transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -177,38 +176,38 @@ export default function AdminAiChatDrawer({
               
               {/* Esfera Luminosa Central com Glow */}
               <div className="relative flex flex-col items-center justify-center pt-2 pb-2">
-                <div className="absolute w-44 h-44 bg-[#8C5383]/25 rounded-full blur-3xl pointer-events-none" />
-                <div className="relative w-28 h-28 flex items-center justify-center animate-pulse">
+                <div className="absolute w-44 h-44 bg-[#906cd9]/15 rounded-full blur-3xl pointer-events-none" />
+                <div className="relative w-24 h-24 flex items-center justify-center">
                   <Image
                     src="/assets/ai.webp"
                     alt="Assistente do Chefe"
-                    width={112}
-                    height={112}
+                    width={96}
+                    height={96}
                     priority
-                    className="w-full h-full object-contain drop-shadow-[0_0_25px_rgba(140,83,131,0.5)]"
+                    className="w-full h-full object-contain drop-shadow-md"
                   />
                 </div>
               </div>
 
               {/* Saudação Personalizada */}
               <div className="text-center space-y-1">
-                <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+                <h2 className="text-xl sm:text-2xl font-bold text-[#4A3F5C] dark:text-white tracking-tight">
                   {getGreeting()},{' '}
-                  <span className="text-[#D8B4E2]">{adminNome || 'Chefe'}</span>
+                  <span className="text-[#8675A9] dark:text-[#bfa4f4]">{adminNome || 'Chefe'}</span>
                 </h2>
-                <p className="text-xs sm:text-sm text-zinc-400 font-medium">
-                  Estou aqui para ajudar você a tomar as melhores decisões hoje.
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-[#94a3b8] font-medium">
+                  Pronto para fornecer análises e diagnósticos em tempo real da operação.
                 </p>
               </div>
 
-              {/* Sugestão de hoje (Apenas o texto limpo, sem card pesado) */}
-              <div className="space-y-2 pt-1 px-1">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-400">
-                  <Sparkles className="w-3.5 h-3.5 text-[#D8B4E2]" />
+              {/* Sugestão de hoje */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 dark:text-[#94a3b8]">
+                  <Sparkles className="w-3.5 h-3.5 text-[#8675A9] dark:text-[#bfa4f4]" />
                   <span>Sugestão de hoje</span>
                 </div>
 
-                <div className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
+                <div className="p-4 rounded-2xl bg-[#FAF7F5] dark:bg-[#171520] border border-gray-200/80 dark:border-white/[0.07] text-xs sm:text-sm text-[#4A3F5C] dark:text-slate-200 leading-relaxed shadow-xs">
                   <FormattedAiContent
                     content={
                       initialInsight ||
@@ -224,7 +223,7 @@ export default function AdminAiChatDrawer({
                       'Faça uma análise executiva completa dos pontos de oportunidade e retenção da plataforma agora.'
                     )
                   }
-                  className="inline-flex items-center gap-1 text-xs font-bold text-[#D8B4E2] hover:text-white transition cursor-pointer pt-0.5"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-[#8675A9] dark:text-[#bfa4f4] hover:text-[#4A3F5C] dark:hover:text-white transition cursor-pointer pt-0.5"
                 >
                   <span>Ver análise completa</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -232,8 +231,8 @@ export default function AdminAiChatDrawer({
               </div>
 
               {/* Seção "Pergunte sobre sua plataforma" */}
-              <div className="space-y-2 pt-1">
-                <p className="text-xs font-semibold text-zinc-400 px-1">
+              <div className="space-y-2.5 pt-1">
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-400 dark:text-[#94a3b8] px-1">
                   Pergunte sobre sua plataforma
                 </p>
 
@@ -245,15 +244,15 @@ export default function AdminAiChatDrawer({
                         key={idx}
                         type="button"
                         onClick={() => handleSend(q.text)}
-                        className="w-full flex items-center justify-between p-3 rounded-xl bg-[#191428] hover:bg-[#231C38] border border-zinc-800/80 hover:border-[#8C5383]/40 text-zinc-300 hover:text-white transition text-left cursor-pointer group"
+                        className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-[#FAF7F5] dark:bg-[#171520] hover:bg-purple-50/40 dark:hover:bg-[#1c1926] border border-gray-200 dark:border-white/[0.07] hover:border-[#906cd9]/50 text-[#4A3F5C] dark:text-slate-200 transition text-left cursor-pointer group shadow-xs"
                       >
                         <div className="flex items-center gap-3 pr-2">
-                          <div className="w-7 h-7 rounded-lg bg-zinc-800/80 flex items-center justify-center text-[#D8B4E2] shrink-0">
-                            <Icon className="w-3.5 h-3.5" />
+                          <div className="w-8 h-8 rounded-xl bg-white dark:bg-[#121019] border border-gray-200 dark:border-white/[0.07] flex items-center justify-center text-[#8675A9] dark:text-[#bfa4f4] shrink-0 group-hover:border-[#906cd9]/50">
+                            <Icon className="w-4 h-4" />
                           </div>
-                          <span className="text-xs font-medium leading-snug">{q.text}</span>
+                          <span className="text-xs font-semibold leading-snug">{q.text}</span>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-300 shrink-0 group-hover:translate-x-0.5 transition" />
+                        <ChevronRight className="w-4 h-4 text-gray-400 dark:text-[#94a3b8] group-hover:text-[#4A3F5C] dark:group-hover:text-white shrink-0 group-hover:translate-x-0.5 transition" />
                       </button>
                     )
                   })}
@@ -267,27 +266,27 @@ export default function AdminAiChatDrawer({
               {messages.map((m, idx) => (
                 <div
                   key={idx}
-                  className={`flex gap-3 ${
+                  className={`flex gap-2.5 ${
                     m.role === 'user' ? 'justify-end' : 'justify-start'
                   }`}
                 >
                   {m.role === 'model' && (
-                    <div className="w-8 h-8 rounded-xl bg-[#1D172E] border border-[#8C5383]/40 flex items-center justify-center shrink-0 mt-0.5 p-1">
+                    <div className="w-8 h-8 rounded-xl bg-[#B8A9D9]/20 dark:bg-[#906cd9]/10 border border-[#B8A9D9]/40 dark:border-[#906cd9]/20 flex items-center justify-center shrink-0 mt-0.5 p-1">
                       <Image
                         src="/assets/ai.webp"
                         alt="IA"
-                        width={26}
-                        height={26}
+                        width={24}
+                        height={24}
                         className="w-full h-full object-contain"
                       />
                     </div>
                   )}
 
                   <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-3 leading-relaxed ${
+                    className={`max-w-[85%] rounded-2xl px-4 py-3 leading-relaxed shadow-xs ${
                       m.role === 'user'
-                        ? 'bg-gradient-to-r from-[#8C5383] to-[#5C3656] text-white rounded-br-xs shadow-sm font-medium whitespace-pre-wrap'
-                        : 'bg-[#1D172E] border border-zinc-800/90 text-zinc-200 rounded-bl-xs shadow-sm'
+                        ? 'bg-gradient-to-r from-[#906cd9] to-[#7C3AED] text-white rounded-br-xs font-medium whitespace-pre-wrap'
+                        : 'bg-[#FAF7F5] dark:bg-[#171520] border border-gray-200/80 dark:border-white/[0.07] text-[#4A3F5C] dark:text-slate-200 rounded-bl-xs'
                     }`}
                   >
                     {m.role === 'model' ? (
@@ -298,7 +297,7 @@ export default function AdminAiChatDrawer({
                   </div>
 
                   {m.role === 'user' && (
-                    <div className="w-8 h-8 rounded-xl bg-zinc-800 flex items-center justify-center shrink-0 mt-0.5 text-zinc-300">
+                    <div className="w-8 h-8 rounded-xl bg-[#B8A9D9]/20 dark:bg-[#906cd9]/10 border border-[#B8A9D9]/40 dark:border-[#906cd9]/20 flex items-center justify-center shrink-0 mt-0.5 text-[#4A3F5C] dark:text-[#bfa4f4]">
                       <User className="w-4 h-4" />
                     </div>
                   )}
@@ -306,18 +305,18 @@ export default function AdminAiChatDrawer({
               ))}
 
               {loading && (
-                <div className="flex gap-3 justify-start">
-                  <div className="w-8 h-8 rounded-xl bg-[#1D172E] border border-[#8C5383]/40 flex items-center justify-center shrink-0 mt-0.5 p-1">
+                <div className="flex gap-2.5 justify-start">
+                  <div className="w-8 h-8 rounded-xl bg-[#B8A9D9]/20 dark:bg-[#906cd9]/10 border border-[#B8A9D9]/40 dark:border-[#906cd9]/20 flex items-center justify-center shrink-0 mt-0.5 p-1">
                     <Image
                       src="/assets/ai.webp"
                       alt="IA"
-                      width={26}
-                      height={26}
+                      width={24}
+                      height={24}
                       className="w-full h-full object-contain"
                     />
                   </div>
-                  <div className="bg-[#1D172E] border border-zinc-800/90 rounded-2xl px-4 py-3 rounded-bl-xs text-zinc-400 flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-[#B8A9D9]" />
+                  <div className="bg-[#FAF7F5] dark:bg-[#171520] border border-gray-200/80 dark:border-white/[0.07] rounded-2xl px-4 py-3 rounded-bl-xs text-gray-500 dark:text-[#94a3b8] flex items-center gap-2 text-xs font-medium shadow-xs">
+                    <Loader2 className="w-4 h-4 animate-spin text-[#906cd9] dark:text-[#bfa4f4]" />
                     <span>Analisando métricas da operação...</span>
                   </div>
                 </div>
@@ -329,8 +328,8 @@ export default function AdminAiChatDrawer({
 
         </div>
 
-        {/* BARRA DE ENTRADA (INPUT PILL DESIGN DA REFERÊNCIA) */}
-        <div className="p-4 border-t border-zinc-800/80 bg-[#161224]/90 space-y-2">
+        {/* BARRA DE ENTRADA */}
+        <div className="p-4 border-t border-gray-100 dark:border-white/[0.07] bg-white dark:bg-[#121019] space-y-2">
           <form
             onSubmit={(e) => {
               e.preventDefault()
@@ -338,7 +337,7 @@ export default function AdminAiChatDrawer({
             }}
           >
             <div className="relative flex items-center">
-              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#D8B4E2]">
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#8675A9] dark:text-[#bfa4f4]">
                 <Sparkles className="w-4 h-4" />
               </div>
 
@@ -350,13 +349,13 @@ export default function AdminAiChatDrawer({
                 placeholder="Pergunte qualquer coisa..."
                 rows={1}
                 disabled={loading}
-                className="w-full bg-[#1A1429] text-zinc-100 text-xs sm:text-sm rounded-full border border-zinc-700/60 pl-10 pr-12 py-3 focus:outline-none focus:border-[#8C5383] focus:ring-1 focus:ring-[#8C5383] resize-none placeholder:text-zinc-500 shadow-inner"
+                className="w-full bg-[#FAF7F5] dark:bg-[#171520] text-[#4A3F5C] dark:text-white text-xs sm:text-sm rounded-full border border-gray-200 dark:border-white/[0.07] pl-10 pr-12 py-3 focus:outline-hidden focus:border-[#906cd9] resize-none placeholder:text-gray-400 dark:placeholder:text-[#94a3b8] shadow-inner transition"
               />
 
               <button
                 type="submit"
                 disabled={loading || !input.trim()}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-[#8C5383] hover:bg-[#9D5D93] disabled:bg-zinc-800 disabled:text-zinc-600 text-white transition cursor-pointer shadow-md"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-gradient-to-r from-[#906cd9] to-[#7C3AED] hover:from-[#9d7be0] hover:to-[#8b5cf6] disabled:bg-none disabled:bg-gray-100 dark:disabled:bg-[#1c1926] disabled:text-gray-400 dark:disabled:text-[#94a3b8] text-white transition cursor-pointer shadow-xs"
               >
                 {loading ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -368,8 +367,8 @@ export default function AdminAiChatDrawer({
           </form>
 
           {/* Rodapé Powered by Lumê AI */}
-          <div className="flex items-center justify-center gap-1 text-[11px] text-zinc-500 font-medium pt-1">
-            <Sparkles className="w-3 h-3 text-[#8C5383]" />
+          <div className="flex items-center justify-center gap-1 text-[11px] text-gray-400 dark:text-[#94a3b8] font-medium pt-1">
+            <Sparkles className="w-3 h-3 text-[#8675A9] dark:text-[#bfa4f4]" />
             <span>Powered by Lumê AI</span>
           </div>
         </div>

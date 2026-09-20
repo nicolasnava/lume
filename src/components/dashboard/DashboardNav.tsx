@@ -216,7 +216,7 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
               className="fixed inset-0"
               onClick={() => setIsMoreOpen(false)}
             />
-            <div className="relative w-full rounded-t-3xl bg-white p-4 sm:p-6 shadow-2xl space-y-3 max-h-[58vh] overflow-y-auto animate-in slide-in-from-bottom duration-300 z-10">
+            <div className="lume-drawer-slide-up relative w-full rounded-t-3xl bg-white p-4 sm:p-6 shadow-2xl space-y-3 max-h-[58vh] overflow-y-auto z-10">
               <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
                 <h3 className="text-sm sm:text-base font-bold text-[#4A3F5C]">Menu Completo</h3>
                 <button
@@ -320,8 +320,8 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
   // Visualização Desktop Sidebar
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      {/* Novidades e Feedback */}
-      <div className="flex items-center justify-between px-1 shrink-0 pb-2">
+      {/* Novidades e Feedback com espaçamento ampliado */}
+      <div className="flex items-center justify-between px-1.5 shrink-0 pb-2.5 pt-0.5">
         <button
           onClick={() => {
             setHasUnreadNovidades(false)
@@ -331,7 +331,7 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
           title="Ver novidades e atualizações"
         >
           <div className="relative">
-            <Bell className="h-3.5 w-3.5 text-purple-600" />
+            <Bell className="h-4 w-4 text-purple-600" />
             {hasUnreadNovidades && (
               <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-rose-500 animate-ping" />
             )}
@@ -341,17 +341,17 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
 
         <button
           onClick={() => setIsFeedbackOpen(true)}
-          className="text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200/80 px-2.5 py-0.5 rounded-xl transition cursor-pointer"
+          className="text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200/80 px-3 py-1 rounded-xl transition cursor-pointer"
         >
           Feedback
         </button>
       </div>
 
-      {/* Linha ultrafina entre novidades+feedback e o início dos links */}
-      <div className="border-t border-gray-200/70 my-1.5 shrink-0" />
+      {/* Linha divisória com respiro */}
+      <div className="border-t border-gray-200/70 my-2 shrink-0" />
 
-      {/* Lista dos 10 Itens de Navegação com espaçamento proporcional equilibrado */}
-      <nav className="flex-1 flex flex-col justify-evenly min-h-0 py-0.5">
+      {/* Lista dos 10 Itens de Navegação com botões maiores e space-y-1 */}
+      <nav className="flex-1 flex flex-col space-y-1 min-h-0 py-0.5 overflow-y-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {NAV_ITEMS.map((item) => {
           const isActive =
             pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
@@ -385,21 +385,21 @@ export default function DashboardNav({ mobile = false }: DashboardNavProps) {
               key={item.href}
               href={item.href}
               prefetch={true}
-              className={`flex items-center gap-2.5 rounded-2xl px-3 py-1.25 text-xs transition cursor-pointer ${
+              className={`flex items-center gap-3 rounded-2xl px-3.5 py-2 text-[13.5px] transition cursor-pointer ${
                 isActive
                   ? 'bg-[#B8A9D9]/25 text-[#4A3F5C] font-bold shadow-2xs'
                   : 'text-gray-600 font-semibold hover:bg-gray-100/80 hover:text-[#4A3F5C]'
               }`}
             >
-              <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-[#4A3F5C]' : 'text-gray-400'}`} />
+              <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-[#4A3F5C]' : 'text-gray-400'}`} />
               <span className="truncate">{item.name}</span>
             </Link>
           )
         })}
       </nav>
 
-      {/* Linha ultrafina após o fim dos links */}
-      <div className="border-t border-gray-200/70 my-1.5 shrink-0" />
+      {/* Linha divisória após o fim dos links */}
+      <div className="border-t border-gray-200/70 my-2 shrink-0" />
 
       <FeedbackModal isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
       <NovidadesModal isOpen={isNovidadesOpen} onClose={() => setIsNovidadesOpen(false)} />

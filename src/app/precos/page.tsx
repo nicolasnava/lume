@@ -3,9 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import PrecosPage from '@/components/landing/PrecosPage'
 
 export const metadata: Metadata = {
-  title: 'Planos e Preços • Lumê — Transparência para Profissionais da Beleza',
+  title: 'Planos e Preços • Lumê',
   description:
-    'Conheça o plano oficial do Lumê: R$ 69,90/mês com 30 dias de teste grátis. Sem taxa de adesão, sem cartão de crédito prévio e cancelamento simples.',
+    'Conheça os planos oficiais do Lumê nas opções mensal e anual com 30 dias de teste grátis. Sem taxa de adesão, sem cartão de crédito prévio e cancelamento simples.',
 }
 
 export default async function Page() {

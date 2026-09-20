@@ -12,6 +12,8 @@ import PublicStudioToast from './PublicStudioToast'
 import { getContrastingTextColor } from '@/lib/utils/contrast'
 import { parseCategorias, getCategoryLabel, parseModalidades, MODALIDADE_MAP } from '@/lib/utils/categories'
 import { isStudioOpenNow } from '@/lib/utils/workingHours'
+import { ComboItem } from '@/app/actions/combos'
+import { ComandaProduto } from '@/app/actions/comanda'
 import {
   Instagram,
   MapPin,
@@ -21,6 +23,10 @@ import {
   Star,
   Scissors,
   ChevronLeft,
+  Package,
+  ShoppingBag,
+  Plus,
+  X,
 } from 'lucide-react'
 
 type ProfissionalRow = Database['public']['Views']['profissionais_publico']['Row']
@@ -36,6 +42,8 @@ interface PublicShowcaseViewProps {
     nome: string
     slug: string
   }
+  combos?: ComboItem[]
+  comandaProdutos?: ComandaProduto[]
 }
 
 export default function PublicShowcaseView({
@@ -44,9 +52,12 @@ export default function PublicShowcaseView({
   disponibilidades,
   avaliacoes,
   studioContext,
+  combos = [],
+  comandaProdutos = [],
 }: PublicShowcaseViewProps) {
   const [isClientBookingsOpen, setIsClientBookingsOpen] = useState(false)
   const [isWorkingHoursOpen, setIsWorkingHoursOpen] = useState(false)
+  const [selectedComandaItem, setSelectedComandaItem] = useState<ComandaProduto | null>(null)
 
   const corPrimaria = profissional.cor_primaria || '#B8A9D9'
   const textColorOnPrimary = getContrastingTextColor(corPrimaria)
@@ -247,6 +258,149 @@ export default function PublicShowcaseView({
           />
         </section>
 
+        {/* SEÇÃO DE PACOTES & COMBOS */}
+        {combos && combos.length > 0 && (
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold tracking-tight text-[#4A3F5C] flex items-center gap-2">
+                <Package className="h-5 w-5 text-[#B8A9D9]" />
+                <span>Pacotes & Combos</span>
+              </h2>
+              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                {combos.length} {combos.length === 1 ? 'pacote' : 'pacotes'}
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {combos.map((combo) => (
+                <div
+                  key={combo.id}
+                  className="rounded-3xl bg-white p-4 sm:p-5 border border-gray-200/80 shadow-2xs space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-extrabold text-[#4A3F5C]">
+                        {combo.nome}
+                      </h3>
+                      {combo.descricao && (
+                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                          {combo.descricao}
+                        </p>
+                      )}
+                    </div>
+                    {combo.descontoEconomia > 0 && (
+                      <span className="shrink-0 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        Economize {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(combo.descontoEconomia)}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Serviços inclusos no combo */}
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {combo.servicos.map((s) => (
+                      <span
+                        key={s.id}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-purple-50/60 border border-[#B8A9D9]/30 text-[11px] font-semibold text-[#4A3F5C]"
+                      >
+                        <Scissors className="h-3 w-3 text-[#8675A9]" />
+                        <span>{s.nome}</span>
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-bold">
+                        Valor do Pacote
+                      </span>
+                      <strong className="text-base font-black text-emerald-700">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(combo.preco_combo)}
+                      </strong>
+                    </div>
+
+                    <Link
+                      href={`${studioContext ? `/studio/${studioContext.slug}/${profissional.slug}` : `/p/${profissional.slug}`}/agendar?combo=${combo.id}`}
+                      className="px-4 py-2 rounded-xl text-xs font-bold shadow-2xs transition hover:scale-102 flex items-center gap-1.5 cursor-pointer"
+                      style={{ backgroundColor: corPrimaria, color: textColorOnPrimary }}
+                    >
+                      <span>Agendar Pacote</span>
+                      <span>&rarr;</span>
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* SEÇÃO COMANDA DIGITAL / PRODUTOS (Foco na Foto + NOME E VALOR) */}
+        {comandaProdutos && comandaProdutos.length > 0 && (
+          <section className="space-y-3.5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold tracking-tight text-[#4A3F5C] flex items-center gap-2">
+                <ShoppingBag className="h-5 w-5 text-[#B8A9D9]" />
+                <span>Comanda Digital</span>
+              </h2>
+              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                {comandaProdutos.length} {comandaProdutos.length === 1 ? 'item' : 'itens'}
+              </span>
+            </div>
+
+            <p className="text-xs text-[#4A3F5C]/75 font-medium">
+              Produtos e cuidados disponíveis no espaço para complementar seu atendimento.
+            </p>
+
+            {/* Grid com Formato Diferenciado: Foco Principal na Foto + NOME E VALOR */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              {comandaProdutos.map((produto) => (
+                <div
+                  key={produto.id}
+                  onClick={() => setSelectedComandaItem(produto)}
+                  className="group rounded-3xl bg-white p-3 sm:p-3.5 border border-gray-200/80 shadow-2xs hover:border-[#B8A9D9] hover:shadow-md transition-all duration-300 cursor-pointer flex flex-col justify-between"
+                >
+                  {/* FOCO NA FOTO: Grande, nítida, com aspect-square arredondado */}
+                  <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-[#FAF7F5] border border-gray-100/80 shrink-0">
+                    {produto.foto_url ? (
+                      <Image
+                        src={produto.foto_url}
+                        alt={produto.nome}
+                        fill
+                        className="object-cover transition-transform duration-500 group-hover:scale-106"
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-purple-50/80 to-pink-50/50">
+                        <ShoppingBag className="h-10 w-10 text-[#B8A9D9]/70 group-hover:scale-110 transition-transform duration-300" />
+                        <span className="text-[10px] font-bold text-[#4A3F5C]/40 uppercase tracking-wider mt-1">
+                          Lumê Care
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* NOME E VALOR EM DESTAQUE */}
+                  <div className="pt-3 pb-1 space-y-1">
+                    <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-wide text-[#4A3F5C] line-clamp-1 group-hover:text-[#8675A9] transition-colors">
+                      {produto.nome}
+                    </h3>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm sm:text-base font-black text-emerald-700">
+                        {new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                        }).format(produto.preco)}
+                      </span>
+                      <span className="h-7 w-7 rounded-xl bg-purple-50 group-hover:bg-[#4A3F5C] group-hover:text-white text-[#4A3F5C] border border-[#B8A9D9]/30 flex items-center justify-center transition-colors">
+                        <Plus className="h-3.5 w-3.5" />
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* SEÇÃO SOBRE O STUDIO (Item 26: Hierarquia Bio -> Horários -> Especialidades) */}
         <section className="rounded-3xl bg-white p-6 shadow-2xs border border-gray-200/80 space-y-4">
           <h3 className="text-base font-bold text-[#4A3F5C] border-b border-gray-100 pb-3 flex items-center gap-2">
@@ -348,6 +502,93 @@ export default function PublicShowcaseView({
         disponibilidades={disponibilidades}
         studioNome={profissional.nome}
       />
+
+      {/* MODAL DE DETALHES DO PRODUTO DA COMANDA DIGITAL */}
+      {selectedComandaItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-3xl bg-white overflow-hidden shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            {/* Foto em Destaque */}
+            <div className="relative w-full h-64 sm:h-72 bg-[#FAF7F5]">
+              {selectedComandaItem.foto_url ? (
+                <Image
+                  src={selectedComandaItem.foto_url}
+                  alt={selectedComandaItem.nome}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-purple-100/50 to-pink-50">
+                  <ShoppingBag className="h-16 w-16 text-[#B8A9D9]" />
+                  <span className="text-xs font-bold text-[#4A3F5C]/40 uppercase tracking-wider mt-2">
+                    Lumê Care
+                  </span>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setSelectedComandaItem(null)}
+                className="absolute top-3 right-3 h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition cursor-pointer backdrop-blur-xs"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Conteúdo: NOME, VALOR e Descrição */}
+            <div className="p-5 space-y-3.5 bg-white">
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                  Comanda Digital
+                </span>
+                <h3 className="text-base font-extrabold text-[#4A3F5C] leading-snug">
+                  {selectedComandaItem.nome}
+                </h3>
+              </div>
+
+              {selectedComandaItem.descricao && (
+                <p className="text-xs text-gray-600 leading-relaxed font-medium">
+                  {selectedComandaItem.descricao}
+                </p>
+              )}
+
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-3">
+                <div>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                    Valor
+                  </span>
+                  <span className="text-xl font-black text-emerald-700">
+                    {new Intl.NumberFormat('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL',
+                    }).format(selectedComandaItem.preco)}
+                  </span>
+                </div>
+
+                {whatsappUrl ? (
+                  <a
+                    href={`${whatsappUrl}?text=${encodeURIComponent(
+                      `Olá ${profissional.nome}! Vi o produto "${selectedComandaItem.nome}" na sua comanda digital da vitrine e gostaria de incluí-lo no meu atendimento.`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-[#25D366] text-white text-xs font-bold hover:opacity-90 transition shadow-xs cursor-pointer"
+                  >
+                    <span>Pedir no WhatsApp</span>
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedComandaItem(null)}
+                    className="px-4 py-2 rounded-xl bg-[#4A3F5C] text-white text-xs font-bold hover:bg-[#393047] transition cursor-pointer"
+                  >
+                    Fechar
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -29,7 +29,7 @@ export default function PaginaIndisponivel() {
         </div>
 
         <div className="pt-2 text-[11px] text-gray-400 border-t border-gray-100 font-medium">
-          Lumê — Agendamento Inteligente para Profissionais de Beleza
+          Lumê
         </div>
       </div>
     </div>

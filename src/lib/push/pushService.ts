@@ -7,7 +7,7 @@ const DEFAULT_VAPID_PRIVATE = 'ED8OJvoyc2N1Zb9klO5N1rlTUJkE5wYK3SMwGVNCpf4'
 
 const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || DEFAULT_VAPID_PUBLIC
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || DEFAULT_VAPID_PRIVATE
-const vapidSubject = process.env.VAPID_SUBJECT || 'mailto:suporte@lume.com.br'
+const vapidSubject = process.env.VAPID_SUBJECT || 'mailto:contato@lumebr.app'
 
 if (vapidPublicKey && vapidPrivateKey) {
   webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)

@@ -1,24 +1,22 @@
-import {
-  getSaaSFinancialDashboardData,
-  getSaaSInvoices,
-  getSaaSPlansAndCoupons,
-} from '@/app/actions/adminSaasFinance'
-import AdminSaasFinanceClient from '@/components/admin/AdminSaasFinanceClient'
+import { getAuthenticatedAdmin } from '@/lib/admin/checkAdmin'
+import { redirect } from 'next/navigation'
+import AdminFinanceiroClient from '@/components/admin/AdminFinanceiroClient'
+import { getSaaSPlansAndCoupons } from '@/app/actions/adminSaasFinance'
 
 export const dynamic = 'force-dynamic'
 
-export default async function AdminFinanceiroPage() {
-  const [initialDashboard, initialInvoices, initialPlansAndCoupons] = await Promise.all([
-    getSaaSFinancialDashboardData(),
-    getSaaSInvoices('', 'todos'),
-    getSaaSPlansAndCoupons(),
-  ])
+export const metadata = {
+  title: 'Financeiro | Lumê Admin',
+  description: 'Gestão de receita recorrente, cobranças e gateway Asaas.',
+}
 
-  return (
-    <AdminSaasFinanceClient
-      initialDashboard={initialDashboard}
-      initialInvoices={initialInvoices}
-      initialPlansAndCoupons={initialPlansAndCoupons}
-    />
-  )
+export default async function AdminFinanceiroPage() {
+  const admin = await getAuthenticatedAdmin()
+  if (!admin) {
+    redirect('/login')
+  }
+
+  const plansAndCoupons = await getSaaSPlansAndCoupons()
+
+  return <AdminFinanceiroClient initialPlansAndCoupons={plansAndCoupons} />
 }

@@ -1025,6 +1025,42 @@ export type Database = {
         }
         Relationships: []
       }
+      comanda_produtos: {
+        Row: {
+          id: string
+          profissional_id: string
+          nome: string
+          descricao: string | null
+          preco: number
+          foto_url: string | null
+          ativo: boolean
+          ordem: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          profissional_id: string
+          nome: string
+          descricao?: string | null
+          preco?: number
+          foto_url?: string | null
+          ativo?: boolean
+          ordem?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          profissional_id?: string
+          nome?: string
+          descricao?: string | null
+          preco?: number
+          foto_url?: string | null
+          ativo?: boolean
+          ordem?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       profissionais_publico: {

@@ -7,10 +7,10 @@ import {
   getProfissionalEngagementMetrics,
   getProfissionalActivityTimeline,
 } from './adminPrompt34'
-import { recalcularDescontoIndicacao } from './referral'
+import { formatCategoryDisplay } from '@/lib/utils/categories'
 
 export interface AdminPeriodFilter {
-  period: 'hoje' | 'semana' | 'mes' | '30dias' | 'ano' | 'custom'
+  period: 'hoje' | 'semana' | 'mes' | '30dias' | '6meses' | 'ano' | 'custom'
   startDate?: string
   endDate?: string
 }
@@ -42,6 +42,10 @@ function getDateRanges(filter: AdminPeriodFilter) {
       break
     case '30dias':
       start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+      end = new Date()
+      break
+    case '6meses':
+      start = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000)
       end = new Date()
       break
     case 'ano':
@@ -80,7 +84,7 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
   // 1. Buscar profissionais reais (excluindo desativadas por soft delete e contas demo)
   const { data: allProfissionais } = await adminSupabase
     .from('profissionais')
-    .select('id, nome, slug, categoria, status_conta, plano_tipo, valor_mensalidade, created_at, deletado_em, is_demo')
+    .select('id, nome, slug, categoria, status_conta, plano_tipo, valor_mensalidade, created_at, deletado_em, is_demo, foto_url, whatsapp')
     .is('deletado_em', null)
 
   const activeProfs = (allProfissionais || []).filter((p: any) => !p.is_demo)
@@ -270,10 +274,12 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
 
   const topProfissionais = activeProfs
     .map((p) => {
-      const cat = Array.isArray(p.categoria) ? p.categoria[0] : p.categoria || 'Geral'
+      const cat = formatCategoryDisplay(p.categoria)
       return {
         id: p.id,
         nome: p.nome,
+        slug: p.slug,
+        foto_url: p.foto_url || null,
         cat,
         agendamentos: profAgendamentoMap[p.id]?.count || 0,
         receitaNum: profAgendamentoMap[p.id]?.receita || 0,
@@ -282,10 +288,10 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
     .sort((a, b) => b.agendamentos - a.agendamentos)
     .slice(0, 3)
 
-  // 9. Atividade Recente Real
+  // 9. Atividade Recente Real (Com mais informações essenciais)
   const emailMap = new Map<string, string>()
   try {
-    const { data: usersData } = await adminSupabase.auth.admin.listUsers({ perPage: 100 })
+    const { data: usersData } = await adminSupabase.auth.admin.listUsers({ perPage: 200 })
     if (usersData?.users) {
       usersData.users.forEach((u) => {
         if (u.email) emailMap.set(u.id, u.email)
@@ -298,16 +304,22 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
   const atividadeRecente = activeProfs
     .slice()
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 5)
+    .slice(0, 8)
     .map((p) => {
       const mrrVal = p.status_conta === 'ativa' ? Number(p.valor_mensalidade || 69.00) : 0
+      const cat = formatCategoryDisplay(p.categoria)
       return {
         id: p.id,
         nome: p.nome,
+        slug: p.slug,
+        foto_url: p.foto_url || null,
+        categoria: cat,
+        whatsapp: (p as any).whatsapp || null,
         email: emailMap.get(p.id) || 'Email não localizado',
         plano: p.status_conta === 'cortesia' ? 'Cortesia' : p.plano_tipo === 'anual' ? 'Anual' : 'Mensal',
         mrr: mrrVal > 0 ? `R$ ${mrrVal.toFixed(2).replace('.', ',')}` : 'R$ 0,00',
-        status: p.status_conta === 'ativa' ? 'Ativa' : p.status_conta === 'trial' ? 'Trial' : p.status_conta === 'cortesia' ? 'Cortesia' : 'Suspensa',
+        status: (p.status_conta || 'trial') as 'ativa' | 'trial' | 'cortesia' | 'atrasada' | 'suspensa' | 'cancelada',
+        totalAgendamentos: profAgendamentoMap[p.id]?.count || 0,
         entrada: new Date(p.created_at).toLocaleDateString('pt-BR'),
       }
     })
@@ -360,7 +372,7 @@ export async function getAdminProfissionais(
   // Buscar profissionais (filtrando deletado_em a menos que solicitado)
   let query = adminSupabase
     .from('profissionais')
-    .select('id, nome, slug, categoria, status_conta, created_at, foto_url, notas_internas, deletado_em, is_demo')
+    .select('id, nome, slug, categoria, status_conta, created_at, foto_url, notas_internas, deletado_em, is_demo, whatsapp, localizacao')
 
   if (!includeDeactivated) {
     query = query.is('deletado_em', null)
@@ -404,10 +416,12 @@ export async function getAdminProfissionais(
       id: p.id,
       nome: p.nome,
       slug: p.slug,
-      categoria: p.categoria,
-      status_conta: (p.status_conta || 'trial') as 'trial' | 'ativa' | 'suspensa',
+      categoria: formatCategoryDisplay(p.categoria),
+      status_conta: (p.status_conta || 'trial') as 'trial' | 'ativa' | 'suspensa' | 'cortesia' | 'atrasada' | 'cancelada',
       created_at: p.created_at,
       foto_url: p.foto_url,
+      whatsapp: p.whatsapp || null,
+      localizacao: p.localizacao || null,
       email: emailMap.get(p.id) || 'Email não localizado',
       total_agendamentos: agendamentosCountMap[p.id] || 0,
       notas_internas: p.notas_internas || null,
@@ -440,7 +454,7 @@ export async function getAdminProfissionais(
 /**
  * Retorna os detalhes de uma profissional específica para o admin
  */
-export async function getAdminProfissionalDetail(id: string, filterPeriod: AdminPeriodFilter) {
+export async function getAdminProfissionalDetail(id: string, filterPeriod: AdminPeriodFilter = { period: '30dias' }) {
   const admin = await getAuthenticatedAdmin()
   if (!admin) {
     throw new Error('Acesso não autorizado.')
@@ -459,15 +473,25 @@ export async function getAdminProfissionalDetail(id: string, filterPeriod: Admin
     throw new Error('Profissional não encontrada.')
   }
 
-  // 2. Email de Auth
+  // 2. Email e metadados de Auth
   let email = 'Email não disponível'
+  let userAuth = {
+    phone: null as string | null,
+    last_sign_in_at: null as string | null,
+    user_created_at: null as string | null,
+  }
   try {
     const { data: userData } = await adminSupabase.auth.admin.getUserById(id)
-    if (userData?.user?.email) {
-      email = userData.user.email
+    if (userData?.user) {
+      if (userData.user.email) email = userData.user.email
+      userAuth = {
+        phone: userData.user.phone || null,
+        last_sign_in_at: userData.user.last_sign_in_at || null,
+        user_created_at: userData.user.created_at || null,
+      }
     }
   } catch (err) {
-    console.warn('[getAdminProfissionalDetail] Erro ao buscar email auth:', err)
+    console.warn('[getAdminProfissionalDetail] Erro ao buscar dados auth:', err)
   }
 
   // 3. Lista de serviços
@@ -477,7 +501,47 @@ export async function getAdminProfissionalDetail(id: string, filterPeriod: Admin
     .eq('profissional_id', id)
     .order('nome', { ascending: true })
 
-  // 4. Histórico de agendamentos com dados de cliente e serviço
+  // 4. Horários de funcionamento (disponibilidade semanal)
+  const { data: disponibilidade } = await adminSupabase
+    .from('disponibilidade')
+    .select('*')
+    .eq('profissional_id', id)
+    .order('dia_semana', { ascending: true })
+
+  // 5. Bloqueios de agenda
+  const { data: bloqueios } = await adminSupabase
+    .from('bloqueios_disponibilidade')
+    .select('*')
+    .eq('profissional_id', id)
+    .order('data', { ascending: false })
+    .limit(10)
+
+  // 6. Avaliações de clientes
+  const { data: avaliacoes } = await adminSupabase
+    .from('avaliacoes')
+    .select('*')
+    .eq('profissional_id', id)
+    .order('created_at', { ascending: false })
+    .limit(15)
+
+  // 7. Contagem de clientes únicos cadastrados
+  const { count: totalClientesCount } = await adminSupabase
+    .from('clientes')
+    .select('*', { count: 'exact', head: true })
+    .eq('profissional_id', id)
+
+  // 8. Estúdio vinculado (se houver)
+  let estudioVinculado = null
+  if (prof.estudio_id) {
+    const { data: est } = await adminSupabase
+      .from('estudios')
+      .select('id, nome, slug, tipo_gestao, foto_capa_url')
+      .eq('id', prof.estudio_id)
+      .maybeSingle()
+    estudioVinculado = est
+  }
+
+  // 9. Histórico de agendamentos com dados de cliente e serviço
   const { data: agendamentosRaw } = await adminSupabase
     .from('agendamentos')
     .select('*, clientes(nome, telefone), servicos(nome)')
@@ -505,7 +569,7 @@ export async function getAdminProfissionalDetail(id: string, filterPeriod: Admin
     return d >= start && d <= end
   })
 
-  // 5. Resumo financeiro (total e por forma de pagamento)
+  // 10. Resumo financeiro (total e por forma de pagamento)
   let faturamentoTotal = 0
   const faturamentoPorForma: Record<string, number> = {
     pix: 0,
@@ -525,7 +589,7 @@ export async function getAdminProfissionalDetail(id: string, filterPeriod: Admin
     }
   })
 
-  // 6. Métricas de engajamento e linha do tempo de atividade
+  // 11. Métricas de engajamento e linha do tempo de atividade
   let engagementMetrics = null
   let activityTimeline: Awaited<ReturnType<typeof getProfissionalActivityTimeline>> = []
   try {
@@ -535,49 +599,84 @@ export async function getAdminProfissionalDetail(id: string, filterPeriod: Admin
     console.warn('[getAdminProfissionalDetail] Erro ao carregar engajamento/timeline:', err)
   }
 
-  // 7. Dados do Programa de Indicação
-  let indicadaPor: { id: string; nome: string; slug: string } | null = null
-  if ((prof as any).indicado_por) {
-    const { data: indicadora } = await adminSupabase
-      .from('profissionais')
-      .select('id, nome, slug')
-      .eq('id', (prof as any).indicado_por)
-      .maybeSingle()
-    if (indicadora) {
-      indicadaPor = indicadora
-    }
+  // 12. Diagnóstico de IA do Perfil e Saúde Cadastral
+  let aiDiagnostic = null
+  try {
+    aiDiagnostic = await getProfissionalAIDiagnostic(id)
+  } catch (err) {
+    console.warn('[getAdminProfissionalDetail] Erro ao carregar diagnóstico IA:', err)
   }
 
-  const { data: indicadasPorEla } = await adminSupabase
-    .from('profissionais')
-    .select('id, nome, slug, status_conta')
-    .eq('indicado_por', id)
-    .is('deletado_em', null)
+  // 13. Combos / Pacotes da profissional
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let combos: any[] = []
+  try {
+    const { data: combosRaw } = await adminSupabase
+      .from('combos')
+      .select('*, combo_servicos(servicos(id, nome, preco, duracao_minutos))')
+      .eq('profissional_id', id)
+      .order('created_at', { ascending: false })
+    combos = (combosRaw || []).map((c: any) => ({
+      id: c.id,
+      nome: c.nome,
+      descricao: c.descricao,
+      preco_combo: Number(c.preco_combo || 0),
+      foto_url: c.foto_url,
+      ativo: c.ativo !== false,
+      created_at: c.created_at,
+      servicos: (c.combo_servicos || []).map((cs: any) => cs.servicos).filter(Boolean),
+    }))
+  } catch (err) {
+    console.warn('[getAdminProfissionalDetail] Erro ao buscar combos:', err)
+  }
 
-  const totalIndicadas = (indicadasPorEla || []).length
-  const indicadasAtivas = (indicadasPorEla || []).filter((p: any) => p.status_conta === 'ativa').length
-  const descontoAtualPct = Math.min(indicadasAtivas * 10, 30)
+  // 14. Produtos da Comanda Digital
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let comandaProdutos: any[] = []
+  try {
+    const { data: comandaRaw } = await adminSupabase
+      .from('comanda_produtos')
+      .select('*')
+      .eq('profissional_id', id)
+      .order('ordem', { ascending: true })
+    comandaProdutos = (comandaRaw || []).map((p: any) => ({
+      id: p.id,
+      nome: p.nome,
+      descricao: p.descricao,
+      preco: Number(p.preco || 0),
+      foto_url: p.foto_url,
+      ativo: p.ativo !== false,
+      ordem: p.ordem || 0,
+      created_at: p.created_at,
+    }))
+  } catch (err) {
+    console.warn('[getAdminProfissionalDetail] Erro ao buscar comanda_produtos:', err)
+  }
 
   return {
     profissional: {
       ...prof,
       email,
+      phone: userAuth.phone,
+      last_sign_in_at: userAuth.last_sign_in_at,
+      user_created_at: userAuth.user_created_at,
       status_conta: (prof.status_conta || 'trial') as 'trial' | 'ativa' | 'atrasada' | 'suspensa' | 'cortesia' | 'cancelada',
     },
     servicos: servicos || [],
+    combos,
+    comandaProdutos,
+    disponibilidade: disponibilidade || [],
+    bloqueios: bloqueios || [],
+    avaliacoes: avaliacoes || [],
+    totalClientesCount: totalClientesCount || 0,
+    estudio: estudioVinculado,
     agendamentos: agendamentosFiltrados,
     totalAgendamentosCount: agendamentos.length,
     faturamentoTotal,
     faturamentoPorForma,
     engagementMetrics,
     activityTimeline,
-    referralTree: {
-      indicadaPor,
-      totalIndicadas,
-      indicadasAtivas,
-      descontoAtualPct,
-      codigoIndicacao: (prof as any).codigo_indicacao || null,
-    },
+    aiDiagnostic,
   }
 }
 
@@ -615,14 +714,7 @@ export async function updateProfissionalStatus(
     throw new Error('Não foi possível atualizar o status da conta.')
   }
 
-  // Recalcular desconto da indicadora se existir vínculo
-  if ((prof as any)?.indicado_por) {
-    try {
-      await recalcularDescontoIndicacao((prof as any).indicado_por)
-    } catch (err) {
-      console.warn('[updateProfissionalStatus] Falha ao recalcular desconto da indicadora:', err)
-    }
-  }
+
 
   // Mapear ação para log
   let acaoText = `alterou status para ${newStatus}`
@@ -821,13 +913,7 @@ export async function deactivateProfissionalAccount(id: string) {
     throw new Error('Erro ao desativar conta da profissional.')
   }
 
-  if ((prof as any)?.indicado_por) {
-    try {
-      await recalcularDescontoIndicacao((prof as any).indicado_por)
-    } catch (err) {
-      console.warn('[deactivateProfissionalAccount] Falha ao recalcular desconto da indicadora:', err)
-    }
-  }
+
 
   await adminSupabase.from('admin_logs').insert([
     {
@@ -873,13 +959,7 @@ export async function restoreProfissionalAccount(id: string) {
     throw new Error('Erro ao restaurar conta da profissional.')
   }
 
-  if ((prof as any)?.indicado_por) {
-    try {
-      await recalcularDescontoIndicacao((prof as any).indicado_por)
-    } catch (err) {
-      console.warn('[restoreProfissionalAccount] Falha ao recalcular desconto da indicadora:', err)
-    }
-  }
+
 
   await adminSupabase.from('admin_logs').insert([
     {
@@ -1121,3 +1201,297 @@ export async function getTopProfissionaisLeaderboard() {
 
   return leaderboard
 }
+
+export interface AdminStudioMember {
+  id: string
+  nome: string
+  slug: string
+  foto_url: string | null
+  categoria: string | string[] | null
+  ativo_no_estudio: boolean
+}
+
+export interface AdminStudioListItem {
+  id: string
+  nome: string
+  slug: string
+  bio: string | null
+  foto_capa_url: string | null
+  cor_primaria: string
+  cor_secundaria: string
+  tipo_gestao: 'aluguel_cadeira' | 'gestao_completa'
+  comissao_padrao_pct: number
+  aluguel_padrao_fixo: number
+  created_at: string
+  criador: {
+    id: string
+    nome: string
+    slug: string
+    foto_url: string | null
+    categoria: string | string[] | null
+  } | null
+  membros: AdminStudioMember[]
+  totalMembros: number
+  totalAgendamentos: number
+}
+
+export interface AdminStudiosData {
+  studios: AdminStudioListItem[]
+  stats: {
+    totalStudios: number
+    totalMembros: number
+    gestaoCompletaCount: number
+    aluguelCadeiraCount: number
+    mediaMembrosPorStudio: number
+  }
+}
+
+/**
+ * Retorna todos os Studios cadastrados, suas donas e equipes para o painel admin
+ */
+export async function getAdminStudiosAction(): Promise<AdminStudiosData> {
+  const admin = await getAuthenticatedAdmin()
+  if (!admin) {
+    throw new Error('Acesso não autorizado ao painel administrativo.')
+  }
+
+  const adminSupabase = createAdminClient()
+
+  // 1. Buscar todos os estúdios
+  const { data: rawStudios, error: errStudios } = await adminSupabase
+    .from('estudios')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (errStudios || !rawStudios) {
+    return {
+      studios: [],
+      stats: {
+        totalStudios: 0,
+        totalMembros: 0,
+        gestaoCompletaCount: 0,
+        aluguelCadeiraCount: 0,
+        mediaMembrosPorStudio: 0,
+      },
+    }
+  }
+
+  // 2. Buscar todas as profissionais para mapear donas e membros da equipe
+  const { data: rawProfissionais } = await adminSupabase
+    .from('profissionais')
+    .select('id, nome, slug, foto_url, categoria, estudio_id, ativo_no_estudio, created_at')
+    .is('deletado_em', null)
+
+  const profs = (rawProfissionais || []) as Array<{
+    id: string
+    nome: string
+    slug: string
+    foto_url: string | null
+    categoria: string[] | string | null
+    estudio_id: string | null
+    ativo_no_estudio: boolean
+    created_at: string
+  }>
+
+  // 3. Buscar agendamentos contagem por profissional
+  const { data: rawAgendamentos } = await adminSupabase
+    .from('agendamentos')
+    .select('profissional_id')
+
+  const agendamentoCountMap: Record<string, number> = {}
+  ;(rawAgendamentos || []).forEach((a) => {
+    if (a.profissional_id) {
+      agendamentoCountMap[a.profissional_id] = (agendamentoCountMap[a.profissional_id] || 0) + 1
+    }
+  })
+
+  let totalMembrosSum = 0
+  let gestaoCompletaCount = 0
+  let aluguelCadeiraCount = 0
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const studios: AdminStudioListItem[] = rawStudios.map((estudio: any) => {
+    // Identificar dona do studio
+    const criadorProf = profs.find((p) => p.id === estudio.criado_por)
+
+    // Identificar membros da equipe
+    const membrosStudio = profs.filter((p) => p.estudio_id === estudio.id)
+
+    const membros: AdminStudioMember[] = membrosStudio.map((m) => ({
+      id: m.id,
+      nome: m.nome,
+      slug: m.slug,
+      foto_url: m.foto_url,
+      categoria: m.categoria,
+      ativo_no_estudio: m.ativo_no_estudio !== false,
+    }))
+
+    const totalMembros = membros.length
+    totalMembrosSum += totalMembros
+
+    const tipoGestao = estudio.tipo_gestao === 'aluguel_cadeira' ? 'aluguel_cadeira' : 'gestao_completa'
+    if (tipoGestao === 'aluguel_cadeira') {
+      aluguelCadeiraCount++
+    } else {
+      gestaoCompletaCount++
+    }
+
+    const totalAgendamentos = membros.reduce((acc, m) => acc + (agendamentoCountMap[m.id] || 0), 0)
+
+    return {
+      id: estudio.id,
+      nome: estudio.nome,
+      slug: estudio.slug,
+      bio: estudio.bio || null,
+      foto_capa_url: estudio.foto_capa_url || null,
+      cor_primaria: estudio.cor_primaria || '#B8A9D9',
+      cor_secundaria: estudio.cor_secundaria || '#FAF7F5',
+      tipo_gestao: tipoGestao,
+      comissao_padrao_pct: Number(estudio.comissao_padrao_pct ?? 30),
+      aluguel_padrao_fixo: Number(estudio.aluguel_padrao_fixo ?? 0),
+      created_at: estudio.created_at,
+      criador: criadorProf
+        ? {
+            id: criadorProf.id,
+            nome: criadorProf.nome,
+            slug: criadorProf.slug,
+            foto_url: criadorProf.foto_url,
+            categoria: criadorProf.categoria,
+          }
+        : null,
+      membros,
+      totalMembros,
+      totalAgendamentos,
+    }
+  })
+
+  const totalStudios = studios.length
+  const mediaMembrosPorStudio = totalStudios > 0 ? Number((totalMembrosSum / totalStudios).toFixed(1)) : 0
+
+  return {
+    studios,
+    stats: {
+      totalStudios,
+      totalMembros: totalMembrosSum,
+      gestaoCompletaCount,
+      aluguelCadeiraCount,
+      mediaMembrosPorStudio,
+    },
+  }
+}
+
+/**
+ * Retorna os detalhes completos de um estúdio específico para o admin
+ */
+export async function getAdminStudioDetail(id: string) {
+  const admin = await getAuthenticatedAdmin()
+  if (!admin) {
+    throw new Error('Acesso não autorizado ao painel administrativo.')
+  }
+
+  const adminSupabase = createAdminClient()
+
+  // 1. Dados do estúdio
+  const { data: studio, error: errStudio } = await adminSupabase
+    .from('estudios')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (errStudio || !studio) {
+    throw new Error('Estúdio não encontrado.')
+  }
+
+  // 2. Criadora / Dona
+  let criador = null
+  if (studio.criado_por) {
+    const { data: criadorProf } = await adminSupabase
+      .from('profissionais')
+      .select('id, nome, slug, foto_url, categoria, whatsapp, status_conta, email:id')
+      .eq('id', studio.criado_por)
+      .maybeSingle()
+    if (criadorProf) {
+      let email = 'Email não informado'
+      try {
+        const { data: u } = await adminSupabase.auth.admin.getUserById(criadorProf.id)
+        if (u?.user?.email) email = u.user.email
+      } catch {
+        // ignore
+      }
+      criador = {
+        ...criadorProf,
+        status_conta: (criadorProf.status_conta || 'ativa') as string,
+        email,
+      }
+    }
+  }
+
+  // 3. Membros da equipe vinculadas a este estudio_id
+  const { data: rawMembros } = await adminSupabase
+    .from('profissionais')
+    .select('id, nome, slug, foto_url, categoria, whatsapp, status_conta, ativo_no_estudio, created_at, valor_mensalidade')
+    .eq('estudio_id', id)
+    .is('deletado_em', null)
+
+  const membros = rawMembros || []
+  const membroIds = membros.map((m: any) => m.id)
+
+  let totalAgendamentos = 0
+  let faturamentoEquipe = 0
+  const membrosComStats: Array<any> = []
+
+  if (membroIds.length > 0) {
+    const { data: agendamentosMembros } = await adminSupabase
+      .from('agendamentos')
+      .select('id, profissional_id, status, valor_cobrado, pago')
+      .in('profissional_id', membroIds)
+
+    const agendamentoMap: Record<string, { total: number; faturamento: number }> = {}
+    ;(agendamentosMembros || []).forEach((ag: any) => {
+      totalAgendamentos++
+      const val = Number(ag.valor_cobrado || 0)
+      if (ag.status === 'concluido' || ag.status === 'confirmado') {
+        faturamentoEquipe += val
+      }
+      if (!agendamentoMap[ag.profissional_id]) {
+        agendamentoMap[ag.profissional_id] = { total: 0, faturamento: 0 }
+      }
+      agendamentoMap[ag.profissional_id].total++
+      if (ag.status === 'concluido' || ag.status === 'confirmado') {
+        agendamentoMap[ag.profissional_id].faturamento += val
+      }
+    })
+
+    for (const m of membros) {
+      const stats = agendamentoMap[m.id] || { total: 0, faturamento: 0 }
+      membrosComStats.push({
+        ...m,
+        totalAgendamentos: stats.total,
+        faturamentoTotal: stats.faturamento,
+      })
+    }
+  }
+
+  // 4. Convites do estúdio
+  const { data: convites } = await adminSupabase
+    .from('estudio_convites')
+    .select('*')
+    .eq('estudio_id', id)
+    .order('created_at', { ascending: false })
+
+  return {
+    studio: {
+      ...studio,
+      tipo_gestao: ((studio.tipo_gestao as any) === 'aluguel_cadeira' || (studio.tipo_gestao as any) === 'cadeira_alugada' ? 'aluguel_cadeira' : 'gestao_completa') as 'aluguel_cadeira' | 'gestao_completa',
+      comissao_padrao_pct: Number(studio.comissao_padrao_pct ?? 30),
+      aluguel_padrao_fixo: Number(studio.aluguel_padrao_fixo ?? 0),
+    },
+    criador,
+    membros: membrosComStats,
+    totalMembros: membros.length,
+    totalAgendamentos,
+    faturamentoEquipe,
+    convites: convites || [],
+  }
+}
+

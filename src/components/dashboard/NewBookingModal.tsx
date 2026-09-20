@@ -455,7 +455,7 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
 
                 {/* Dropdown com Foto na Esquerda, Nome à Direita, Valor e Tempo */}
                 {isServiceDropdownOpen && (
-                  <div className="absolute left-0 right-0 top-full mt-2 z-40 max-h-72 overflow-y-auto rounded-3xl bg-white border border-gray-200 shadow-2xl p-2 space-y-1.5 animate-in fade-in duration-150">
+                  <div className="lume-smooth-dropdown absolute left-0 right-0 top-full mt-2 z-40 max-h-72 overflow-y-auto rounded-3xl bg-white border border-gray-200 shadow-2xl p-2 space-y-1.5">
                     <div className="px-2 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center justify-between border-b border-gray-100 pb-1.5">
                       <span>{isMultiSelect ? 'Marque os serviços desejados' : 'Selecione o serviço'}</span>
                       {isMultiSelect && (

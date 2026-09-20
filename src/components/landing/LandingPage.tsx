@@ -1,73 +1,227 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import {
-  LayoutGrid,
-  Eye,
-  Link2,
   ArrowRight,
-  CreditCard,
-  Clock,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Menu,
-  X,
-  Smartphone,
-  HelpCircle,
-  Mail,
   CheckCircle2,
-  Share2,
-  Share,
-  Send,
-  PlusSquare,
-  MoreVertical,
-  Check,
-  Palette,
-  CalendarCheck,
-  CalendarDays,
-  CalendarX,
-  MessageCircle,
-  RotateCcw,
+  Clock,
+  Smartphone,
+  Calendar,
+  DollarSign,
   TrendingUp,
-  Scissors,
-  Heart,
+  Percent,
+  Store,
+  Users,
+  ChevronDown,
+  Lock,
+  Check,
+  Zap,
+  HelpCircle,
   ShieldCheck,
-  ArrowUpRight,
+  Scissors,
+  Eye,
+  Heart,
+  MessageCircle,
+  ExternalLink,
+  CalendarX,
+  CalendarDays,
+  Play,
+  Sparkles,
 } from 'lucide-react'
+import LandingHeader from './LandingHeader'
+import LandingFooter from './LandingFooter'
+import InteractiveShowcaseSimulator from './InteractiveShowcaseSimulator'
+import FinancialSimulator from './FinancialSimulator'
+import { Button } from '@/components/ui/button'
+import CornerFillButton from '@/components/ui/CornerFillButton'
+import CasinoPriceTicker from '@/components/ui/CasinoPriceTicker'
 
 interface LandingPageProps {
   planPrice?: number
 }
 
 export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
-  const currentYear = new Date().getFullYear()
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [pwaModalOpen, setPwaModalOpen] = useState(false)
-
-  // Estados do Simulador: Etapa (1, 2, 3), Clientes/semana e Ticket Médio
-  const [simuladorStep, setSimuladorStep] = useState<1 | 2 | 3>(1)
-  const [clientesSemana, setClientesSemana] = useState<number>(20)
-  const [ticketMedio, setTicketMedio] = useState<number>(80)
+  // Referências para o contexto do GSAP
+  const pageRef = useRef<HTMLDivElement | null>(null)
+  const heroSectionRef = useRef<HTMLElement | null>(null)
+  const heroDesktopMockupRef = useRef<HTMLDivElement | null>(null)
+  const heroMobileMockupRef = useRef<HTMLDivElement | null>(null)
 
   // Estado do FAQ Accordion
   const [openFaq, setOpenFaq] = useState<number | null>(0)
 
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  // Estado unificado para expansão simultânea dos detalhes de ambos os planos
+  const [showPlanDetails, setShowPlanDetails] = useState(false)
 
-  // Cálculos do Simulador Interativo (Regras de negócio preservadas)
-  const clientesMes = Math.round(clientesSemana * 4.3)
-  const faturamentoBase = clientesMes * ticketMedio
-  const faltasRecuperadas = Math.round(faturamentoBase * 0.16) // ~16% de faltas evitadas com lembretes
-  const agendamentosNoturnos = Math.round(faturamentoBase * 0.18) // ~18% de marcações fora de hora
-  const ganhoAdicional = faltasRecuperadas + agendamentosNoturnos
-  const faturamentoComLume = faturamentoBase + ganhoAdicional
-  const horasPoupadas = Math.round((clientesSemana * 15 * 4.3) / 60)
-  const roiMultiplicador = Math.max(1, Math.round(ganhoAdicional / (planPrice || 69.90)))
+  // Ciclo de cobrança: Mensal ou Anual
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly')
 
+  // Hook GSAP Adaptativo com suporte a prefers-reduced-motion e cleanup automático
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    // 1. Respeito rigoroso a preferência por redução de movimento
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (prefersReducedMotion) return
+
+    // 2. Registro seguro do plugin ScrollTrigger
+    gsap.registerPlugin(ScrollTrigger)
+
+    const isDesktop = window.innerWidth >= 1024
+
+    const ctx = gsap.context(() => {
+      // A. HERO - Entrada suave da composição visual existente
+      // O título e o CTA permanecem visíveis imediatamente sem bloquear o conteúdo
+      if (heroDesktopMockupRef.current) {
+        gsap.fromTo(
+          heroDesktopMockupRef.current,
+          { opacity: 0, scale: 0.98 },
+          { opacity: 1, scale: 1, duration: 0.8, ease: 'power2.out', delay: 0.1 }
+        )
+
+        // Parallax sutil apenas em desktop na composição completa
+        if (isDesktop && heroSectionRef.current) {
+          gsap.to(heroDesktopMockupRef.current, {
+            yPercent: 8,
+            ease: 'none',
+            scrollTrigger: {
+              trigger: heroSectionRef.current,
+              start: 'top top',
+              end: 'bottom top',
+              scrub: 0.5,
+            },
+          })
+        }
+      }
+
+      if (heroMobileMockupRef.current) {
+        gsap.fromTo(
+          heroMobileMockupRef.current,
+          { opacity: 0, y: 15 },
+          { opacity: 1, y: 0, duration: 0.7, ease: 'power2.out', delay: 0.15 }
+        )
+      }
+
+      // B. DORES DO DIA A DIA - Entrada fluida dos 3 cards existentes
+      const doresCards = gsap.utils.toArray<HTMLElement>('.dores-card')
+      if (doresCards.length > 0) {
+        gsap.fromTo(
+          doresCards,
+          { opacity: 0, y: 22 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.55,
+            stagger: 0.12,
+            ease: 'power2.out',
+            scrollTrigger: {
+              trigger: '#dores',
+              start: 'top 82%',
+              toggleActions: 'play none none none',
+            },
+          }
+        )
+      }
+
+      // C. RECURSOS EM AÇÃO - Entrada consistente dos blocos de recursos
+      const recursoBlocks = gsap.utils.toArray<HTMLElement>('.recurso-block')
+      recursoBlocks.forEach((block) => {
+        const visual = block.querySelector('.recurso-visual')
+        const content = block.querySelector('.recurso-content')
+
+        if (visual && content) {
+          gsap.fromTo(
+            [content, visual],
+            { opacity: 0, y: 20 },
+            {
+              opacity: 1,
+              y: 0,
+              duration: 0.6,
+              stagger: 0.1,
+              ease: 'power2.out',
+              scrollTrigger: {
+                trigger: block,
+                start: 'top 82%',
+                toggleActions: 'play none none none',
+              },
+            }
+          )
+        }
+      })
+
+      // D. GALERIA VISUAL - Cards de fotos
+      const galeriaCards = gsap.utils.toArray<HTMLElement>('.galeria-card')
+      if (galeriaCards.length > 0) {
+        gsap.fromTo(
+          galeriaCards,
+          { opacity: 0, y: 18 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.5,
+            stagger: 0.1,
+            ease: 'power2.out',
+            scrollTrigger: {
+              trigger: '#galeria',
+              start: 'top 85%',
+              toggleActions: 'play none none none',
+            },
+          }
+        )
+      }
+
+      // E. PREÇOS E PLANOS - Cards Solo e Studio
+      const planCards = gsap.utils.toArray<HTMLElement>('.pricing-card')
+      if (planCards.length > 0) {
+        gsap.fromTo(
+          planCards,
+          { opacity: 0, y: 20 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.6,
+            stagger: 0.15,
+            ease: 'power2.out',
+            scrollTrigger: {
+              trigger: '#precos',
+              start: 'top 80%',
+              toggleActions: 'play none none none',
+            },
+          }
+        )
+      }
+
+      // F. CTA FINAL - Revelação elegante do banner de fechamento
+      const ctaBanner = document.querySelector('.cta-final-card')
+      if (ctaBanner) {
+        gsap.fromTo(
+          ctaBanner,
+          { opacity: 0, y: 18 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.55,
+            ease: 'power2.out',
+            scrollTrigger: {
+              trigger: '#cta-final',
+              start: 'top 85%',
+              toggleActions: 'play none none none',
+            },
+          }
+        )
+      }
+    }, pageRef)
+
+    return () => {
+      ctx.revert()
+    }
+  }, [])
+
+  // FAQ com textos originais
   const faqs = [
     {
       question: 'Como funciona o teste grátis de 30 dias?',
@@ -101,276 +255,19 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
     },
   ]
 
-  // Fechar dropdown ao clicar fora
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#3D2E4D] selection:bg-[#8C5383]/20 font-sans scroll-smooth">
-      {/* 1. HEADER FIXO COM NAVEGAÇÃO CENTRALIZADA */}
-      <header className="sticky top-0 z-50 w-full border-b border-[#E8DFD8] bg-[#FAF8F5]/90 backdrop-blur-md transition-all">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
-          
-          {/* Logo Lumê à Esquerda */}
-          <div className="flex-1 flex items-center justify-start">
-            <Link href="/" className="flex items-center gap-2">
-              <Image
-                src="/assets/lume_logo.webp"
-                alt="Lumê"
-                width={130}
-                height={40}
-                priority
-                className="h-auto w-auto max-h-9 object-contain"
-              />
-            </Link>
-          </div>
+    <div ref={pageRef} className="min-h-screen bg-[#FAF8F5] text-[#3D2E4D] selection:bg-[#8C5383]/20 font-sans scroll-smooth">
+      <LandingHeader />
 
-          {/* Links Desktop Centralizados */}
-          <nav className="hidden md:flex items-center justify-center gap-7 text-xs font-semibold text-[#3D2E4D]">
-            <a href="#como-funciona" className="hover:text-[#8C5383] transition">
-              Como funciona
-            </a>
-            <a href="#dores" className="hover:text-[#8C5383] transition">
-              Por que usar
-            </a>
-            <a href="#beneficios" className="hover:text-[#8C5383] transition">
-              Recursos
-            </a>
-            <a href="#simulador" className="hover:text-[#8C5383] transition">
-              Simulador
-            </a>
-            <a href="#precos" className="hover:text-[#8C5383] transition">
-              Preços
-            </a>
-
-            {/* Dropdown "Mais" */}
-            <div className="relative" ref={dropdownRef}>
-              <button
-                type="button"
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                onMouseEnter={() => setDropdownOpen(true)}
-                className="inline-flex items-center gap-1 hover:text-[#8C5383] transition py-1 cursor-pointer"
-              >
-                <span>Mais</span>
-                <ChevronDown
-                  className={`h-3.5 w-3.5 transition-transform duration-200 ${
-                    dropdownOpen ? 'rotate-180 text-[#8C5383]' : ''
-                  }`}
-                />
-              </button>
-
-              {dropdownOpen && (
-                <div
-                  onMouseLeave={() => setDropdownOpen(false)}
-                  className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 rounded-2xl bg-white p-2 shadow-xl border border-[#E8DFD8] z-50 text-xs space-y-0.5 animate-in fade-in slide-in-from-top-2 duration-150 text-left"
-                >
-                  <Link
-                    href="/funcionalidades"
-                    onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium text-[#3D2E4D] hover:bg-[#FAF8F5] transition"
-                  >
-                    <LayoutGrid className="h-4 w-4 text-[#8C5383]" />
-                    <div>
-                      <span className="font-bold block">Funcionalidades</span>
-                      <span className="text-[10px] text-[#6B5E7A]">Vitrine, agenda e Google Sync</span>
-                    </div>
-                  </Link>
-
-                  <Link
-                    href="/precos"
-                    onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium text-[#3D2E4D] hover:bg-[#FAF8F5] transition"
-                  >
-                    <CreditCard className="h-4 w-4 text-[#8C5383]" />
-                    <div>
-                      <span className="font-bold block">Plano e Preços</span>
-                      <span className="text-[10px] text-[#6B5E7A]">Conheça os detalhes do plano</span>
-                    </div>
-                  </Link>
-
-                  <Link
-                    href="/jornada-cliente"
-                    onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium text-[#3D2E4D] hover:bg-[#FAF8F5] transition"
-                  >
-                    <Clock className="h-4 w-4 text-[#8C5383]" />
-                    <div>
-                      <span className="font-bold block">Jornada da Cliente</span>
-                      <span className="text-[10px] text-[#6B5E7A]">Passo a passo simplificado</span>
-                    </div>
-                  </Link>
-
-                  <Link
-                    href="/sobre"
-                    onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium text-[#3D2E4D] hover:bg-[#FAF8F5] transition"
-                  >
-                    <HelpCircle className="h-4 w-4 text-[#8C5383]" />
-                    <div>
-                      <span className="font-bold block">Sobre o Lumê</span>
-                      <span className="text-[10px] text-[#6B5E7A]">Nossa proposta para a beleza</span>
-                    </div>
-                  </Link>
-
-                  <Link
-                    href="/contato"
-                    onClick={() => setDropdownOpen(false)}
-                    className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium text-[#3D2E4D] hover:bg-[#FAF8F5] transition"
-                  >
-                    <Mail className="h-4 w-4 text-[#8C5383]" />
-                    <div>
-                      <span className="font-bold block">Contato e suporte</span>
-                      <span className="text-[10px] text-[#6B5E7A]">Fale com nossa equipe</span>
-                    </div>
-                  </Link>
-
-                  <Link
-                    href="/instalar"
-                    onClick={() => setDropdownOpen(false)}
-                    className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 font-medium text-[#3D2E4D] hover:bg-[#FAF8F5] transition text-left cursor-pointer border-t border-[#E8DFD8] mt-1 pt-2"
-                  >
-                    <Smartphone className="h-4 w-4 text-[#8C5383]" />
-                    <div>
-                      <span className="font-bold block text-[#8C5383]">Instalar no celular</span>
-                      <span className="text-[10px] text-[#6B5E7A]">Atalho direto na tela inicial</span>
-                    </div>
-                  </Link>
-                </div>
-              )}
-            </div>
-          </nav>
-
-          {/* Botões de Ação Desktop à Direita */}
-          <div className="flex-1 hidden md:flex items-center justify-end gap-3">
-            <Link
-              href="/login"
-              className="rounded-full px-4 py-2 text-xs font-bold text-[#3D2E4D] hover:bg-[#F4EAE4] transition cursor-pointer"
-            >
-              Entrar
-            </Link>
-            <Link
-              href="/cadastro"
-              className="inline-flex items-center justify-center gap-1.5 rounded-full bg-[#3D2E4D] px-5 py-2.5 text-xs font-bold text-white shadow-md hover:bg-[#2E223B] transition cursor-pointer"
-            >
-              <span>Testar agenda grátis</span>
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-
-          {/* Ações Mobile: [Entrar] ao lado do [Menu Hamburguer] */}
-          <div className="flex md:hidden items-center gap-2">
-            <Link
-              href="/login"
-              className="px-3 py-1.5 rounded-full border border-[#D8C7BC] bg-white/80 text-xs font-bold text-[#3D2E4D] hover:bg-[#F4EAE4] transition"
-            >
-              Entrar
-            </Link>
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 text-[#3D2E4D] hover:bg-[#F4EAE4] rounded-xl transition"
-              aria-label={mobileMenuOpen ? "Fechar menu" : "Abrir menu"}
-            >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Menu Mobile Expansível */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-[#E8DFD8] bg-[#FAF8F5] px-4 py-4 space-y-3 text-sm font-semibold text-[#3D2E4D] animate-in fade-in slide-in-from-top-2">
-            <a
-              href="#como-funciona"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block py-2 hover:text-[#8C5383]"
-            >
-              Como funciona
-            </a>
-            <a
-              href="#dores"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block py-2 hover:text-[#8C5383]"
-            >
-              Por que usar
-            </a>
-            <Link
-              href="/funcionalidades"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block py-2 hover:text-[#8C5383]"
-            >
-              Recursos
-            </Link>
-            <a
-              href="#simulador"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block py-2 hover:text-[#8C5383]"
-            >
-              Simulador
-            </a>
-            <Link
-              href="/precos"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block py-2 hover:text-[#8C5383]"
-            >
-              Preços
-            </Link>
-            <Link
-              href="/jornada-cliente"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block py-2 hover:text-[#8C5383]"
-            >
-              Jornada da Cliente
-            </Link>
-            <Link
-              href="/sobre"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block py-2 hover:text-[#8C5383]"
-            >
-              Sobre o Lumê
-            </Link>
-            <Link
-              href="/contato"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block py-2 hover:text-[#8C5383]"
-            >
-              Contato e suporte
-            </Link>
-            <Link
-              href="/instalar"
-              onClick={() => setMobileMenuOpen(false)}
-              className="w-full text-left py-2 text-[#8C5383] font-bold flex items-center gap-2"
-            >
-              <Smartphone className="h-4 w-4" />
-              <span>Instalar no celular</span>
-            </Link>
-
-            <div className="pt-3 border-t border-[#E8DFD8] flex flex-col gap-2">
-              <Link
-                href="/cadastro"
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-full text-center py-3 rounded-full bg-[#3D2E4D] text-xs font-bold text-white shadow-md"
-              >
-                Testar minha agenda grátis
-              </Link>
-            </div>
-          </div>
-        )}
-      </header>
-
-      {/* 2. HERO SECTION */}
-      <section className="relative overflow-hidden pt-10 pb-20 lg:pt-16 lg:pb-28 bg-[#FAF8F5]">
-        {/* Imagem de Fundo da Hero no Desktop (Fundo Pastel + Mockup 3D Integrado) */}
-        <div className="hidden lg:block absolute inset-0 pointer-events-none select-none z-0">
+      {/* ===================================================================== */}
+      {/* 1. HERO SECTION (TEXTOS ORIGINAIS + MOCKUPS INTEGRADAS) */}
+      {/* ===================================================================== */}
+      <section ref={heroSectionRef} className="relative overflow-hidden pt-10 pb-16 lg:pt-16 lg:pb-24 bg-[#FAF8F5]">
+        {/* Mockup Desktop de Fundo Integrado */}
+        <div ref={heroDesktopMockupRef} className="hidden lg:block absolute inset-0 pointer-events-none select-none z-0">
           <Image
             src="/assets/mockup_desktop.webp"
-            alt="Lumê - Agenda e Gestão no Celular"
+            alt="Lumê"
             fill
             priority
             quality={100}
@@ -384,17 +281,15 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
             {/* Coluna Esquerda: Headline, Mockup Mobile, Apoio, CTAs e Prova Social */}
             <div className="lg:col-span-7 xl:col-span-6 space-y-6 sm:space-y-7 text-left">
               
-              {/* Headline Principal Direta Sans-serif (Aumentada) */}
               <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-[#3D2E4D] leading-[1.08] tracking-tight">
                 Sua cliente agenda.<br />
                 <span className="text-[#8C5383]">O Lumê organiza.</span><br />
                 Você atende.
               </h1>
 
-              {/* Mockup dos Celulares no Mobile (Logo após o Título) */}
-              <div className="lg:hidden w-full flex justify-center py-2">
+              {/* Mockup Mobile no Smartphone */}
+              <div ref={heroMobileMockupRef} className="lg:hidden w-full flex justify-center py-2">
                 <div className="relative w-full max-w-[340px] sm:max-w-[420px]">
-
                   <Image
                     src="/assets/mockup_mobile.webp"
                     alt="Lumê no celular - Aplicativo de agendamento"
@@ -406,28 +301,29 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
                 </div>
               </div>
 
-              {/* Texto de Apoio */}
               <p className="text-base sm:text-lg text-[#6B5E7A] font-normal leading-relaxed max-w-xl">
                 Uma agenda de beleza feita para reduzir mensagens, evitar horários duplicados e manter seus atendimentos organizados — mesmo quando você está ocupada atendendo.
               </p>
 
-              {/* CTAs Principal e Secundário */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 pt-2">
-                <Link
+              {/* CTAs */}
+              <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-3.5 pt-2">
+                <CornerFillButton
                   href="/cadastro"
-                  className="inline-flex items-center justify-center gap-2.5 rounded-full bg-[#3D2E4D] px-7 py-4 text-sm sm:text-base font-bold text-white shadow-xl hover:bg-[#2E223B] transition duration-200 transform hover:-translate-y-0.5 cursor-pointer text-center"
+                  variant="dark"
+                  className="w-full sm:w-auto"
+                  icon={<ArrowRight className="h-4 w-4 shrink-0" />}
                 >
-                  <span>Testar minha agenda grátis</span>
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
+                  <span className="whitespace-nowrap">Testar minha agenda grátis</span>
+                </CornerFillButton>
 
-                <a
+                <CornerFillButton
                   href="#como-funciona"
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-[#D8C7BC] bg-white/80 px-6 py-4 text-sm sm:text-base font-bold text-[#3D2E4D] hover:bg-white hover:border-[#3D2E4D] transition cursor-pointer text-center backdrop-blur-xs"
+                  variant="light"
+                  className="w-full sm:w-auto"
+                  icon={<ArrowRight className="h-4 w-4 shrink-0" />}
                 >
-                  <span>Ver como funciona</span>
-                  <span className="text-[#8C5383]">→</span>
-                </a>
+                  <span className="whitespace-nowrap">Ver como funciona</span>
+                </CornerFillButton>
               </div>
 
               {/* Prova Social */}
@@ -449,320 +345,25 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
               </div>
             </div>
 
-            {/* Coluna Direita: Livre para destacar os celulares na imagem de fundo do desktop */}
+            {/* Coluna Direita (espaço para mockup integrado no desktop) */}
             <div className="hidden lg:block lg:col-span-5 xl:col-span-6" />
 
           </div>
         </div>
       </section>
 
-      {/* 2.5 SIMULADOR DE FATURAMENTO (DESTAQUE COM CORES INVERTIDAS) - #simulador */}
-      <section id="simulador" className="py-12 sm:py-20 bg-[#FAF8F5] border-b border-[#E8DFD8] scroll-mt-20">
-        <div className="mx-auto max-w-4xl px-3.5 sm:px-6">
-          <div className="relative overflow-hidden bg-gradient-to-br from-[#241A32] via-[#1E162A] to-[#15101E] p-5 sm:p-10 md:p-12 rounded-3xl sm:rounded-[2.5rem] border border-[#44325E] shadow-2xl shadow-purple-950/25 space-y-6 sm:space-y-8 text-white">
-            
-            {/* Efeitos de Glow decorativos de fundo */}
-            <div className="absolute -top-24 -right-24 w-80 h-80 bg-[#8C5383]/25 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-[#B8A9D9]/15 rounded-full blur-3xl pointer-events-none" />
+      {/* ===================================================================== */}
+      {/* SIMULADOR DE FATURAMENTO (LOGO APÓS A HERO) */}
+      {/* ===================================================================== */}
+      <FinancialSimulator planPrice={planPrice} />
 
-            {/* CABEÇALHO DO SIMULADOR (ETAPAS 1, 2 E 3) */}
-            <div className="relative z-10 space-y-3 sm:space-y-4 border-b border-[#3E2E52] pb-4 sm:pb-6">
-              {/* Barra de Progresso em 3 Segmentos */}
-              <div className="grid grid-cols-3 gap-2 pt-1" role="progressbar" aria-valuenow={simuladorStep} aria-valuemin={1} aria-valuemax={3}>
-                <div className={`h-1.5 rounded-full transition-all duration-300 ${simuladorStep >= 1 ? 'bg-gradient-to-r from-[#B8A9D9] to-[#34D399]' : 'bg-[#35254A]'}`} />
-                <div className={`h-1.5 rounded-full transition-all duration-300 ${simuladorStep >= 2 ? 'bg-gradient-to-r from-[#B8A9D9] to-[#34D399]' : 'bg-[#35254A]'}`} />
-                <div className={`h-1.5 rounded-full transition-all duration-300 ${simuladorStep >= 3 ? 'bg-gradient-to-r from-[#B8A9D9] to-[#34D399]' : 'bg-[#35254A]'}`} />
-              </div>
-
-              {/* Título ampliado e focado */}
-              <div className="space-y-1.5 text-left pt-1">
-                <h2 className="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-tight">
-                  {simuladorStep === 1 && 'Quanto você poderia estar ganhando?'}
-                  {simuladorStep === 2 && 'De onde vem esse faturamento?'}
-                  {simuladorStep === 3 && 'Você poderia estar ganhando até:'}
-                </h2>
-                <p className="text-xs sm:text-sm text-[#B8A9D9] leading-relaxed">
-                  {simuladorStep === 1 && 'Responda a 2 perguntas e veja o faturamento que sua agenda pode resgatar.'}
-                  {simuladorStep === 2 && 'Horários vazios e mensagens manuais somam grandes oportunidades no mês.'}
-                  {simuladorStep === 3 && 'Clientes confirmadas, zero tempo perdido e faturamento no piloto automático.'}
-                </p>
-              </div>
-            </div>
-
-            {/* ETAPA 1: ENTRADA DOS NÚMEROS DA ROTINA */}
-            {simuladorStep === 1 && (
-              <div className="relative z-10 space-y-4 sm:space-y-6 text-left animate-in fade-in duration-200">
-                {/* Card 1: Atendimentos por Semana */}
-                <div className="bg-[#261B35]/90 p-4 sm:p-6 rounded-2xl border border-[#44325E] space-y-2 sm:space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <label htmlFor="sim-clientes-slider" className="text-xs sm:text-sm font-bold text-gray-200">
-                      Atendimentos por semana
-                    </label>
-                    <div className="text-right whitespace-nowrap shrink-0">
-                      <span className="text-2xl sm:text-4xl font-black text-white tracking-tight whitespace-nowrap">
-                        {clientesSemana}
-                      </span>
-                      <span className="text-xs sm:text-sm font-bold text-[#B8A9D9] ml-1.5 whitespace-nowrap">
-                        clientes/sem
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-[11px] sm:text-xs text-[#B8A9D9] font-medium">
-                    Aproximadamente <strong className="text-white whitespace-nowrap">~{clientesMes} atendimentos</strong> por mês na sua rotina.
-                  </p>
-
-                  <div className="pt-2">
-                    <input
-                      id="sim-clientes-slider"
-                      type="range"
-                      min="5"
-                      max="80"
-                      step="5"
-                      value={clientesSemana}
-                      aria-label="Atendimentos por semana"
-                      aria-valuemin={5}
-                      aria-valuemax={80}
-                      aria-valuenow={clientesSemana}
-                      aria-valuetext={`${clientesSemana} clientes por semana`}
-                      onChange={(e) => setClientesSemana(Number(e.target.value))}
-                      className="w-full h-3 bg-[#171020] rounded-lg appearance-none cursor-pointer accent-[#B8A9D9]"
-                    />
-                    <div className="flex justify-between text-[10px] sm:text-xs text-[#9E8EBA] font-semibold pt-1 whitespace-nowrap">
-                      <span>5 clientes</span>
-                      <span>40 clientes</span>
-                      <span>80+ clientes</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card 2: Valor Médio por Atendimento */}
-                <div className="bg-[#261B35]/90 p-4 sm:p-6 rounded-2xl border border-[#44325E] space-y-2 sm:space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <label htmlFor="sim-ticket-slider" className="text-xs sm:text-sm font-bold text-gray-200">
-                      Valor médio por atendimento (Ticket Médio)
-                    </label>
-                    <span className="text-2xl sm:text-4xl font-black text-[#34D399] tracking-tight whitespace-nowrap shrink-0">
-                      R$&nbsp;{ticketMedio},00
-                    </span>
-                  </div>
-                  <p className="text-[11px] sm:text-xs text-[#B8A9D9] font-medium">
-                    Preço médio cobrado por procedimento ou serviço realizado.
-                  </p>
-
-                  <div className="pt-2">
-                    <input
-                      id="sim-ticket-slider"
-                      type="range"
-                      min="20"
-                      max="350"
-                      step="5"
-                      value={ticketMedio}
-                      aria-label="Valor médio por atendimento"
-                      aria-valuemin={20}
-                      aria-valuemax={350}
-                      aria-valuenow={ticketMedio}
-                      aria-valuetext={`R$ ${ticketMedio}`}
-                      onChange={(e) => setTicketMedio(Number(e.target.value))}
-                      className="w-full h-3 bg-[#171020] rounded-lg appearance-none cursor-pointer accent-[#34D399]"
-                    />
-                    <div className="flex justify-between text-[10px] sm:text-xs text-[#9E8EBA] font-semibold pt-1 whitespace-nowrap">
-                      <span>R$ 20</span>
-                      <span>R$ 150</span>
-                      <span>R$ 350+</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Rodapé Etapa 1 */}
-                <div className="space-y-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setSimuladorStep(2)}
-                    className="w-full min-h-[50px] sm:min-h-[58px] flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-[#B8A9D9] via-[#C8B8E6] to-[#D8B4E2] hover:opacity-95 text-[#241A32] text-sm sm:text-base font-extrabold shadow-xl transition transform active:scale-[0.99] cursor-pointer"
-                  >
-                    <span>Ver quanto posso ganhar</span>
-                    <ArrowRight className="h-4 w-4 stroke-[3]" />
-                  </button>
-                  <div className="flex items-center justify-center text-[11px] text-[#9E8EBA] pt-0.5">
-                    <span className="font-medium">
-                      Leva menos de 30 segundos · Não precisa de cadastro
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ETAPA 2: ONDE EXISTE POTENCIAL */}
-            {simuladorStep === 2 && (
-              <div className="relative z-10 space-y-4 sm:space-y-5 text-left animate-in fade-in duration-200">
-                {/* 3 Cards Empilhados */}
-                <div className="space-y-2.5 sm:space-y-3">
-                  {/* Card 1: Faltas e Cancelamentos */}
-                  <div className="bg-[#261B35]/90 p-4 sm:p-5 rounded-2xl border border-[#44325E] flex items-start gap-3 sm:gap-4">
-                    <div className="h-9 w-9 sm:h-11 sm:w-11 rounded-xl bg-[#3B2B52] text-[#34D399] flex items-center justify-center shrink-0 border border-[#523C73]">
-                      <CalendarX className="h-5 w-5" />
-                    </div>
-                    <div className="space-y-1 flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <h4 className="text-xs sm:text-sm font-bold text-white">Faltas e horários vazios evitados</h4>
-                        <span className="text-sm sm:text-base font-black text-[#34D399] shrink-0 whitespace-nowrap">
-                          ~R$&nbsp;{faltasRecuperadas.toLocaleString('pt-BR')}/mês
-                        </span>
-                      </div>
-                      <p className="text-[11px] sm:text-xs text-[#B8A9D9] leading-relaxed">
-                        Lembretes e confirmações automáticas no WhatsApp reduzem drasticamente faltas e buracos na agenda.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Card 2: Tempo no WhatsApp */}
-                  <div className="bg-[#261B35]/90 p-4 sm:p-5 rounded-2xl border border-[#44325E] flex items-start gap-3 sm:gap-4">
-                    <div className="h-9 w-9 sm:h-11 sm:w-11 rounded-xl bg-[#3B2B52] text-[#B8A9D9] flex items-center justify-center shrink-0 border border-[#523C73]">
-                      <MessageCircle className="h-5 w-5" />
-                    </div>
-                    <div className="space-y-1 flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <h4 className="text-xs sm:text-sm font-bold text-white">Tempo livre poupado no WhatsApp</h4>
-                        <span className="text-sm sm:text-base font-black text-white shrink-0 whitespace-nowrap">
-                          ~{horasPoupadas}h&nbsp;livres/mês
-                        </span>
-                      </div>
-                      <p className="text-[11px] sm:text-xs text-[#B8A9D9] leading-relaxed">
-                        Sua cliente agenda sozinha em segundos sem que você precise interromper atendimentos ou perder noites respondendo mensagens.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Card 3: Fora do Expediente */}
-                  <div className="bg-[#261B35]/90 p-4 sm:p-5 rounded-2xl border border-[#44325E] flex items-start gap-3 sm:gap-4">
-                    <div className="h-9 w-9 sm:h-11 sm:w-11 rounded-xl bg-[#3B2B52] text-[#34D399] flex items-center justify-center shrink-0 border border-[#523C73]">
-                      <Clock className="h-5 w-5" />
-                    </div>
-                    <div className="space-y-1 flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <h4 className="text-xs sm:text-sm font-bold text-white">Agendamentos fora do expediente</h4>
-                        <span className="text-sm sm:text-base font-black text-[#34D399] shrink-0 whitespace-nowrap">
-                          ~R$&nbsp;{agendamentosNoturnos.toLocaleString('pt-BR')}/mês
-                        </span>
-                      </div>
-                      <p className="text-[11px] sm:text-xs text-[#B8A9D9] leading-relaxed">
-                        Sua vitrine pública continua recebendo pedidos à noite e fins de semana enquanto você descansa.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Rodapé Etapa 2 */}
-                <div className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3 pt-3 border-t border-[#3E2E52]">
-                  <button
-                    type="button"
-                    onClick={() => setSimuladorStep(1)}
-                    className="w-full sm:w-auto py-2.5 px-4 text-xs font-bold text-[#B8A9D9] hover:text-white transition cursor-pointer text-center"
-                  >
-                    ← Voltar e ajustar números
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSimuladorStep(3)}
-                    className="w-full sm:flex-1 min-h-[50px] sm:min-h-[56px] flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#B8A9D9] via-[#C8B8E6] to-[#D8B4E2] hover:opacity-95 text-[#241A32] text-xs sm:text-base font-extrabold shadow-xl transition cursor-pointer"
-                  >
-                    <span>Calcular resultado final</span>
-                    <ArrowRight className="h-4 w-4 stroke-[3]" />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ETAPA 3: RESULTADO FINAL (O GRANDE NÚMERO CLARO EM DESTAQUE) */}
-            {simuladorStep === 3 && (
-              <div className="relative z-10 space-y-4 sm:space-y-6 text-left animate-in fade-in duration-200">
-                {/* Destaque Principal do Potencial */}
-                <div className="bg-gradient-to-br from-[#35234C] via-[#2A1C3E] to-[#1E142D] p-6 sm:p-10 rounded-3xl border border-[#5C3F80] text-center space-y-2 sm:space-y-3 shadow-inner">
-                  <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-[#34D399] block">
-                    Potencial de ganho estimado
-                  </span>
-                  
-                  {/* Número Gigante em Cor Clara / Verde Esmeralda Vibrante (Nunca Quebra Linha) */}
-                  <div className="flex items-baseline justify-center gap-1.5 pt-2 whitespace-nowrap flex-nowrap">
-                    <span className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-[#34D399] tracking-tight drop-shadow-md whitespace-nowrap">
-                      +&nbsp;R$&nbsp;{ganhoAdicional.toLocaleString('pt-BR')}
-                    </span>
-                    <span className="text-sm sm:text-xl md:text-2xl font-bold text-[#E8DEF8] whitespace-nowrap">/mês</span>
-                  </div>
-
-                  <p className="text-xs sm:text-sm text-[#D1C4E9] font-medium max-w-md mx-auto pt-1">
-                    Retorno estimado de <strong className="text-white font-black whitespace-nowrap">~{roiMultiplicador}x</strong> sobre a assinatura mensal do Lumê.
-                  </p>
-                </div>
-
-                {/* 3 Indicadores de Apoio Compactos */}
-                <div className="grid grid-cols-3 gap-2 sm:gap-3.5">
-                  <div className="bg-[#261B35]/90 p-3 sm:p-4 rounded-2xl border border-[#44325E] text-center space-y-1">
-                    <span className="text-[10px] sm:text-xs font-bold text-[#B8A9D9] block truncate">Faltas Evitadas</span>
-                    <span className="text-xs sm:text-base font-black text-[#34D399] block whitespace-nowrap">
-                      +R$&nbsp;{faltasRecuperadas.toLocaleString('pt-BR')}
-                    </span>
-                  </div>
-                  <div className="bg-[#261B35]/90 p-3 sm:p-4 rounded-2xl border border-[#44325E] text-center space-y-1">
-                    <span className="text-[10px] sm:text-xs font-bold text-[#B8A9D9] block truncate">Agenda 24h</span>
-                    <span className="text-xs sm:text-base font-black text-[#34D399] block whitespace-nowrap">
-                      +R$&nbsp;{agendamentosNoturnos.toLocaleString('pt-BR')}
-                    </span>
-                  </div>
-                  <div className="bg-[#261B35]/90 p-3 sm:p-4 rounded-2xl border border-[#44325E] text-center space-y-1">
-                    <span className="text-[10px] sm:text-xs font-bold text-[#B8A9D9] block truncate">Tempo Poupado</span>
-                    <span className="text-xs sm:text-base font-black text-white block whitespace-nowrap">
-                      ~{horasPoupadas}h/mês
-                    </span>
-                  </div>
-                </div>
-
-                {/* Comparação Vertical */}
-                <div className="bg-[#261B35]/90 p-4 sm:p-6 rounded-2xl border border-[#44325E] space-y-2 sm:space-y-3">
-                  <div className="flex items-center justify-between text-xs sm:text-sm">
-                    <span className="text-gray-400 font-medium">Cenário atual (organização manual):</span>
-                    <span className="font-bold text-gray-200 whitespace-nowrap shrink-0">R$&nbsp;{faturamentoBase.toLocaleString('pt-BR')}/mês</span>
-                  </div>
-                  <div className="h-px bg-[#3E2E52]" />
-                  <div className="flex items-center justify-between text-xs sm:text-sm">
-                    <span className="text-[#D8B4E2] font-bold">Com o Lumê (potencial total):</span>
-                    <span className="font-black text-[#34D399] text-base sm:text-xl whitespace-nowrap shrink-0">
-                      R$&nbsp;{faturamentoComLume.toLocaleString('pt-BR')}/mês
-                    </span>
-                  </div>
-                </div>
-
-                {/* CTAs Finais */}
-                <div className="space-y-2.5 pt-2">
-                  <Link
-                    href="/cadastro"
-                    className="w-full min-h-[54px] sm:min-h-[60px] flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-[#B8A9D9] via-[#C8B8E6] to-[#D8B4E2] hover:opacity-95 text-[#241A32] text-sm sm:text-base font-black shadow-xl transition transform active:scale-[0.99] cursor-pointer text-center px-4"
-                  >
-                    <span>Quero esse resultado na minha agenda</span>
-                    <ArrowRight className="h-4 w-4 stroke-[3]" />
-                  </Link>
-
-                  <button
-                    type="button"
-                    onClick={() => setSimuladorStep(1)}
-                    className="w-full text-center text-xs sm:text-sm font-bold text-[#B8A9D9] hover:text-white transition py-1.5 cursor-pointer"
-                  >
-                    ← Recalcular com outros números
-                  </button>
-                </div>
-              </div>
-            )}
-
-          </div>
-        </div>
-      </section>
-
-      {/* 3. SEÇÃO DE DORES DO DIA A DIA - #dores */}
+      {/* ===================================================================== */}
+      {/* 2. DORES DO DIA A DIA COM FOTOS REAIS (TEXTOS ORIGINAIS) */}
+      {/* ===================================================================== */}
       <section id="dores" className="py-16 sm:py-24 bg-white border-y border-[#E8DFD8] scroll-mt-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12">
           
           <div className="text-center space-y-3 max-w-2xl mx-auto">
-            {/* Eyebrow Estilizado Sem Card */}
             <div className="flex items-center justify-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[#8C5383]">
               <span className="w-5 h-0.5 bg-[#8C5383]/50 rounded-full" />
               <span>A rotina de quem atende sozinha</span>
@@ -777,12 +378,11 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
             </p>
           </div>
 
-          {/* Grid de 3 Cards com Fotos Preenchendo o Topo */}
+          {/* Grid de 3 Cards com Fotos Originais */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
             
             {/* Card Dor 1: Horário vazio */}
-            <div className="bg-[#FAF8F5] rounded-3xl border border-[#E8DFD8] overflow-hidden flex flex-col justify-between hover:border-[#8C5383]/40 transition shadow-xs h-full group">
-              {/* Imagem Preenchendo o Topo */}
+            <div className="dores-card bg-[#FAF8F5] rounded-3xl border border-[#E8DFD8] overflow-hidden flex flex-col justify-between hover:border-[#8C5383]/40 transition shadow-xs h-full group">
               <div className="w-full aspect-[16/11] relative bg-[#F5F0FA] shrink-0 overflow-hidden border-b border-[#E8DFD8]/70">
                 <Image
                   src="/assets/problema/horario.webp"
@@ -793,7 +393,6 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
                 />
               </div>
 
-              {/* Conteúdo do Card */}
               <div className="p-6 sm:p-7 flex flex-col justify-between flex-1 space-y-5">
                 <div className="space-y-2.5">
                   <h3 className="text-lg sm:text-xl font-bold text-[#3D2E4D] tracking-tight leading-snug [text-wrap:balance]">
@@ -811,8 +410,7 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
             </div>
 
             {/* Card Dor 2: WhatsApp */}
-            <div className="bg-[#FAF8F5] rounded-3xl border border-[#E8DFD8] overflow-hidden flex flex-col justify-between hover:border-[#8C5383]/40 transition shadow-xs h-full group">
-              {/* Imagem Preenchendo o Topo */}
+            <div className="dores-card bg-[#FAF8F5] rounded-3xl border border-[#E8DFD8] overflow-hidden flex flex-col justify-between hover:border-[#8C5383]/40 transition shadow-xs h-full group">
               <div className="w-full aspect-[16/11] relative bg-[#F5F0FA] shrink-0 overflow-hidden border-b border-[#E8DFD8]/70">
                 <Image
                   src="/assets/problema/mensagens.webp"
@@ -823,7 +421,6 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
                 />
               </div>
 
-              {/* Conteúdo do Card */}
               <div className="p-6 sm:p-7 flex flex-col justify-between flex-1 space-y-5">
                 <div className="space-y-2.5">
                   <h3 className="text-lg sm:text-xl font-bold text-[#3D2E4D] tracking-tight leading-snug [text-wrap:balance]">
@@ -841,8 +438,7 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
             </div>
 
             {/* Card Dor 3: Caixa & Faturamento */}
-            <div className="bg-[#FAF8F5] rounded-3xl border border-[#E8DFD8] overflow-hidden flex flex-col justify-between hover:border-[#8C5383]/40 transition shadow-xs h-full group">
-              {/* Imagem Preenchendo o Topo */}
+            <div className="dores-card bg-[#FAF8F5] rounded-3xl border border-[#E8DFD8] overflow-hidden flex flex-col justify-between hover:border-[#8C5383]/40 transition shadow-xs h-full group">
               <div className="w-full aspect-[16/11] relative bg-[#F5F0FA] shrink-0 overflow-hidden border-b border-[#E8DFD8]/70">
                 <Image
                   src="/assets/problema/financeiro.webp"
@@ -853,7 +449,6 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
                 />
               </div>
 
-              {/* Conteúdo do Card */}
               <div className="p-6 sm:p-7 flex flex-col justify-between flex-1 space-y-5">
                 <div className="space-y-2.5">
                   <h3 className="text-lg sm:text-xl font-bold text-[#3D2E4D] tracking-tight leading-snug [text-wrap:balance]">
@@ -875,110 +470,100 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
         </div>
       </section>
 
-      {/* 4. SEÇÕES DE BENEFÍCIOS EM 2 COLUNAS - #beneficios */}
-      <section id="beneficios" className="py-16 sm:py-24 bg-[#FAF8F5] scroll-mt-16 space-y-20 lg:space-y-28">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-20 lg:space-y-28">
-          
-          {/* BENEFÍCIO 1: Agendamento Online */}
-          <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-14 lg:items-center">
-            
-            {/* Texto e Conteúdo (Desktop Coluna 1 / Mobile Ordem Completa) */}
-            <div className="lg:col-span-6 space-y-5 text-left order-1">
-              {/* 1. Título & Eyebrow */}
-              <div className="space-y-2.5">
-                <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[#8C5383]">
-                  <span className="w-5 h-0.5 bg-[#8C5383] rounded-full" />
-                  <span>Agendamento online</span>
-                </div>
-                
-                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#3D2E4D] tracking-tight leading-[1.18] [text-wrap:balance]">
-                  Sua cliente escolhe. Você confirma.
-                </h2>
-              </div>
+      {/* ===================================================================== */}
+      {/* 2.5 COMO FUNCIONA NA PRÁTICA: TESTE A EXPERIÊNCIA DA CLIENTE */}
+      {/* ===================================================================== */}
+      <InteractiveShowcaseSimulator />
 
-              {/* 2. Foto no Mobile (Entre Título e Descrição) */}
-              <div className="lg:hidden w-full flex justify-center py-1">
-                <div className="w-full max-w-[460px] aspect-[4/3] rounded-3xl overflow-hidden border border-[#E8DFD8] shadow-md relative bg-white">
-                  <Image
-                    src="/assets/funcionalidades/agendamento.webp"
-                    alt="Agendamento online prático no Lumê"
-                    fill
-                    sizes="(max-width: 1024px) 100vw, 50vw"
-                    className="object-cover"
-                  />
-                </div>
-              </div>
-
-              {/* 3. Descrição e Lista */}
-              <p className="text-sm sm:text-base text-[#6B5E7A] leading-relaxed [text-wrap:pretty]">
-                Envie seu link. Ela vê os horários disponíveis e agenda sozinha — até quando você está atendendo.
-              </p>
-
-              <ul className="space-y-2.5 pt-1 text-xs sm:text-sm font-medium text-[#3D2E4D]">
-                <li className="flex items-center gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Sua agenda fica disponível o dia todo</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>A cliente agenda sem baixar aplicativo</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Horários ocupados são bloqueados automaticamente</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Você recebe a confirmação na hora</span>
-                </li>
-              </ul>
-
-              {/* 4. Botão por Último */}
-              <div className="pt-2 sm:pt-3">
-                <Link
-                  href="/cadastro"
-                  className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-[#8C5383] hover:text-[#3D2E4D] bg-[#FAF0F5] hover:bg-[#F4EAE4] px-4 py-2 rounded-full border border-[#E8DFD8] transition shadow-2xs group cursor-pointer"
-                >
-                  <span>Criar minha agenda</span>
-                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-                </Link>
-              </div>
+      {/* ===================================================================== */}
+      {/* 3. O PRODUTO EM AÇÃO / RECURSOS (SEGUIDOS UM ABAIXO DO OUTRO, SEM FILTROS) */}
+      {/* ===================================================================== */}
+      <div id="beneficios" className="scroll-mt-16" />
+      <section id="recursos" className="scroll-mt-16">
+        
+        {/* Cabeçalho da Seção em Tela Cheia */}
+        <div className="w-full bg-[#FAF8F5] pt-16 sm:pt-24 pb-8 sm:pb-12 text-center">
+          <div className="mx-auto max-w-2xl px-4 sm:px-6 space-y-3">
+            <div className="flex items-center justify-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[#8C5383]">
+              <span className="w-5 h-0.5 bg-[#8C5383] rounded-full" />
+              <span>O Produto em Ação</span>
+              <span className="w-5 h-0.5 bg-[#8C5383] rounded-full" />
             </div>
 
-            {/* Imagem Funcionalidade 1 (Exibida no Desktop na Coluna Lateral) */}
-            <div className="hidden lg:flex lg:col-span-6 justify-center order-2">
-              <div className="w-full max-w-[460px] aspect-[4/3] rounded-3xl overflow-hidden border border-[#E8DFD8] shadow-md relative bg-white">
-                <Image
-                  src="/assets/funcionalidades/agendamento.webp"
-                  alt="Agendamento online prático no Lumê"
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                  className="object-cover"
-                />
-              </div>
-            </div>
-
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#3D2E4D] tracking-tight">
+              Conheça o Lumê por dentro
+            </h2>
+            <p className="text-sm sm:text-base text-[#6B5E7A]">
+              Veja como cada detalhe foi desenhado para você bater o olho, entender na hora e ter total tranquilidade na rotina.
+            </p>
           </div>
+        </div>
 
-          {/* BENEFÍCIO 2: Clientes e Retorno */}
-          <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-14 lg:items-center">
-            
-            {/* Texto e Conteúdo (Desktop Coluna 2 / Mobile Ordem Completa) */}
-            <div className="lg:col-span-6 space-y-5 text-left order-1 lg:order-2">
-              {/* 1. Título & Eyebrow */}
-              <div className="space-y-2.5">
-                <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[#8C5383]">
-                  <span className="w-5 h-0.5 bg-[#8C5383] rounded-full" />
-                  <span>Clientes e retorno</span>
+        {/* BLOCO 1: Clientes e Retorno */}
+        <div className="recurso-block w-full bg-gradient-to-b from-[#FAF8F5] to-white py-12 sm:py-20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-14 lg:items-center">
+              <div className="recurso-content lg:col-span-6 space-y-5 text-left order-1">
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[#8C5383]">
+                    <span className="w-5 h-0.5 bg-[#8C5383] rounded-full" />
+                    <span>Clientes e retorno</span>
+                  </div>
+                  
+                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#3D2E4D] tracking-tight leading-[1.18] [text-wrap:balance]">
+                    Lembre suas clientes na hora certa.
+                  </h2>
                 </div>
-                
-                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#3D2E4D] tracking-tight leading-[1.18] [text-wrap:balance]">
-                  Lembre suas clientes na hora certa.
-                </h2>
+
+                {/* Foto no Mobile: Alinhada à Esquerda */}
+                <div className="lg:hidden w-full py-1">
+                  <div className="w-full max-w-[440px] aspect-[4/3] rounded-3xl overflow-hidden border border-[#E8DFD8] shadow-md relative bg-white">
+                    <Image
+                      src="/assets/funcionalidades/clientes.webp"
+                      alt="Histórico de clientes e retorno"
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 50vw"
+                      className="object-cover"
+                    />
+                  </div>
+                </div>
+
+                <p className="text-sm sm:text-base text-[#6B5E7A] leading-relaxed [text-wrap:pretty]">
+                  Veja quem já veio, quem precisa voltar e mantenha seus atendimentos em dia.
+                </p>
+
+                <ul className="space-y-2.5 pt-1 text-xs sm:text-sm font-medium text-[#3D2E4D]">
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Histórico de cada cliente</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Anotações sobre preferências e procedimentos</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Lembretes para retorno e manutenção</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Avaliações na sua página</span>
+                  </li>
+                </ul>
+
+                <div className="pt-2 sm:pt-3">
+                  <CornerFillButton
+                    href="/cadastro"
+                    variant="pill"
+                    className="px-4 py-2 text-xs sm:text-sm"
+                    icon={<ArrowRight className="h-3.5 w-3.5 shrink-0" />}
+                  >
+                    <span>Organizar minhas clientes</span>
+                  </CornerFillButton>
+                </div>
               </div>
 
-              {/* 2. Foto no Mobile (Entre Título e Descrição) */}
-              <div className="lg:hidden w-full flex justify-center py-1">
+              <div className="recurso-visual hidden lg:flex lg:col-span-6 justify-center order-2">
                 <div className="w-full max-w-[460px] aspect-[4/3] rounded-3xl overflow-hidden border border-[#E8DFD8] shadow-md relative bg-white">
                   <Image
                     src="/assets/funcionalidades/clientes.webp"
@@ -989,77 +574,75 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
                   />
                 </div>
               </div>
-
-              {/* 3. Descrição e Lista */}
-              <p className="text-sm sm:text-base text-[#6B5E7A] leading-relaxed [text-wrap:pretty]">
-                Veja quem já veio, quem precisa voltar e mantenha seus atendimentos em dia.
-              </p>
-
-              <ul className="space-y-2.5 pt-1 text-xs sm:text-sm font-medium text-[#3D2E4D]">
-                <li className="flex items-center gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Histórico de cada cliente</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Anotações sobre preferências e procedimentos</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Lembretes para retorno e manutenção</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Avaliações na sua página</span>
-                </li>
-              </ul>
-
-              {/* 4. Botão por Último */}
-              <div className="pt-2 sm:pt-3">
-                <Link
-                  href="/cadastro"
-                  className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-[#8C5383] hover:text-[#3D2E4D] bg-[#FAF0F5] hover:bg-[#F4EAE4] px-4 py-2 rounded-full border border-[#E8DFD8] transition shadow-2xs group cursor-pointer"
-                >
-                  <span>Organizar minhas clientes</span>
-                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-                </Link>
-              </div>
             </div>
-
-            {/* Imagem Funcionalidade 2 (Exibida no Desktop na Coluna Lateral) */}
-            <div className="hidden lg:flex lg:col-span-6 justify-center order-2 lg:order-1">
-              <div className="w-full max-w-[460px] aspect-[4/3] rounded-3xl overflow-hidden border border-[#E8DFD8] shadow-md relative bg-white">
-                <Image
-                  src="/assets/funcionalidades/clientes.webp"
-                  alt="Histórico de clientes e retorno"
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                  className="object-cover"
-                />
-              </div>
-            </div>
-
           </div>
+        </div>
 
-          {/* BENEFÍCIO 3: Controle da Rotina e Financeiro */}
-          <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-14 lg:items-center">
-            
-            {/* Texto e Conteúdo (Desktop Coluna 1 / Mobile Ordem Completa) */}
-            <div className="lg:col-span-6 space-y-5 text-left order-1">
-              {/* 1. Título & Eyebrow */}
-              <div className="space-y-2.5">
-                <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[#8C5383]">
-                  <span className="w-5 h-0.5 bg-[#8C5383] rounded-full" />
-                  <span>Rotina e financeiro</span>
+        {/* BLOCO 2: Controle da Rotina e Financeiro */}
+        <div className="recurso-block w-full bg-gradient-to-b from-white to-[#FAF8F5] py-12 sm:py-20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-14 lg:items-center">
+              <div className="recurso-content lg:col-span-6 space-y-5 text-left order-1 lg:order-2">
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[#8C5383]">
+                    <span className="w-5 h-0.5 bg-[#8C5383] rounded-full" />
+                    <span>Rotina e financeiro</span>
+                  </div>
+                  
+                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#3D2E4D] tracking-tight leading-[1.18] [text-wrap:balance]">
+                    Veja tudo o que acontece no seu dia.
+                  </h2>
                 </div>
-                
-                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#3D2E4D] tracking-tight leading-[1.18] [text-wrap:balance]">
-                  Veja tudo o que acontece no seu dia.
-                </h2>
+
+                {/* Foto no Mobile: Alinhada à Esquerda */}
+                <div className="lg:hidden w-full py-1">
+                  <div className="w-full max-w-[440px] aspect-[4/3] rounded-3xl overflow-hidden border border-[#E8DFD8] shadow-md relative bg-white">
+                    <Image
+                      src="/assets/funcionalidades/financeiro.webp"
+                      alt="Visão da rotina e controle financeiro"
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 50vw"
+                      className="object-cover"
+                    />
+                  </div>
+                </div>
+
+                <p className="text-sm sm:text-base text-[#6B5E7A] leading-relaxed [text-wrap:pretty]">
+                  Acompanhe seus horários, atendimentos e dinheiro em um só lugar.
+                </p>
+
+                <ul className="space-y-2.5 pt-1 text-xs sm:text-sm font-medium text-[#3D2E4D]">
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Agenda e horários livres</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Faturamento do dia e do mês</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Controle de PIX, cartão e dinheiro</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Acesso fácil pelo celular</span>
+                  </li>
+                </ul>
+
+                <div className="pt-2 sm:pt-3">
+                  <CornerFillButton
+                    href="/cadastro"
+                    variant="pill"
+                    className="px-4 py-2 text-xs sm:text-sm"
+                    icon={<ArrowRight className="h-3.5 w-3.5 shrink-0" />}
+                  >
+                    <span>Ver minha rotina</span>
+                  </CornerFillButton>
+                </div>
               </div>
 
-              {/* 2. Foto no Mobile (Entre Título e Descrição) */}
-              <div className="lg:hidden w-full flex justify-center py-1">
+              <div className="recurso-visual hidden lg:flex lg:col-span-6 justify-center order-2 lg:order-1">
                 <div className="w-full max-w-[460px] aspect-[4/3] rounded-3xl overflow-hidden border border-[#E8DFD8] shadow-md relative bg-white">
                   <Image
                     src="/assets/funcionalidades/financeiro.webp"
@@ -1070,77 +653,75 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
                   />
                 </div>
               </div>
-
-              {/* 3. Descrição e Lista */}
-              <p className="text-sm sm:text-base text-[#6B5E7A] leading-relaxed [text-wrap:pretty]">
-                Acompanhe seus horários, atendimentos e dinheiro em um só lugar.
-              </p>
-
-              <ul className="space-y-2.5 pt-1 text-xs sm:text-sm font-medium text-[#3D2E4D]">
-                <li className="flex items-center gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Agenda e horários livres</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Faturamento do dia e do mês</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Controle de PIX, cartão e dinheiro</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Acesso fácil pelo celular</span>
-                </li>
-              </ul>
-
-              {/* 4. Botão por Último */}
-              <div className="pt-2 sm:pt-3">
-                <Link
-                  href="/cadastro"
-                  className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-[#8C5383] hover:text-[#3D2E4D] bg-[#FAF0F5] hover:bg-[#F4EAE4] px-4 py-2 rounded-full border border-[#E8DFD8] transition shadow-2xs group cursor-pointer"
-                >
-                  <span>Ver minha rotina</span>
-                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-                </Link>
-              </div>
             </div>
-
-            {/* Imagem Funcionalidade 3 (Exibida no Desktop na Coluna Lateral) */}
-            <div className="hidden lg:flex lg:col-span-6 justify-center order-2">
-              <div className="w-full max-w-[460px] aspect-[4/3] rounded-3xl overflow-hidden border border-[#E8DFD8] shadow-md relative bg-white">
-                <Image
-                  src="/assets/funcionalidades/financeiro.webp"
-                  alt="Visão da rotina e controle financeiro"
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                  className="object-cover"
-                />
-              </div>
-            </div>
-
           </div>
+        </div>
 
-          {/* BENEFÍCIO 4: Sincronização Google Calendar em 2 Vias */}
-          <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-14 lg:items-center">
-            
-            {/* Texto e Conteúdo (Desktop Coluna 2 / Mobile Ordem Completa) */}
-            <div className="lg:col-span-6 space-y-5 text-left order-1 lg:order-2">
-              {/* 1. Título & Eyebrow */}
-              <div className="space-y-2.5">
-                <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[#8C5383]">
-                  <span className="w-5 h-0.5 bg-[#8C5383] rounded-full" />
-                  <span>Google Agenda</span>
+        {/* BLOCO 3: Sincronização Google Calendar em 2 Vias */}
+        <div className="recurso-block w-full bg-gradient-to-b from-[#FAF8F5] to-white py-12 sm:py-20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-14 lg:items-center">
+              <div className="recurso-content lg:col-span-6 space-y-5 text-left order-1">
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[#8C5383]">
+                    <span className="w-5 h-0.5 bg-[#8C5383] rounded-full" />
+                    <span>Google Agenda</span>
+                  </div>
+                  
+                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#3D2E4D] tracking-tight leading-[1.18] [text-wrap:balance]">
+                    Sua agenda pessoal e profissional, juntas.
+                  </h2>
                 </div>
-                
-                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#3D2E4D] tracking-tight leading-[1.18] [text-wrap:balance]">
-                  Sua agenda pessoal e profissional, juntas.
-                </h2>
+
+                {/* Foto no Mobile: Alinhada à Esquerda */}
+                <div className="lg:hidden w-full py-1">
+                  <div className="w-full max-w-[440px] aspect-[4/3] rounded-3xl overflow-hidden border border-[#E8DFD8] shadow-md relative bg-white">
+                    <Image
+                      src="/assets/funcionalidades/sync.webp"
+                      alt="Sincronização em duas vias com o Google Agenda"
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 50vw"
+                      className="object-cover"
+                    />
+                  </div>
+                </div>
+
+                <p className="text-sm sm:text-base text-[#6B5E7A] leading-relaxed [text-wrap:pretty]">
+                  O Lumê bloqueia seus compromissos pessoais e evita horários duplicados.
+                </p>
+
+                <ul className="space-y-2.5 pt-1 text-xs sm:text-sm font-medium text-[#3D2E4D]">
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" aria-hidden="true" />
+                    <span>Sem conflito entre compromissos e clientes</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" aria-hidden="true" />
+                    <span>Atualização automática</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" aria-hidden="true" />
+                    <span>Tudo em um só lugar</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" aria-hidden="true" />
+                    <span>Mais tranquilidade para organizar o dia</span>
+                  </li>
+                </ul>
+
+                <div className="pt-2 sm:pt-3">
+                  <CornerFillButton
+                    href="/cadastro"
+                    variant="pill"
+                    className="px-4 py-2 text-xs sm:text-sm"
+                    icon={<ArrowRight className="h-3.5 w-3.5 shrink-0" />}
+                  >
+                    <span>Testar agenda grátis</span>
+                  </CornerFillButton>
+                </div>
               </div>
 
-              {/* 2. Foto no Mobile (Entre Título e Descrição) */}
-              <div className="lg:hidden w-full flex justify-center py-1">
+              <div className="recurso-visual hidden lg:flex lg:col-span-6 justify-center order-2">
                 <div className="w-full max-w-[460px] aspect-[4/3] rounded-3xl overflow-hidden border border-[#E8DFD8] shadow-md relative bg-white">
                   <Image
                     src="/assets/funcionalidades/sync.webp"
@@ -1151,309 +732,261 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
                   />
                 </div>
               </div>
-
-              {/* 3. Descrição e Lista */}
-              <p className="text-sm sm:text-base text-[#6B5E7A] leading-relaxed [text-wrap:pretty]">
-                O Lumê bloqueia seus compromissos pessoais e evita horários duplicados.
-              </p>
-
-              <ul className="space-y-2.5 pt-1 text-xs sm:text-sm font-medium text-[#3D2E4D]">
-                <li className="flex items-center gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" aria-hidden="true" />
-                  <span>Sem conflito entre compromissos e clientes</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" aria-hidden="true" />
-                  <span>Atualização automática</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" aria-hidden="true" />
-                  <span>Tudo em um só lugar</span>
-                </li>
-                <li className="flex items-center gap-2.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" aria-hidden="true" />
-                  <span>Mais tranquilidade para organizar o dia</span>
-                </li>
-              </ul>
-
-              {/* 4. Botão por Último */}
-              <div className="pt-2 sm:pt-3">
-                <Link
-                  href="/cadastro"
-                  className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-[#8C5383] hover:text-[#3D2E4D] bg-[#FAF0F5] hover:bg-[#F4EAE4] px-4 py-2 rounded-full border border-[#E8DFD8] transition shadow-2xs group cursor-pointer"
-                >
-                  <span>Testar agenda grátis</span>
-                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
-                </Link>
-              </div>
             </div>
-
-            {/* Imagem Funcionalidade 4 (Exibida no Desktop na Coluna Lateral) */}
-            <div className="hidden lg:flex lg:col-span-6 justify-center order-2 lg:order-1">
-              <div className="w-full max-w-[460px] aspect-[4/3] rounded-3xl overflow-hidden border border-[#E8DFD8] shadow-md relative bg-white">
-                <Image
-                  src="/assets/funcionalidades/sync.webp"
-                  alt="Sincronização em duas vias com o Google Agenda"
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                  className="object-cover"
-                />
-              </div>
-            </div>
-
           </div>
-
         </div>
+
+        {/* BLOCO 4: Agendamento Online (Adicionado antes de Studio) */}
+        <div className="recurso-block w-full bg-gradient-to-b from-white to-[#FAF8F5] py-12 sm:py-20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-14 lg:items-center">
+              <div className="recurso-content lg:col-span-6 space-y-5 text-left order-1 lg:order-2">
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[#8C5383]">
+                    <span className="w-5 h-0.5 bg-[#8C5383] rounded-full" />
+                    <span>Agendamento online</span>
+                  </div>
+                  
+                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#3D2E4D] tracking-tight leading-[1.18] [text-wrap:balance]">
+                    Sua cliente escolhe. Você confirma.
+                  </h2>
+                </div>
+
+                {/* Foto no Mobile: Alinhada à Esquerda */}
+                <div className="lg:hidden w-full py-1">
+                  <div className="w-full max-w-[440px] aspect-[4/3] rounded-3xl overflow-hidden border border-[#E8DFD8] shadow-md relative bg-white">
+                    <Image
+                      src="/assets/funcionalidades/agendamento.webp"
+                      alt="Agendamento online no Lumê"
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 50vw"
+                      className="object-cover"
+                    />
+                  </div>
+                </div>
+
+                <p className="text-sm sm:text-base text-[#6B5E7A] leading-relaxed [text-wrap:pretty]">
+                  Envie seu link. Ela vê os horários disponíveis e agenda sozinha — até quando você está atendendo.
+                </p>
+
+                <ul className="space-y-2.5 pt-1 text-xs sm:text-sm font-medium text-[#3D2E4D]">
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Sua agenda fica disponível o dia todo</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>A cliente agenda sem baixar aplicativo</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Horários ocupados são bloqueados automaticamente</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Você recebe a confirmação na hora</span>
+                  </li>
+                </ul>
+
+                <div className="pt-2 sm:pt-3">
+                  <CornerFillButton
+                    href="/cadastro"
+                    variant="pill"
+                    className="px-4 py-2 text-xs sm:text-sm"
+                    icon={<ArrowRight className="h-3.5 w-3.5 shrink-0" />}
+                  >
+                    <span>Liberar agendamento online</span>
+                  </CornerFillButton>
+                </div>
+              </div>
+
+              <div className="recurso-visual hidden lg:flex lg:col-span-6 justify-center order-2 lg:order-1">
+                <div className="w-full max-w-[460px] aspect-[4/3] rounded-3xl overflow-hidden border border-[#E8DFD8] shadow-md relative bg-white">
+                  <Image
+                    src="/assets/funcionalidades/agendamento.webp"
+                    alt="Agendamento online no Lumê"
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    className="object-cover"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* BLOCO 5: Lumê Studio */}
+        <div className="recurso-block w-full bg-gradient-to-b from-[#FAF8F5] to-white py-12 sm:py-20">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-14 lg:items-center">
+              <div className="recurso-content lg:col-span-6 space-y-5 text-left order-1">
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[#8C5383]">
+                    <span className="w-5 h-0.5 bg-[#8C5383] rounded-full" />
+                    <span>Lumê Studio</span>
+                  </div>
+                  
+                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#3D2E4D] tracking-tight leading-[1.18] [text-wrap:balance]">
+                    Para salões e espaços compartilhados.
+                  </h2>
+                </div>
+
+                {/* Foto no Mobile: Alinhada à Esquerda */}
+                <div className="lg:hidden w-full py-1">
+                  <div className="w-full max-w-[440px] aspect-[4/3] rounded-3xl overflow-hidden border border-[#E8DFD8] shadow-md relative bg-white">
+                    <Image
+                      src="/assets/funcionalidades/studio.webp"
+                      alt="Espaço Lumê Studio para salões e clínicas"
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 50vw"
+                      className="object-cover"
+                    />
+                  </div>
+                </div>
+
+                <p className="text-sm sm:text-base text-[#6B5E7A] leading-relaxed [text-wrap:pretty]">
+                  Reúna todas as profissionais do seu espaço em uma só vitrine coletiva.
+                </p>
+
+                <ul className="space-y-2.5 pt-1 text-xs sm:text-sm font-medium text-[#3D2E4D]">
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Vitrine unificada para a equipe</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Cálculo automático de comissões</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Aluguel de cadeira e coworking</span>
+                  </li>
+                  <li className="flex items-center gap-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span>Privacidade para cada profissional</span>
+                  </li>
+                </ul>
+
+                <div className="pt-2 sm:pt-3">
+                  <CornerFillButton
+                    href="/cadastro"
+                    variant="pill"
+                    className="px-4 py-2 text-xs sm:text-sm"
+                    icon={<ArrowRight className="h-3.5 w-3.5 shrink-0" />}
+                  >
+                    <span>Conhecer o Studio</span>
+                  </CornerFillButton>
+                </div>
+              </div>
+
+              <div className="recurso-visual hidden lg:flex lg:col-span-6 justify-center order-2">
+                <div className="w-full max-w-[460px] aspect-[4/3] rounded-3xl overflow-hidden border border-[#E8DFD8] shadow-md relative bg-white">
+                  <Image
+                    src="/assets/funcionalidades/studio.webp"
+                    alt="Espaço Lumê Studio para salões e clínicas"
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    className="object-cover"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Galeria Visual de Destaque: Ambientes e Procedimentos */}
+        <div id="galeria" className="w-full bg-gradient-to-b from-white to-[#FAF8F5] py-12 sm:py-16">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              
+              {/* Card Foto 1: Procedimentos de Beleza */}
+              <div className="galeria-card group relative rounded-3xl overflow-hidden border border-[#E8DFD8] bg-white shadow-xs aspect-[4/3]">
+                <Image
+                  src="/assets/galeria/procedimentos.webp"
+                  alt="Procedimentos e atendimento de beleza"
+                  fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#3D2E4D]/80 via-transparent to-transparent flex items-end p-5">
+                  <p className="text-white text-xs sm:text-sm font-bold leading-snug">
+                    Feito sob medida para lash designers, manicures e esteticistas
+                  </p>
+                </div>
+              </div>
+
+              {/* Card Foto 2: Espaços e Salões */}
+              <div className="galeria-card group relative rounded-3xl overflow-hidden border border-[#E8DFD8] bg-white shadow-xs aspect-[4/3]">
+                <Image
+                  src="/assets/galeria/recepcao.webp"
+                  alt="Recepção e atendimento no estúdio de beleza"
+                  fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#3D2E4D]/80 via-transparent to-transparent flex items-end p-5">
+                  <p className="text-white text-xs sm:text-sm font-bold leading-snug">
+                    Ideal para quem atende em estúdio próprio ou compartilha espaço
+                  </p>
+                </div>
+              </div>
+
+              {/* Card Foto 3: Interface no Celular */}
+              <div className="galeria-card group relative rounded-3xl overflow-hidden border border-[#E8DFD8] bg-white shadow-xs aspect-[4/3]">
+                <Image
+                  src="/assets/galeria/mobile.webp"
+                  alt="Aplicativo Lumê no celular"
+                  fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#3D2E4D]/80 via-transparent to-transparent flex items-end p-5">
+                  <p className="text-white text-xs sm:text-sm font-bold leading-snug">
+                    Prático para você acompanhar tudo direto na palma da mão
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
       </section>
 
-      {/* 5. COMO FUNCIONA - TIMELINE ALTERNADA NO MOBILE & GRID NO DESKTOP - #como-funciona */}
-      <section id="como-funciona" className="py-16 sm:py-24 bg-white border-y border-[#E8DFD8] scroll-mt-16 overflow-hidden">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-12 sm:space-y-16">
-          
-          <div className="space-y-4 max-w-3xl mx-auto text-center">
+      {/* ===================================================================== */}
+      {/* ESPAÇO PARA VÍDEO (TOUR / APRESENTAÇÃO DO PRODUTO 16:9) */}
+      {/* ===================================================================== */}
+      <section id="video-tour" className="py-16 sm:py-24 bg-white border-b border-[#E8DFD8] scroll-mt-16">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 space-y-8 text-center">
+          <div className="space-y-3 max-w-2xl mx-auto">
             <div className="flex items-center justify-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[#8C5383]">
               <span className="w-5 h-0.5 bg-[#8C5383] rounded-full" />
-              <span>Simples e sem complicação</span>
+              <span>Tour em Vídeo</span>
               <span className="w-5 h-0.5 bg-[#8C5383] rounded-full" />
             </div>
 
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#3D2E4D] tracking-tight">
-              Como funciona o Lumê na prática
+              Veja o Lumê em funcionamento
             </h2>
-            <p className="text-sm sm:text-base text-[#6B5E7A]">
-              Em apenas 4 passos você sai da troca infinita de mensagens e tem uma rotina organizada.
-            </p>
           </div>
 
-          {/* TIMELINE VERTICAL EM COBRINHA COM CARDS DE LARGURA TOTAL (lg:hidden) */}
-          <div className="lg:hidden relative w-full max-w-xl mx-auto py-2">
-            {/* Linha Serpentine / Cobrinha quase opaca como detalhe visual suave */}
-            <svg
-              className="absolute inset-0 w-full h-full pointer-events-none z-0 overflow-visible"
-              preserveAspectRatio="none"
-              viewBox="0 0 100 100"
-              aria-hidden="true"
-            >
-              <path
-                d="M 6 12.5 H 94 C 102 12.5, 102 37.5, 94 37.5 H 6 C -2 37.5, -2 62.5, 6 62.5 H 94 C 102 62.5, 102 87.5, 94 87.5 H 6"
-                fill="none"
-                stroke="#8C5383"
-                strokeOpacity="0.22"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                vectorEffect="non-scaling-stroke"
-              />
-            </svg>
-
-            {/* 4 Cards ocupando toda a largura em sequência vertical */}
-            <div className="space-y-6 relative z-10">
-              
-              {/* Passo 01 */}
-              <div className="w-full bg-[#FAF8F5] rounded-3xl border border-[#E8DFD8] p-5 shadow-xs hover:border-[#8C5383] transition group text-left space-y-3 relative z-10">
-                <div className="flex items-center justify-between">
-                  <div className="h-11 w-11 rounded-2xl bg-white border border-[#E8DFD8] group-hover:border-[#8C5383] shadow-xs flex items-center justify-center text-[#8C5383] transition-transform duration-300 group-hover:scale-105 shrink-0">
-                    <Link2 className="h-5 w-5 text-[#8C5383]" />
-                  </div>
-                  <span className="text-xs font-extrabold text-[#8C5383] bg-white px-3 py-1 rounded-full border border-[#E8DFD8]">
-                    Passo 01
-                  </span>
-                </div>
-
-                <h3 className="text-base font-bold text-[#3D2E4D]">Crie seu link exclusivo</h3>
-                <p className="text-xs sm:text-sm text-[#6B5E7A] font-medium leading-relaxed">
-                  Cadastre seus serviços, preços, fotos e horários de atendimento em menos de 5 minutos.
-                </p>
-
-                <div className="pt-2 border-t border-[#E8DFD8]/60 text-[11px] font-bold text-[#8C5383] flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#8C5383]" />
-                  <span>Configuração rápida</span>
-                </div>
-              </div>
-
-              {/* Passo 02 */}
-              <div className="w-full bg-[#FAF8F5] rounded-3xl border border-[#E8DFD8] p-5 shadow-xs hover:border-[#8C5383] transition group text-left space-y-3 relative z-10">
-                <div className="flex items-center justify-between">
-                  <div className="h-11 w-11 rounded-2xl bg-white border border-[#E8DFD8] group-hover:border-[#8C5383] shadow-xs flex items-center justify-center text-[#8C5383] transition-transform duration-300 group-hover:scale-105 shrink-0">
-                    <Send className="h-5 w-5 text-[#8C5383]" />
-                  </div>
-                  <span className="text-xs font-extrabold text-[#8C5383] bg-white px-3 py-1 rounded-full border border-[#E8DFD8]">
-                    Passo 02
-                  </span>
-                </div>
-
-                <h3 className="text-base font-bold text-[#3D2E4D]">Compartilhe com as clientes</h3>
-                <p className="text-xs sm:text-sm text-[#6B5E7A] font-medium leading-relaxed">
-                  Coloque seu link na bio do Instagram, envie no WhatsApp ou deixe em mensagens automáticas.
-                </p>
-
-                <div className="pt-2 border-t border-[#E8DFD8]/60 text-[11px] font-bold text-[#8C5383] flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#8C5383]" />
-                  <span>Acesso direto sem app</span>
-                </div>
-              </div>
-
-              {/* Passo 03 */}
-              <div className="w-full bg-[#FAF8F5] rounded-3xl border border-[#E8DFD8] p-5 shadow-xs hover:border-[#8C5383] transition group text-left space-y-3 relative z-10">
-                <div className="flex items-center justify-between">
-                  <div className="h-11 w-11 rounded-2xl bg-white border border-[#E8DFD8] group-hover:border-[#8C5383] shadow-xs flex items-center justify-center text-[#8C5383] transition-transform duration-300 group-hover:scale-105 shrink-0">
-                    <CalendarCheck className="h-5 w-5 text-[#8C5383]" />
-                  </div>
-                  <span className="text-xs font-extrabold text-[#8C5383] bg-white px-3 py-1 rounded-full border border-[#E8DFD8]">
-                    Passo 03
-                  </span>
-                </div>
-
-                <h3 className="text-base font-bold text-[#3D2E4D]">Cliente escolhe e agenda</h3>
-                <p className="text-xs sm:text-sm text-[#6B5E7A] font-medium leading-relaxed">
-                  Ela visualiza seus horários livres em tempo real e confirma o agendamento em segundos.
-                </p>
-
-                <div className="pt-2 border-t border-[#E8DFD8]/60 text-[11px] font-bold text-[#8C5383] flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#8C5383]" />
-                  <span>Zero conflitos de horários</span>
-                </div>
-              </div>
-
-              {/* Passo 04 */}
-              <div className="w-full bg-[#FAF8F5] rounded-3xl border border-[#E8DFD8] p-5 shadow-xs hover:border-[#8C5383] transition group text-left space-y-3 relative z-10">
-                <div className="flex items-center justify-between">
-                  <div className="h-11 w-11 rounded-2xl bg-white border border-[#E8DFD8] group-hover:border-[#8C5383] shadow-xs flex items-center justify-center text-[#8C5383] transition-transform duration-300 group-hover:scale-105 shrink-0">
-                    <Smartphone className="h-5 w-5 text-[#8C5383]" />
-                  </div>
-                  <span className="text-xs font-extrabold text-[#8C5383] bg-white px-3 py-1 rounded-full border border-[#E8DFD8]">
-                    Passo 04
-                  </span>
-                </div>
-
-                <h3 className="text-base font-bold text-[#3D2E4D]">Gerencie tudo pelo celular</h3>
-                <p className="text-xs sm:text-sm text-[#6B5E7A] font-medium leading-relaxed">
-                  Acompanhe atendimentos, bloqueie folgas e mantenha sua agenda pessoal do Google Calendar 100% sincronizada.
-                </p>
-
-                <div className="pt-2 border-t border-[#E8DFD8]/60 text-[11px] font-bold text-[#8C5383] flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#8C5383]" />
-                  <span>Sincronização em tempo real</span>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-          {/* GRID TRADICIONAL PRESERVADO NO DESKTOP (hidden lg:block) */}
-          <div className="hidden lg:block relative">
-            {/* Linha decorativa no desktop */}
-            <div className="absolute top-1/2 left-0 w-full h-1 bg-[#E8DFD8] -translate-y-1/2 z-0" />
-
-            <div className="grid grid-cols-4 gap-6 relative z-10">
-              
-              {/* Passo 1 */}
-              <div className="bg-[#FAF8F5] rounded-3xl border border-[#E8DFD8] p-6 flex flex-col justify-between hover:border-[#8C5383] transition group relative">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="h-14 w-14 rounded-2xl bg-white border-2 border-[#E8DFD8] group-hover:border-[#8C5383] shadow-xs flex items-center justify-center text-[#8C5383] transition-transform duration-300 group-hover:scale-110">
-                      <Link2 className="h-6 w-6 text-[#8C5383]" />
-                    </div>
-                    <span className="text-xs font-extrabold text-[#8C5383] bg-white px-2.5 py-1 rounded-full border border-[#E8DFD8]">
-                      Passo 01
-                    </span>
-                  </div>
-
-                  <h3 className="text-base font-bold text-[#3D2E4D]">Crie seu link exclusivo</h3>
-                  <p className="text-xs sm:text-sm text-[#6B5E7A] font-medium leading-relaxed">
-                    Cadastre seus serviços, preços, fotos e horários de atendimento em menos de 5 minutos.
-                  </p>
-                </div>
-
-                <div className="pt-2 text-[11px] font-bold text-[#8C5383] flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#8C5383]" />
-                  <span>Configuração rápida</span>
-                </div>
-              </div>
-
-              {/* Passo 2 */}
-              <div className="bg-[#FAF8F5] rounded-3xl border border-[#E8DFD8] p-6 flex flex-col justify-between hover:border-[#8C5383] transition group relative">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="h-14 w-14 rounded-2xl bg-white border-2 border-[#E8DFD8] group-hover:border-[#8C5383] shadow-xs flex items-center justify-center text-[#8C5383] transition-transform duration-300 group-hover:scale-110">
-                      <Send className="h-6 w-6 text-[#8C5383]" />
-                    </div>
-                    <span className="text-xs font-extrabold text-[#8C5383] bg-white px-2.5 py-1 rounded-full border border-[#E8DFD8]">
-                      Passo 02
-                    </span>
-                  </div>
-
-                  <h3 className="text-base font-bold text-[#3D2E4D]">Compartilhe com as clientes</h3>
-                  <p className="text-xs sm:text-sm text-[#6B5E7A] font-medium leading-relaxed">
-                    Coloque seu link na bio do Instagram, envie no WhatsApp ou deixe em mensagens automáticas.
-                  </p>
-                </div>
-
-                <div className="pt-2 text-[11px] font-bold text-[#8C5383] flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#8C5383]" />
-                  <span>Acesso direto sem app</span>
-                </div>
-              </div>
-
-              {/* Passo 3 */}
-              <div className="bg-[#FAF8F5] rounded-3xl border border-[#E8DFD8] p-6 flex flex-col justify-between hover:border-[#8C5383] transition group relative">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="h-14 w-14 rounded-2xl bg-white border-2 border-[#E8DFD8] group-hover:border-[#8C5383] shadow-xs flex items-center justify-center text-[#8C5383] transition-transform duration-300 group-hover:scale-110">
-                      <CalendarCheck className="h-6 w-6 text-[#8C5383]" />
-                    </div>
-                    <span className="text-xs font-extrabold text-[#8C5383] bg-white px-2.5 py-1 rounded-full border border-[#E8DFD8]">
-                      Passo 03
-                    </span>
-                  </div>
-
-                  <h3 className="text-base font-bold text-[#3D2E4D]">Cliente escolhe e agenda</h3>
-                  <p className="text-xs sm:text-sm text-[#6B5E7A] font-medium leading-relaxed">
-                    Ela visualiza seus horários livres em tempo real e confirma o agendamento em segundos.
-                  </p>
-                </div>
-
-                <div className="pt-2 text-[11px] font-bold text-[#8C5383] flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#8C5383]" />
-                  <span>Zero conflitos de horários</span>
-                </div>
-              </div>
-
-              {/* Passo 4 */}
-              <div className="bg-[#FAF8F5] rounded-3xl border border-[#E8DFD8] p-6 flex flex-col justify-between hover:border-[#8C5383] transition group relative">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="h-14 w-14 rounded-2xl bg-white border-2 border-[#E8DFD8] group-hover:border-[#8C5383] shadow-xs flex items-center justify-center text-[#8C5383] transition-transform duration-300 group-hover:scale-110">
-                      <Smartphone className="h-6 w-6 text-[#8C5383]" />
-                    </div>
-                    <span className="text-xs font-extrabold text-[#8C5383] bg-white px-2.5 py-1 rounded-full border border-[#E8DFD8]">
-                      Passo 04
-                    </span>
-                  </div>
-
-                  <h3 className="text-base font-bold text-[#3D2E4D]">Gerencie tudo pelo celular</h3>
-                  <p className="text-xs sm:text-sm text-[#6B5E7A] font-medium leading-relaxed">
-                    Acompanhe atendimentos, bloqueie folgas e mantenha sua agenda pessoal do Google Calendar 100% sincronizada.
-                  </p>
-                </div>
-
-                <div className="pt-2 text-[11px] font-bold text-[#8C5383] flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#8C5383]" />
-                  <span>Sincronização em tempo real</span>
-                </div>
-              </div>
-
+          {/* Player Container 16:9 */}
+          <div className="relative mx-auto w-full max-w-4xl aspect-video rounded-3xl overflow-hidden border-2 border-[#E8DFD8] bg-[#2E223B] shadow-2xl flex items-center justify-center group">
+            {/* Player limpo pronto para receber <iframe> ou <video> */}
+            <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white/15 backdrop-blur-md border border-white/25 text-white flex items-center justify-center shadow-lg transition-transform duration-300 group-hover:scale-110 cursor-pointer">
+              <Play className="h-7 w-7 sm:h-9 sm:w-9 text-white fill-white translate-x-0.5" />
             </div>
           </div>
         </div>
       </section>
 
-      {/* 7. PREÇOS E PLANOS - #precos (LISTA SINTÉTICA SEM CARDS) */}
+      {/* ===================================================================== */}
+      {/* 6. PREÇOS E PLANOS (CARDS COM MESMO TAMANHO, SOLO ESCURO, STUDIO CLARO) */}
+      {/* ===================================================================== */}
       <section id="precos" className="py-16 sm:py-24 bg-white border-y border-[#E8DFD8] scroll-mt-16">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 space-y-12">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 space-y-12">
           
           <div className="text-center space-y-3 max-w-2xl mx-auto">
-            {/* Eyebrow Estilizado Sem Card */}
             <div className="flex items-center justify-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[#8C5383]">
               <span className="w-5 h-0.5 bg-[#8C5383]/50 rounded-full" />
               <span>Transparência total</span>
@@ -1468,145 +1001,446 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
             </p>
           </div>
 
-          <div className="max-w-2xl mx-auto bg-[#FAF8F5] rounded-3xl p-6 sm:p-10 border border-[#E8DFD8] shadow-xl space-y-8 text-center relative">
-            <div className="space-y-2 border-b border-[#E8DFD8] pb-6">
-              <h3 className="text-2xl font-bold text-[#3D2E4D]">Assinatura Mensal Completa</h3>
-              <div className="flex items-baseline justify-center gap-1 pt-1">
-                <span className="text-5xl font-extrabold text-[#3D2E4D]">
-                  R$ {planPrice.toFixed(2).replace('.', ',')}
-                </span>
-                <span className="text-sm text-[#6B5E7A] font-semibold">/mês</span>
-              </div>
-              <p className="text-xs text-[#6B5E7A] font-medium">
-                30 dias de teste grátis — cancele a qualquer momento sem custos ou taxa de adesão
-              </p>
-            </div>
-
-            {/* Lista Sintética de Funcionalidades (Sem Cards) */}
-            <div className="space-y-4 text-left">
-              <h4 className="text-xs font-extrabold text-[#3D2E4D] uppercase tracking-wider border-b border-[#E8DFD8] pb-2.5">
-                Tudo o que está incluído no seu plano:
-              </h4>
-
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs">
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="text-[#3D2E4D] leading-snug">
-                    <strong>Página exclusiva:</strong> seu link personalizado (<code className="text-[10px] bg-white px-1 py-0.5 rounded border border-gray-200">/p/sua-marca</code>).
-                  </span>
-                </li>
-
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="text-[#3D2E4D] leading-snug">
-                    <strong>Agendamento 24h:</strong> clientes marcam sozinhas sem app ou cadastro prévio.
-                  </span>
-                </li>
-
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="text-[#3D2E4D] leading-snug">
-                    <strong>Bloqueio de choques:</strong> cálculo de duração e intervalo de descanso.
-                  </span>
-                </li>
-
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="text-[#3D2E4D] leading-snug">
-                    <strong>Google Agenda em 2 vias:</strong> sincronização automática com o celular.
-                  </span>
-                </li>
-
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="text-[#3D2E4D] leading-snug">
-                    <strong>Lembretes no WhatsApp:</strong> confirmações automáticas para reduzir faltas.
-                  </span>
-                </li>
-
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="text-[#3D2E4D] leading-snug">
-                    <strong>Manutenção periódica:</strong> avisos inteligentes para cílios, unhas e sobrancelhas.
-                  </span>
-                </li>
-
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="text-[#3D2E4D] leading-snug">
-                    <strong>Catálogo ilimitado:</strong> fotos, valores, durações e descrições dos serviços.
-                  </span>
-                </li>
-
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="text-[#3D2E4D] leading-snug">
-                    <strong>Gestão de clientes:</strong> fichas, histórico e identificação VIP/Frequente.
-                  </span>
-                </li>
-
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="text-[#3D2E4D] leading-snug">
-                    <strong>Painel financeiro:</strong> faturamento do dia/mês e receita futura prevista.
-                  </span>
-                </li>
-
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="text-[#3D2E4D] leading-snug">
-                    <strong>Avaliações e prova social:</strong> depoimentos reais e nota média na vitrine.
-                  </span>
-                </li>
-
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="text-[#3D2E4D] leading-snug">
-                    <strong>Personalização da marca:</strong> foto, bio profissional e capa personalizada.
-                  </span>
-                </li>
-
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="text-[#3D2E4D] leading-snug">
-                    <strong>Controle de jornada:</strong> horários de trabalho, almoço e folgas pontuais.
-                  </span>
-                </li>
-
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="text-[#3D2E4D] leading-snug">
-                    <strong>Atalho no celular:</strong> instalação direta na tela inicial (super leve).
-                  </span>
-                </li>
-
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <span className="text-[#3D2E4D] leading-snug">
-                    <strong>Suporte humanizado:</strong> time dedicado e especializado no nicho da beleza.
-                  </span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="pt-2">
-              <Link
-                href="/cadastro"
-                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#3D2E4D] py-4 text-xs sm:text-sm font-bold text-white shadow-lg hover:bg-[#2E223B] transition cursor-pointer"
+          {/* Toggle de Ciclo de Faturamento (Mensal / Anual) */}
+          <div className="flex flex-col items-center justify-center gap-3 pt-2">
+            <div className="inline-flex items-center p-1.5 rounded-full bg-white border border-[#E8DFD8] shadow-sm shadow-[#3D2E4D]/5">
+              <button
+                type="button"
+                onClick={() => setBillingCycle('monthly')}
+                className={`px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer active:scale-[0.98] ${
+                  billingCycle === 'monthly'
+                    ? 'bg-[#3D2E4D] text-white shadow-md'
+                    : 'text-[#6B5E7A] hover:text-[#3D2E4D]'
+                }`}
               >
-                <span>Começar 30 dias de teste grátis</span>
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+                Mensal
+              </button>
+              <button
+                type="button"
+                onClick={() => setBillingCycle('annual')}
+                className={`px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer active:scale-[0.98] flex items-center gap-2 ${
+                  billingCycle === 'annual'
+                    ? 'bg-[#3D2E4D] text-white shadow-md'
+                    : 'text-[#6B5E7A] hover:text-[#3D2E4D]'
+                }`}
+              >
+                <span>Anual</span>
+                <span
+                  className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full transition-colors duration-200 ${
+                    billingCycle === 'annual'
+                      ? 'bg-white/20 text-white'
+                      : 'bg-[#8C5383]/10 text-[#8C5383] border border-[#8C5383]/15'
+                  }`}
+                >
+                  2 meses grátis
+                </span>
+              </button>
             </div>
+            <p className="text-xs text-[#6B5E7A] font-medium">
+              {billingCycle === 'annual'
+                ? 'Economize 17% com faturamento anual antecipado'
+                : 'Pague mês a mês sem fidelidade ou multa rescisória'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch max-w-5xl mx-auto pt-2">
+            
+            {/* Box 1: Plano Solo (FUNDO ESCURO NOBRE, BORDA LILÁS LUMÊ, MAIS POPULAR) */}
+            <div className="pricing-card bg-gradient-to-b from-[#3D2E4D] via-[#362744] to-[#2B1F37] text-white rounded-3xl p-6 sm:p-9 border-2 border-[#B8A9D9] shadow-xl shadow-[#3D2E4D]/20 ring-4 ring-[#B8A9D9]/15 flex flex-col justify-between h-full relative transition-shadow duration-300 hover:shadow-2xl hover:shadow-[#B8A9D9]/20">
+              <span className="absolute -top-3.5 right-6 px-4 py-1 rounded-full bg-[#B8A9D9] text-[#3D2E4D] text-[10px] font-black uppercase tracking-wider shadow-md">
+                Mais popular
+              </span>
+              <div className="space-y-6 flex-1 flex flex-col">
+                <div className="space-y-2 border-b border-white/10 pb-6 text-center">
+                  <div className="h-7 flex items-center justify-center">
+                    <span className="text-[11px] font-extrabold uppercase tracking-widest text-[#B8A9D9]">
+                      Para Profissional Autônoma
+                    </span>
+                  </div>
+                  
+                  <div className="h-9 sm:h-10 flex items-center justify-center">
+                    <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                      Lumê Individual
+                    </h3>
+                  </div>
+
+                  <div className="pt-2 pb-1 flex flex-col items-center justify-center">
+                    <span className="text-xs font-semibold text-[#D5CBDD]/70 line-through">
+                      {billingCycle === 'annual' ? 'De R$ 69,90 por' : 'De R$ 97,00 por'}
+                    </span>
+                    <div className="flex items-baseline justify-center gap-1.5 pt-0.5">
+                      <CasinoPriceTicker
+                        price={billingCycle === 'annual' ? '57,90' : planPrice.toFixed(2).replace('.', ',')}
+                        className="text-4xl sm:text-5xl font-extrabold text-white tracking-tight"
+                        suffixClassName="text-sm text-[#D5CBDD] font-semibold ml-1.5"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="h-6 flex items-center justify-center text-center">
+                    <p className="text-[11px] text-[#C4B6CE] font-medium">
+                      {billingCycle === 'annual'
+                        ? 'R$ 694,80 faturados anualmente (2 meses grátis)'
+                        : '30 dias de teste grátis · Cancele quando quiser'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4 text-left flex-1 flex flex-col">
+                  <div className="h-9 flex items-center border-b border-white/10 pb-2">
+                    <h4 className="text-xs font-extrabold text-white uppercase tracking-wider">
+                      Tudo o que está incluído no plano:
+                    </h4>
+                  </div>
+
+                  {/* Lista de Tópicos Solo */}
+                  <ul className="space-y-3 text-xs flex-1">
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <span className="text-[#FAF7F5] leading-snug">
+                        <strong className="text-white">Página e vitrine exclusiva:</strong> link personalizado pronto para colocar na bio do Instagram e divulgar.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <span className="text-[#FAF7F5] leading-snug">
+                        <strong className="text-white">Agendamento disponível 24/7:</strong> clientes marcam sozinhas a qualquer hora sem precisar baixar aplicativo.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <span className="text-[#FAF7F5] leading-snug">
+                        <strong className="text-white">Google Agenda integrado:</strong> sincronização em tempo real em duas vias que evita choque de horários.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <span className="text-[#FAF7F5] leading-snug">
+                        <strong className="text-white">Lembretes no WhatsApp:</strong> mensagens automáticas de confirmação para clientes reduzindo faltas e esquecimentos.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <span className="text-[#FAF7F5] leading-snug">
+                        <strong className="text-white">Ficha completa de clientes:</strong> histórico detalhado de atendimentos, preferências e fotos dos procedimentos.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <span className="text-[#FAF7F5] leading-snug">
+                        <strong className="text-white">Painel financeiro:</strong> acompanhe seus ganhos do dia, semana e mês sem depender de planilhas.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <span className="text-[#FAF7F5] leading-snug">
+                        <strong className="text-white">Catálogo de procedimentos:</strong> fotos dos seus trabalhos, valores visíveis, duração e prazos de retorno.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <span className="text-[#FAF7F5] leading-snug">
+                        <strong className="text-white">Controle de disponibilidade:</strong> defina seus dias de atendimento, horários de folga e intervalos livres.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <span className="text-[#FAF7F5] leading-snug">
+                        <strong className="text-white">Suporte por WhatsApp:</strong> canal direto e ágil para tirar dúvidas sempre que você precisar.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                      <span className="text-[#FAF7F5] leading-snug">
+                        <strong className="text-white">E muito mais:</strong> novas ferramentas e atualizações contínuas para o seu crescimento.
+                      </span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-white/10 mt-6">
+                <Link
+                  href={billingCycle === 'annual' ? '/cadastro?plano=anual' : '/cadastro'}
+                  className="group w-full inline-flex items-center justify-center gap-2 rounded-full bg-white hover:bg-[#FAF7F5] py-4 text-xs sm:text-sm font-bold text-[#3D2E4D] shadow-sm hover:shadow-md hover:brightness-[1.02] transition-all duration-200 ease-out active:scale-[0.97] cursor-pointer whitespace-nowrap"
+                >
+                  <span className="whitespace-nowrap">Começar 30 dias de teste grátis</span>
+                  <ArrowRight className="h-4 w-4 shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-1" />
+                </Link>
+
+                {/* Gatilho com setinha para ver mais detalhes (sincronizado) */}
+                <button
+                  type="button"
+                  onClick={() => setShowPlanDetails((prev) => !prev)}
+                  className="w-full mt-3.5 py-1.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-[#D5CBDD] hover:text-white transition-colors duration-200 active:scale-[0.98] cursor-pointer group"
+                >
+                  <span>{showPlanDetails ? 'Ocultar detalhes dos planos' : 'Ver mais detalhes dos planos'}</span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform duration-250 ease-out ${
+                      showPlanDetails ? 'rotate-180 text-white' : 'text-[#D5CBDD]'
+                    }`}
+                  />
+                </button>
+
+                {/* Detalhamento que abre ao clicar (Plano Individual) */}
+                {showPlanDetails && (
+                  <div className="mt-3.5 p-4 sm:p-5 rounded-2xl bg-white/10 border border-white/15 text-left text-xs space-y-3 animate-in fade-in duration-300">
+                    <div className="flex items-center justify-between pb-2.5 border-b border-white/10">
+                      <span className="font-extrabold text-white text-xs tracking-wide flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-[#B8A9D9] shrink-0" />
+                        <span>Como funciona na rotina da profissional solo:</span>
+                      </span>
+                      <span className="text-[10px] text-[#D5CBDD] font-bold uppercase tracking-wider">
+                        Autônoma
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {/* Bloco 1 */}
+                      <div className="bg-white/10 p-3 rounded-xl border border-white/10 space-y-1">
+                        <span className="font-bold text-white block text-xs">
+                          1. Sua cliente agenda sozinha 24h por dia
+                        </span>
+                        <p className="text-[11px] text-[#FAF7F5]/90 leading-relaxed">
+                          Você coloca seu link na bio do Instagram e WhatsApp. A cliente clica, vê seus procedimentos com fotos e marca na hora o horário livre. Você nunca mais para um atendimento nem perde tempo na folga respondendo mensagens.
+                        </p>
+                      </div>
+
+                      {/* Bloco 2 */}
+                      <div className="bg-white/10 p-3 rounded-xl border border-white/10 space-y-1">
+                        <span className="font-bold text-white block text-xs">
+                          2. Fim das faltas com avisos automáticos no WhatsApp
+                        </span>
+                        <p className="text-[11px] text-[#FAF7F5]/90 leading-relaxed">
+                          O sistema envia mensagem de confirmação para a cliente antes do horário marcado. Reduz faltas e cancelamentos de última hora em mais de 70%, garantindo que você não perca dinheiro com horário vago na sua agenda.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Faixa inferior de benefício */}
+                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex items-center gap-2 text-[11px] text-[#FAF7F5]/90">
+                      <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>
+                        <strong>Google Agenda integrado:</strong> bloqueia horários pessoais e evita duplicidade de atendimentos.
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Box 2: Lumê Studio (FUNDO CLARO LÍMPIDO, BORDA E ACENTOS VINHO LUMÊ) */}
+            <div className="pricing-card bg-white text-[#3D2E4D] rounded-3xl p-6 sm:p-9 border-2 border-[#8C5383] shadow-lg shadow-[#8C5383]/10 ring-2 ring-[#8C5383]/10 flex flex-col justify-between h-full relative transition-shadow duration-300 hover:shadow-xl hover:shadow-[#8C5383]/20">
+              <span className="absolute -top-3.5 right-6 px-4 py-1 rounded-full bg-[#8C5383] text-white text-[10px] font-black uppercase tracking-wider shadow-md">
+                Mais Completo para Espaços
+              </span>
+              <div className="space-y-6 flex-1 flex flex-col">
+                <div className="space-y-2 border-b border-[#E8DFD8] pb-6 text-center">
+                  <div className="h-7 flex items-center justify-center">
+                    <span className="text-[11px] font-extrabold uppercase tracking-widest text-[#8C5383]">
+                      Para Salões & Equipes
+                    </span>
+                  </div>
+
+                  <div className="h-9 sm:h-10 flex items-center justify-center">
+                    <h3 className="text-2xl sm:text-3xl font-extrabold text-[#3D2E4D] tracking-tight">
+                      Lumê Studio
+                    </h3>
+                  </div>
+
+                  <div className="pt-2 pb-1 flex flex-col items-center justify-center">
+                    <span className="text-xs font-semibold text-[#6B5E7A]/70 line-through">
+                      {billingCycle === 'annual' ? 'De R$ 169,00 por' : 'De R$ 249,00 por'}
+                    </span>
+                    <div className="flex items-baseline justify-center gap-1.5 pt-0.5">
+                      <CasinoPriceTicker
+                        price={billingCycle === 'annual' ? '139,00' : '169,00'}
+                        className="text-4xl sm:text-5xl font-extrabold text-[#3D2E4D] tracking-tight"
+                        suffixClassName="text-sm text-[#6B5E7A] font-semibold ml-1.5"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="h-6 flex items-center justify-center text-center">
+                    <p className="text-[11px] text-[#6B5E7A] font-medium">
+                      {billingCycle === 'annual'
+                        ? 'R$ 1.668,00 faturados anualmente (2 meses grátis)'
+                        : '30 dias de teste grátis · Até 6 profissionais incluídas'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4 text-left flex-1 flex flex-col">
+                  <div className="h-9 flex items-center border-b border-[#E8DFD8] pb-2">
+                    <h4 className="text-xs font-extrabold text-[#3D2E4D] uppercase tracking-wider">
+                      Recursos exclusivos do Studio:
+                    </h4>
+                  </div>
+
+                  {/* Lista de Tópicos Studio */}
+                  <ul className="space-y-3 text-xs flex-1">
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="text-[#3D2E4D] leading-snug">
+                        <strong>Vitrine coletiva unificada:</strong> página única com fotos do espaço e de toda a equipe.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="text-[#3D2E4D] leading-snug">
+                        <strong>Repasse e comissões automáticas:</strong> porcentagens configuradas individualmente por profissional.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="text-[#3D2E4D] leading-snug">
+                        <strong>Aluguel de cadeira e coworking:</strong> flexibilidade total para profissionais autônomas do espaço.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="text-[#3D2E4D] leading-snug">
+                        <strong>Privacidade garantida:</strong> relatórios, agenda e clientes protegidos para cada parceira.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="text-[#3D2E4D] leading-snug">
+                        <strong>Agenda da recepção unificada:</strong> visualize todos os horários e cadeiras em uma só tela.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="text-[#3D2E4D] leading-snug">
+                        <strong>Extrato de repasse no WhatsApp:</strong> envie o demonstrativo de comissão direto para a parceira.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="text-[#3D2E4D] leading-snug">
+                        <strong>Agendamento assistido:</strong> recepção ou dona podem marcar horários por qualquer profissional.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="text-[#3D2E4D] leading-snug">
+                        <strong>Termo do Salão-Parceiro (LGPD):</strong> respaldo jurídico alinhado à lei e segurança de dados da equipe.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="text-[#3D2E4D] leading-snug">
+                        <strong>Suporte prioritário:</strong> canal direto de atendimento para a sua clínica ou estúdio.
+                      </span>
+                    </li>
+
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="text-[#3D2E4D] leading-snug">
+                        <strong>E muito mais:</strong> todos os recursos e inovações da plataforma liberados para o espaço.
+                      </span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-[#E8DFD8] mt-6">
+                <Link
+                  href={billingCycle === 'annual' ? '/studio?plano=anual' : '/studio'}
+                  className="group w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#8C5383] hover:bg-[#783F6F] py-4 text-xs sm:text-sm font-bold text-white shadow-sm hover:shadow-md hover:brightness-[1.03] transition-all duration-200 ease-out active:scale-[0.97] cursor-pointer whitespace-nowrap"
+                >
+                  <span className="whitespace-nowrap">Conhecer o Lumê Studio</span>
+                  <ExternalLink className="h-4 w-4 shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-1" />
+                </Link>
+
+                {/* Gatilho com setinha para ver mais detalhes (sincronizado) */}
+                <button
+                  type="button"
+                  onClick={() => setShowPlanDetails((prev) => !prev)}
+                  className="w-full mt-3.5 py-1.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-[#8C5383] hover:text-[#6A3D63] transition-colors duration-200 active:scale-[0.98] cursor-pointer group"
+                >
+                  <span>{showPlanDetails ? 'Ocultar detalhes dos planos' : 'Ver mais detalhes dos planos'}</span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform duration-250 ease-out ${
+                      showPlanDetails ? 'rotate-180 text-[#6A3D63]' : 'text-[#8C5383]'
+                    }`}
+                  />
+                </button>
+
+                {/* Detalhamento que abre ao clicar (Lumê Studio) */}
+                {showPlanDetails && (
+                  <div className="mt-3.5 p-4 sm:p-5 rounded-2xl bg-[#FAF0F5] border border-[#8C5383]/20 text-left text-xs space-y-3 animate-in fade-in duration-300">
+                    <div className="flex items-center justify-between pb-2.5 border-b border-[#8C5383]/15">
+                      <span className="font-extrabold text-[#3D2E4D] text-xs tracking-wide flex items-center gap-2">
+                        <Store className="h-4 w-4 text-[#8C5383] shrink-0" />
+                        <span>Como funciona nos 2 modelos de salão:</span>
+                      </span>
+                      <span className="text-[10px] text-[#8C5383] font-bold uppercase tracking-wider">
+                        Salões & Equipes
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {/* Bloco 1 */}
+                      <div className="bg-white p-3 rounded-xl border border-[#E8DFD8] shadow-2xs space-y-1">
+                        <span className="font-bold text-[#8C5383] block text-xs">
+                          1. Salão com equipe comissionada (tradicional)
+                        </span>
+                        <p className="text-[11px] text-[#5A4F6A] leading-relaxed">
+                          O Lumê calcula a comissão de cada profissional automaticamente por porcentagem. No dia do acerto, você envia o extrato de repasse pronto no WhatsApp da parceira com 1 toque, sem calculadora nem confusão.
+                        </p>
+                      </div>
+
+                      {/* Bloco 2 */}
+                      <div className="bg-white p-3 rounded-xl border border-[#E8DFD8] shadow-2xs space-y-1">
+                        <span className="font-bold text-[#3D2E4D] block text-xs">
+                          2. Espaço compartilhado (aluguel de cadeira ou maca)
+                        </span>
+                        <p className="text-[11px] text-[#5A4F6A] leading-relaxed">
+                          Cada profissional parceira tem seu próprio login no celular com privacidade blindada: uma nunca vê o dinheiro nem os clientes da outra. Ao mesmo tempo, todas aparecem reunidas na vitrine coletiva do salão.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Faixa inferior de benefício */}
+                    <div className="p-2.5 rounded-xl bg-white/60 border border-[#E8DFD8] flex items-center gap-2 text-[11px] text-[#5A4F6A]">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>
+                        <strong>Custo zero para as parceiras:</strong> a equipe usa de graça e a recepção visualiza tudo em uma só tela.
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
           </div>
 
         </div>
       </section>
 
-      {/* 8. SOBRE O LUMÊ - #sobre */}
+      {/* ===================================================================== */}
+      {/* 7. SOBRE O LUMÊ (TEXTOS ORIGINAIS) */}
+      {/* ===================================================================== */}
       <section id="sobre" className="py-16 sm:py-24 scroll-mt-16">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 text-center space-y-6">
-          {/* Eyebrow Estilizado Sem Card */}
           <div className="flex items-center justify-center gap-2 text-xs font-extrabold uppercase tracking-widest text-[#8C5383]">
             <span className="w-5 h-0.5 bg-[#8C5383]/50 rounded-full" />
             <span>Nossa Missão</span>
@@ -1614,16 +1448,18 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
           </div>
           
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#3D2E4D] tracking-tight max-w-2xl mx-auto">
-            Desenvolvido para o fluxo real da beleza autônoma
+            Desenvolvido para transformar o fluxo real da beleza
           </h2>
 
           <p className="text-sm sm:text-base text-[#6B5E7A] font-normal leading-relaxed max-w-2xl mx-auto">
-            O Lumê nasceu para libertar profissionais da beleza da exaustão de responder mensagens manuais enquanto atendem. Sabemos que o seu tempo com o pincel, a pinça ou a tesoura na mão é valioso — e a sua agenda deve trabalhar para você, não o contrário.
+            O Lumê nasceu para libertar profissionais da beleza da rotina caótica de mensagens, horários perdidos e contas no caderno. Sua agenda trabalha por você 24h — você cuida só do que faz de melhor.
           </p>
         </div>
       </section>
 
-      {/* 9. DÚVIDAS FREQUENTES (FAQ) */}
+      {/* ===================================================================== */}
+      {/* 8. DÚVIDAS FREQUENTES (FAQ COM TEXTOS ORIGINAIS) */}
+      {/* ===================================================================== */}
       <section id="faq" className="py-16 sm:py-24 bg-[#FAF8F5] border-t border-[#E8DFD8] scroll-mt-16">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 space-y-12">
           
@@ -1655,13 +1491,13 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
                   <button
                     type="button"
                     onClick={() => setOpenFaq(isOpen ? null : index)}
-                    className="w-full flex items-center justify-between p-5 sm:p-6 text-left transition cursor-pointer gap-4"
+                    className="w-full flex items-center justify-between p-5 sm:p-6 text-left transition cursor-pointer gap-4 active:scale-[0.995] duration-150"
                   >
                     <span className="text-sm sm:text-base font-bold text-[#3D2E4D] leading-snug">
                       {faq.question}
                     </span>
                     <div
-                      className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 transition-transform duration-200 ${
+                      className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 transition-transform duration-250 ease-out ${
                         isOpen ? 'bg-[#FAF0F5] text-[#8C5383] rotate-180' : 'bg-[#FAF8F5] text-gray-400'
                       }`}
                     >
@@ -1682,10 +1518,12 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
         </div>
       </section>
 
-      {/* 10. CTA FINAL */}
-      <section className="py-12 sm:py-16">
+      {/* ===================================================================== */}
+      {/* 9. CTA FINAL (TEXTOS ORIGINAIS) */}
+      {/* ===================================================================== */}
+      <section id="cta-final" className="py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-[2.5rem] bg-[#3D2E4D] p-8 sm:p-14 text-center text-white shadow-2xl space-y-6">
+          <div className="cta-final-card relative overflow-hidden rounded-[2.5rem] bg-[#3D2E4D] p-6 sm:p-14 text-center text-white shadow-2xl space-y-6">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold max-w-2xl mx-auto leading-tight tracking-tight">
               Pronta para simplificar sua rotina e valorizar seu atendimento?
             </h2>
@@ -1694,159 +1532,20 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
               Leva menos de 5 minutos para configurar sua vitrine e liberar os agendamentos online.
             </p>
 
-            <div className="pt-2">
+            <div className="pt-2 flex justify-center">
               <Link
                 href="/cadastro"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-sm font-bold text-[#3D2E4D] shadow-lg hover:bg-[#F4EAE4] transition transform hover:-translate-y-0.5 cursor-pointer"
+                className="group inline-flex items-center justify-center gap-2 rounded-full bg-white hover:bg-[#FAF7F5] px-6 sm:px-8 py-3.5 sm:py-4 text-xs sm:text-sm font-bold text-[#3D2E4D] shadow-sm hover:shadow-md hover:brightness-[1.02] transition-all duration-200 ease-out active:scale-[0.97] cursor-pointer max-w-full text-center"
               >
-                <span>Testar minha agenda grátis (30 dias)</span>
-                <ArrowRight className="h-4 w-4 text-[#3D2E4D]" />
+                <span className="truncate sm:whitespace-nowrap">Testar minha agenda grátis (30 dias)</span>
+                <ArrowRight className="h-4 w-4 text-[#3D2E4D] shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-1" />
               </Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 10. RODAPÉ */}
-      <footer className="border-t border-[#E8DFD8] bg-white py-6 sm:py-6">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          
-          {/* LAYOUT MOBILE (sm:hidden): Logo grande centralizada, @2026 Lumê e links nas extremidades */}
-          <div className="sm:hidden flex flex-col items-center space-y-4 text-center">
-            {/* Logo Centralizada Tamanho Grande */}
-            <Link href="/" className="inline-block">
-              <Image
-                src="/assets/lume_logo.webp"
-                alt="Lumê"
-                width={140}
-                height={42}
-                className="h-10 w-auto object-contain mx-auto"
-              />
-            </Link>
-
-            {/* Linha © 2026 Lumê. Desenvolvido para profissionais autônomas da beleza. */}
-            <p className="text-xs text-[#6B5E7A] font-medium leading-relaxed max-w-xs mx-auto">
-              © {currentYear} Lumê. Desenvolvido para profissionais autônomas da beleza.
-            </p>
-
-            {/* Extremidades: Esquerda (Termos de Serviço) e Direita (Política de Privacidade) */}
-            <div className="flex items-center justify-between w-full pt-3 border-t border-[#E8DFD8]/70 text-xs font-semibold text-[#3D2E4D]">
-              <Link href="/termos" className="hover:text-[#8C5383] transition">
-                Termos de Serviço
-              </Link>
-              <Link href="/privacidade" className="hover:text-[#8C5383] transition">
-                Política de Privacidade
-              </Link>
-            </div>
-          </div>
-
-          {/* LAYOUT DESKTOP (hidden sm:flex): Linha única limpa */}
-          <div className="hidden sm:flex items-center justify-between gap-4 text-xs text-[#6B5E7A]">
-            {/* Lado Esquerdo: Logo + Desenvolvido por */}
-            <div className="flex items-center gap-3">
-              <Link href="/" className="inline-block shrink-0">
-                <Image
-                  src="/assets/lume_logo.webp"
-                  alt="Lumê"
-                  width={80}
-                  height={24}
-                  className="h-auto w-auto max-h-6 object-contain"
-                />
-              </Link>
-              <span className="text-[#E8DFD8]" aria-hidden="true">•</span>
-              <span className="font-medium text-[#6B5E7A]">
-                © {currentYear} Lumê. Desenvolvido para profissionais autônomas da beleza.
-              </span>
-            </div>
-
-            {/* Lado Direito: Links de Termos e Privacidade */}
-            <div className="flex items-center gap-5 text-xs font-semibold text-[#3D2E4D]">
-              <Link href="/termos" className="hover:text-[#8C5383] transition">
-                Termos de Serviço
-              </Link>
-              <span className="text-[#E8DFD8]" aria-hidden="true">•</span>
-              <Link href="/privacidade" className="hover:text-[#8C5383] transition">
-                Política de Privacidade
-              </Link>
-            </div>
-          </div>
-
-        </div>
-      </footer>
-
-      {/* 11. MODAL DE INSTRUÇÕES DE INSTALAÇÃO NO CELULAR */}
-      {pwaModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-[#E8DFD8] space-y-5 text-left">
-            
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="h-9 w-9 rounded-xl bg-[#F4EAE4] flex items-center justify-center text-[#8C5383]">
-                  <Smartphone className="h-5 w-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-[#3D2E4D]">Instalar o Lumê no Celular</h4>
-                  <p className="text-[11px] text-[#6B5E7A] font-medium">Atalho direto na sua tela inicial</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPwaModalOpen(false)}
-                className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4 text-xs">
-              {/* iPhone (iOS) */}
-              <div className="bg-[#FAF8F5] p-3.5 rounded-2xl border border-[#E8DFD8] space-y-2">
-                <div className="flex items-center gap-2 text-[#3D2E4D] font-bold">
-                  <Smartphone className="h-3.5 w-3.5 text-[#8C5383]" aria-hidden="true" />
-                  <span>No iPhone (Safari)</span>
-                </div>
-                <ol className="list-decimal list-inside space-y-1.5 text-[#6B5E7A] font-medium leading-relaxed">
-                  <li>
-                    Toque no botão <strong>Compartilhar</strong> (<Share className="h-3 w-3 inline text-[#8C5383]" aria-hidden="true" />) na barra inferior do Safari.
-                  </li>
-                  <li>
-                    Role para baixo e selecione <strong>&quot;Adicionar à Tela de Início&quot;</strong> (<PlusSquare className="h-3 w-3 inline text-[#8C5383]" aria-hidden="true" />).
-                  </li>
-                  <li>Toque em <strong>Adicionar</strong> no canto superior direito.</li>
-                </ol>
-              </div>
-
-              {/* Android (Chrome) */}
-              <div className="bg-[#FAF8F5] p-3.5 rounded-2xl border border-[#E8DFD8] space-y-2">
-                <div className="flex items-center gap-2 text-[#3D2E4D] font-bold">
-                  <Smartphone className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
-                  <span>No Android (Chrome)</span>
-                </div>
-                <ol className="list-decimal list-inside space-y-1.5 text-[#6B5E7A] font-medium leading-relaxed">
-                  <li>
-                    Toque no menu de <strong>3 pontos</strong> (<MoreVertical className="h-3 w-3 inline text-[#8C5383]" />) no canto superior.
-                  </li>
-                  <li>
-                    Selecione <strong>&quot;Adicionar à tela inicial&quot;</strong> ou <strong>&quot;Instalar aplicativo&quot;</strong>.
-                  </li>
-                  <li>Confirme tocando em <strong>Adicionar</strong>.</li>
-                </ol>
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => setPwaModalOpen(false)}
-                className="w-full py-2.5 bg-[#3D2E4D] text-white font-bold rounded-xl text-xs shadow-md hover:bg-[#2E223B] transition cursor-pointer"
-              >
-                Entendi
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
+      <LandingFooter />
     </div>
   )
 }

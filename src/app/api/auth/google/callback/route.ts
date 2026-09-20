@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   const error = requestUrl.searchParams.get('error')
   const state = requestUrl.searchParams.get('state')
 
-  const baseUrl = requestUrl.origin || 'http://localhost:3000'
+  const baseUrl = requestUrl.origin || process.env.NEXT_PUBLIC_SITE_URL || 'https://lumebr.app'
   const cookieStore = await cookies()
   const storedState = cookieStore.get('google_oauth_state')?.value
 
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
 
   const clientId = process.env.GOOGLE_CLIENT_ID
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${baseUrl}/api/auth/google/callback`
 
   if (!clientId || !clientSecret || !redirectUri) {
     console.error('[Google OAuth Callback] Credenciais ausentes no .env')

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import {
   Heart,
@@ -11,11 +12,17 @@ import {
   Phone,
   Clock,
   ShieldCheck,
+  Mail,
+  Settings2,
+  Zap,
+  ChevronDown,
 } from 'lucide-react'
 import LandingHeader from './LandingHeader'
 import LandingFooter from './LandingFooter'
 
 export default function ContatoPage() {
+  const [openFaq, setOpenFaq] = useState<number | null>(null)
+
   const suporteFaqs = [
     {
       q: 'Como recuperar minha senha de acesso?',
@@ -26,12 +33,16 @@ export default function ContatoPage() {
       a: 'No seu painel, acesse o menu "Perfil" no topo direito. No campo "Link exclusivo", digite o nome desejado (/p/seu-nome) e clique em "Salvar alterações".',
     },
     {
-      q: 'Como sincronizar o Google Agenda?',
-      a: 'Acesse o menu "Disponibilidade" no painel, localize o card "Google Calendar" e clique em "Conectar Google Agenda". Conceda a permissão da sua conta Google e a sincronização em 2 vias começará automaticamente.',
+      q: 'Como funciona a sincronização com o Google Agenda?',
+      a: 'Acesse o menu "Perfil", localize o card "Google Agenda" e clique em "Conectar Google Agenda". Conceda a permissão da sua conta Gmail e a sincronização em duas vias funcionará automaticamente.',
     },
     {
       q: 'Uma cliente quer cancelar o horário, o que fazer?',
-      a: 'A cliente pode cancelar diretamente pela vitrine no botão "Meus Agendamentos", ou você pode abrir o agendamento no seu painel (/dashboard/agenda), clicar no atendimento e selecionar "Cancelar Agendamento".',
+      a: 'A cliente pode cancelar diretamente pela vitrine no botão "Meus Agendamentos", respeitando o limite de horas que você configurou, ou você pode abrir o atendimento na sua agenda (/dashboard/agenda) e cancelá-lo em 1 clique.',
+    },
+    {
+      q: 'Vocês me ajudam a cadastrar meus procedimentos e fotos?',
+      a: 'Sim! Se você não tiver tempo ou achar trabalhoso cadastrar um por um, mande sua tabela de preços ou cardápio de serviços no nosso WhatsApp que nós ajudamos a deixar sua vitrine pronta.',
     },
   ]
 
@@ -39,90 +50,169 @@ export default function ContatoPage() {
     <div className="min-h-screen bg-[#FAF8F5] text-[#3D2E4D] font-sans selection:bg-[#8C5383]/20">
       <LandingHeader />
 
-      {/* Hero da Página de Contato */}
-      <section className="relative overflow-hidden pt-12 pb-16 lg:pt-20 lg:pb-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center space-y-6">
-          
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#3D2E4D] tracking-tight max-w-3xl mx-auto leading-tight">
-            Você não precisa resolver tudo sozinha
+      {/* ===================================================================== */}
+      {/* 1. HERO REFINADO */}
+      {/* ===================================================================== */}
+      <section className="relative overflow-hidden pt-12 pb-14 sm:pt-20 sm:pb-16">
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#B8A9D9]/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-[#FAF0F5] rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center space-y-6">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-[#3D2E4D] tracking-tight leading-[1.15]">
+            Você nunca está sozinha na sua rotina.
           </h1>
 
-          <p className="text-base sm:text-lg text-[#6B5E7A] max-w-2xl mx-auto leading-relaxed">
-            Durante a fase Beta, nosso canal principal e mais ágil de atendimento é direto pelo WhatsApp com o time Lumê.
+          <p className="text-base sm:text-lg text-[#6B5E7A] font-normal leading-relaxed max-w-2xl mx-auto">
+            Sem robôs impessoais e sem menus que fazem você perder tempo. Aqui você conversa de verdade com a equipe que desenvolve o Lumê.
           </p>
-
         </div>
       </section>
 
-      {/* Destaque Principal do WhatsApp Beta */}
-      <section className="py-8 pb-16">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+      {/* ===================================================================== */}
+      {/* 2. FALE DIRETAMENTE COM QUEM CONSTRÓI O LUMÊ (REFEITO DO ZERO) */}
+      {/* ===================================================================== */}
+      <section className="py-8 pb-20">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 space-y-12">
           
-          <div className="bg-white rounded-3xl p-8 sm:p-12 border border-[#E8DFD8] shadow-xl text-center space-y-8 relative overflow-hidden">
+          {/* Card Principal VIP de Contato Direto */}
+          <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-b from-white to-[#FAF8F5] border-2 border-[#E8DFD8] shadow-xl p-6 sm:p-12 space-y-10">
             
-            <div className="mx-auto h-20 w-20 rounded-3xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200 shadow-sm">
-              <MessageCircle className="h-10 w-10" />
-            </div>
-
-            <div className="space-y-3 max-w-xl mx-auto">
-              <div className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-emerald-800 bg-emerald-50 px-3.5 py-1.5 rounded-full border border-emerald-200/80">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                <span>Suporte Beta Direto no WhatsApp</span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-[#3D2E4D]">
-                Fale diretamente com nossa equipe
+            {/* Cabeçalho do Card */}
+            <div className="text-center space-y-3 max-w-2xl mx-auto">
+              <h2 className="text-2xl sm:text-4xl font-extrabold text-[#3D2E4D] tracking-tight">
+                Fale diretamente com quem constrói o Lumê
               </h2>
-              <p className="text-xs sm:text-sm text-[#6B5E7A] leading-relaxed">
-                Tire dúvidas sobre a sua vitrine, receba ajuda na configuração da agenda ou compartilhe feedbacks sobre o aplicativo.
+
+              <p className="text-sm sm:text-base text-[#6B5E7A] leading-relaxed">
+                Entendemos na pele a pressa e o valor do seu tempo entre um atendimento e outro. Seja para tirar uma dúvida rápida, dar uma sugestão ou pedir ajuda para organizar sua agenda:
               </p>
             </div>
 
-            {/* Ações de Contato WhatsApp */}
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <a
-                href="https://wa.me/5511965758459?text=Olá!%20Sou%20usuária%20do%20Lumê%20e%20gostaria%20de%20ajuda."
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 px-8 py-4 text-sm font-bold text-white shadow-xl transition transform hover:-translate-y-0.5 cursor-pointer"
-              >
-                <MessageCircle className="h-5 w-5" />
-                <span>Iniciar Conversa no WhatsApp</span>
-              </a>
+            {/* Grid dos 3 Meios de Contato Diretos */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              
+              {/* Opção 1: WhatsApp Oficial */}
+              <div className="rounded-3xl bg-white p-6 border border-[#E8DFD8] shadow-2xs space-y-5 flex flex-col justify-between relative overflow-hidden">
+                <div className="space-y-3">
+                  <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200 shadow-xs">
+                    <MessageCircle className="h-6 w-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 block">
+                      Mais Rápido
+                    </span>
+                    <h3 className="text-lg font-bold text-[#3D2E4D]">WhatsApp Oficial</h3>
+                    <p className="text-xs text-[#6B5E7A] leading-relaxed">
+                      Converse direto pelo celular com nossa equipe. Resposta ágil e personalizada.
+                    </p>
+                  </div>
+                </div>
 
-              <a
-                href="tel:5511965758459"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-white hover:bg-gray-50 px-6 py-4 text-xs font-bold text-[#3D2E4D] border border-[#E8DFD8] transition"
-              >
-                <Phone className="h-4 w-4 text-[#8C5383]" />
-                <span>(11) 96575-8459</span>
-              </a>
+                <div className="space-y-2 pt-2">
+                  <a
+                    href="https://wa.me/5511965758459?text=Olá!%20Sou%20usuária%20do%20Lumê%20e%20gostaria%20de%20ajuda%20para%20configurar%20minha%20agenda."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3 px-4 rounded-2xl bg-[#FAF8F5] hover:bg-[#FAF0F5] border border-[#E8DFD8] text-[#3D2E4D] text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <MessageCircle className="h-4 w-4 text-emerald-600" />
+                    <span>Iniciar no WhatsApp</span>
+                  </a>
+                  <span className="text-[11px] text-gray-400 text-center block font-medium">
+                    (11) 96575-8459
+                  </span>
+                </div>
+              </div>
+
+              {/* Opção 2: E-mail Corporativo */}
+              <div className="rounded-3xl bg-white p-6 border border-[#E8DFD8] shadow-2xs space-y-5 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="h-12 w-12 rounded-2xl bg-[#FAF0F5] text-[#8C5383] flex items-center justify-center border border-purple-100 shadow-xs">
+                    <Mail className="h-6 w-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[#8C5383] block">
+                      Oficial
+                    </span>
+                    <h3 className="text-lg font-bold text-[#3D2E4D]">E-mail de Suporte</h3>
+                    <p className="text-xs text-[#6B5E7A] leading-relaxed">
+                      Ideal para dúvidas detalhadas, notas fiscais, parcerias ou solicitações formais.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2">
+                  <a
+                    href="mailto:contato@lumebr.app"
+                    className="w-full py-3 px-4 rounded-2xl bg-[#FAF8F5] hover:bg-[#FAF0F5] border border-[#E8DFD8] text-[#3D2E4D] text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Mail className="h-4 w-4 text-[#8C5383]" />
+                    <span>contato@lumebr.app</span>
+                  </a>
+                  <span className="text-[11px] text-gray-400 text-center block font-medium">
+                    Retorno em até 24 horas úteis
+                  </span>
+                </div>
+              </div>
+
+              {/* Opção 3: Atendimento Telefônico */}
+              <div className="rounded-3xl bg-white p-6 border border-[#E8DFD8] shadow-2xs space-y-5 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="h-12 w-12 rounded-2xl bg-purple-50 text-[#3D2E4D] flex items-center justify-center border border-purple-100 shadow-xs">
+                    <Phone className="h-6 w-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[#3D2E4D] block">
+                      Voz Direta
+                    </span>
+                    <h3 className="text-lg font-bold text-[#3D2E4D]">Ligação Direta</h3>
+                    <p className="text-xs text-[#6B5E7A] leading-relaxed">
+                      Atendimento telefônico direto para clientes e profissionais cadastrados.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2">
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full py-3 px-4 rounded-2xl bg-[#FAF8F5]/80 border border-[#E8DFD8] text-gray-400 text-xs font-bold flex items-center justify-center gap-2 cursor-not-allowed select-none"
+                  >
+                    <Phone className="h-4 w-4 text-gray-400" />
+                    <span>Indisponível no momento</span>
+                  </button>
+                  <span className="text-[11px] text-gray-400 text-center block font-medium">
+                    Atendimento via WhatsApp ou E-mail
+                  </span>
+                </div>
+              </div>
+
             </div>
 
-            {/* Informações de Disponibilidade */}
-            <div className="pt-6 border-t border-[#E8DFD8] grid grid-cols-1 sm:grid-cols-3 gap-4 text-left text-xs text-[#6B5E7A]">
-              <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-[#FAF8F5] border border-[#E8DFD8]">
-                <Clock className="h-4 w-4 text-[#8C5383] shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-[#3D2E4D] block font-bold">Horário de Atendimento</strong>
-                  <span>Segunda a Sábado, das 08h às 20h</span>
+            {/* Destaque Extra de Compromisso de Atendimento */}
+            <div className="rounded-3xl bg-[#FAF0F5] p-6 sm:p-8 border border-purple-100 flex flex-col sm:flex-row items-center justify-between gap-6 text-left">
+              <div className="space-y-1.5 max-w-xl">
+                <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#8C5383]">
+                  <Settings2 className="h-4 w-4" />
+                  <span>Configuração Acompanhada</span>
                 </div>
+                <h4 className="text-base sm:text-lg font-bold text-[#3D2E4D]">
+                  Prefere que nossa equipe configure toda a sua conta?
+                </h4>
+                <p className="text-xs sm:text-sm text-[#6B5E7A] leading-relaxed">
+                  Solicite um orçamento para que nossa equipe técnica cadastre todos os seus serviços, produtos, fotos e valores. Entregamos sua vitrine e agenda 100% configuradas e prontas para receber agendamentos.
+                </p>
               </div>
 
-              <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-[#FAF8F5] border border-[#E8DFD8]">
-                <Heart className="h-4 w-4 text-[#8C5383] shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-[#3D2E4D] block font-bold">Atendimento Humanizado</strong>
-                  <span>Sem bots confusos ou menus infinitos</span>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2.5 p-3 rounded-2xl bg-[#FAF8F5] border border-[#E8DFD8]">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong className="text-[#3D2E4D] block font-bold">Resposta Ágil</strong>
-                  <span>Prioridade total para profissionais beta</span>
-                </div>
-              </div>
+              <a
+                href="https://wa.me/5511965758459?text=Olá!%20Gostaria%20de%20um%20orçamento%20para%20a%20equipe%20cadastrar%20meus%20serviços%20e%20configurar%20minha%20conta%20no%20Lumê."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#3D2E4D] hover:bg-[#2E223B] px-6 py-3.5 text-xs font-bold text-white shadow-md transition shrink-0 cursor-pointer w-full sm:w-auto whitespace-nowrap"
+              >
+                <span>Orçar configuração e cadastro</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </a>
             </div>
 
           </div>
@@ -130,50 +220,78 @@ export default function ContatoPage() {
         </div>
       </section>
 
-      {/* FAQ Rápido de Suporte */}
+      {/* ===================================================================== */}
+      {/* 3. DÚVIDAS FREQUENTES DE SUPORTE */}
+      {/* ===================================================================== */}
       <section className="py-16 sm:py-24 bg-white border-y border-[#E8DFD8]">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 space-y-10 text-left">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 space-y-10 text-left">
           
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl sm:text-3xl font-bold text-[#3D2E4D]">Ajuda rápida para o seu dia</h2>
-            <p className="text-xs sm:text-sm text-[#6B5E7A]">Dúvidas frequentes de configuração e uso da plataforma.</p>
+          <div className="space-y-2">
+            <span className="text-xs font-extrabold uppercase tracking-widest text-[#8C5383]">Dúvidas Rápidas</span>
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#3D2E4D] tracking-tight">Perguntas comuns sobre sua conta</h2>
+            <p className="text-xs sm:text-sm text-[#6B5E7A]">Respostas diretas para as configurações mais frequentes:</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {suporteFaqs.map((item, idx) => (
-              <div key={idx} className="bg-[#FAF8F5] p-6 rounded-2xl border border-[#E8DFD8] space-y-2 shadow-2xs">
-                <h3 className="text-xs sm:text-sm font-bold text-[#3D2E4D] flex items-center gap-1.5">
-                  <HelpCircle className="h-4 w-4 text-[#8C5383] shrink-0" />
-                  <span>{item.q}</span>
-                </h3>
-                <p className="text-xs text-[#6B5E7A] leading-relaxed font-medium">{item.a}</p>
-              </div>
-            ))}
+          <div className="space-y-3">
+            {suporteFaqs.map((item, idx) => {
+              const isOpen = openFaq === idx
+              return (
+                <div
+                  key={idx}
+                  className={`rounded-2xl border transition-all duration-200 overflow-hidden bg-[#FAF8F5] ${
+                    isOpen ? 'border-[#8C5383]/50 shadow-xs' : 'border-[#E8DFD8] hover:border-[#8C5383]/30'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenFaq(isOpen ? null : idx)}
+                    className="w-full flex items-center justify-between p-4 sm:p-5 text-left transition cursor-pointer gap-4"
+                  >
+                    <span className="text-sm sm:text-base font-bold text-[#3D2E4D] leading-snug">
+                      {item.q}
+                    </span>
+                    <div
+                      className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 transition-transform duration-200 ${
+                        isOpen ? 'bg-[#FAF0F5] text-[#8C5383] rotate-180' : 'bg-white text-gray-400'
+                      }`}
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </div>
+                  </button>
+
+                  {isOpen && (
+                    <div className="px-4 pb-4 sm:px-5 sm:pb-5 text-xs sm:text-sm text-[#6B5E7A] font-medium leading-relaxed border-t border-gray-200/50 pt-3 animate-in fade-in duration-200">
+                      {item.a}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
 
         </div>
       </section>
 
-      {/* CTA Final */}
-      <section className="py-12 sm:py-16 bg-[#FAF8F5]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-[2.5rem] bg-[#3D2E4D] p-8 sm:p-14 text-center text-white shadow-2xl space-y-6">
-            <h2 className="text-2xl sm:text-4xl font-bold max-w-2xl mx-auto leading-tight tracking-tight">
-              Estamos aqui para deixar sua rotina mais leve.
+      {/* ===================================================================== */}
+      {/* 4. CTA FINAL */}
+      {/* ===================================================================== */}
+      <section className="py-16 sm:py-24 bg-[#FAF8F5]">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+          <div className="relative overflow-hidden rounded-[2.5rem] bg-[#3D2E4D] p-8 sm:p-14 text-center text-white shadow-xl space-y-6">
+            <h2 className="text-2xl sm:text-4xl font-extrabold max-w-xl mx-auto leading-tight tracking-tight">
+              Pronta para simplificar seus atendimentos?
             </h2>
-            <p className="text-xs sm:text-sm text-purple-200 font-medium max-w-xl mx-auto leading-relaxed">
-              Conte com nossa equipe para tirar qualquer dúvida e colocar sua agenda no ar com confiança.
+            <p className="text-sm sm:text-base text-[#D5CBDD] max-w-md mx-auto leading-relaxed">
+              Crie sua conta em 1 minuto e veja como o Lumê cuida da sua agenda para você focar na sua arte.
             </p>
-            <div className="pt-2">
-              <a
-                href="https://wa.me/5511965758459?text=Olá!%20Preciso%20de%20suporte%20com%20o%20Lumê."
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-sm font-bold text-[#3D2E4D] shadow-lg hover:bg-[#FAF0F5] transition transform hover:-translate-y-0.5 cursor-pointer"
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3.5">
+              <Link
+                href="/cadastro"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-sm font-bold text-[#3D2E4D] shadow-lg hover:bg-[#F4EAE4] transition transform hover:-translate-y-0.5 cursor-pointer w-full sm:w-auto"
               >
-                <MessageCircle className="h-4 w-4 text-emerald-600" />
-                <span>Falar com o suporte</span>
-              </a>
+                <span>Criar minha agenda grátis</span>
+                <ArrowRight className="h-4 w-4 text-[#3D2E4D]" />
+              </Link>
             </div>
           </div>
         </div>

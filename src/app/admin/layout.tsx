@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import { getAuthenticatedAdmin } from '@/lib/admin/checkAdmin'
 import { isAdmin2faVerified } from '@/lib/admin/twoFactor'
@@ -27,8 +28,10 @@ export default async function AdminLayout({
   }
 
   return (
-    <AdminSidebarLayoutClient admin={admin}>
-      {children}
-    </AdminSidebarLayoutClient>
+    <Suspense fallback={null}>
+      <AdminSidebarLayoutClient admin={admin}>
+        {children}
+      </AdminSidebarLayoutClient>
+    </Suspense>
   )
 }

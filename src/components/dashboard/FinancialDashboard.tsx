@@ -540,7 +540,7 @@ export default function FinancialDashboard({
 
             {/* Dropdown com foto na esquerda, infos na direita */}
             {isServiceFilterOpen && (
-              <div className="absolute left-0 min-w-full w-[290px] sm:w-[320px] top-full mt-1.5 z-[100] max-h-72 overflow-y-auto rounded-2xl border border-gray-100 bg-white p-1.5 space-y-1 shadow-2xl animate-in fade-in slide-in-from-top-1">
+              <div className="lume-smooth-dropdown absolute left-0 min-w-full w-[290px] sm:w-[320px] top-full mt-1.5 z-[100] max-h-72 overflow-y-auto rounded-2xl border border-gray-100 bg-white p-1.5 space-y-1 shadow-2xl">
                 {/* Cabeçalho com toggle de seleção múltipla */}
                 <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100">
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">

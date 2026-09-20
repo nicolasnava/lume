@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getOrCreateProfissional } from '@/lib/profissionais/getOrCreateProfissional'
 import { recordLoginLog, getActiveAvisoPlataforma } from '@/app/actions/adminPrompt34'
 import DashboardNav from '@/components/dashboard/DashboardNav'
@@ -27,6 +28,18 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
 
   if (!user) {
     redirect('/login')
+  }
+
+  // Se o usuário for administrador, redirecionar diretamente para o painel administrativo
+  const adminSupabase = createAdminClient()
+  const { data: adminRecord } = await adminSupabase
+    .from('admin_users')
+    .select('id')
+    .or(`id.eq.${user.id},email.eq.${user.email}`)
+    .maybeSingle()
+
+  if (adminRecord) {
+    redirect('/admin')
   }
 
   // Executar buscas de layout em paralelo para carregamento instantâneo
@@ -73,15 +86,15 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
         {/* Sidebar Desktop (Sem scrollbar, adaptável à altura) */}
         <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-white border-r border-gray-200 px-3.5 py-4 justify-between z-30 overflow-hidden select-none">
           <div className="flex-1 flex flex-col min-h-0">
-            {/* Logo com respiro visual equilibrado */}
-            <div className="flex items-center px-1 pb-2.5 shrink-0">
+            {/* Logo com respiro visual equilibrado e tamanho ampliado */}
+            <div className="flex items-center px-1 pt-1 pb-4 shrink-0">
               <Image
                 src="/assets/lume_logo.webp"
                 alt="Lumê"
-                width={124}
-                height={36}
+                width={145}
+                height={42}
                 priority
-                className="h-auto w-auto max-h-9 object-contain"
+                className="h-auto w-auto max-h-11 object-contain"
               />
             </div>
 
@@ -89,14 +102,14 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
             {profissional && (
               <div
                 id="tour-public-link-desktop"
-                className="rounded-2xl p-3 shadow-2xs border transition-all duration-300 shrink-0 mb-2"
+                className="rounded-2xl p-3.5 shadow-2xs border transition-all duration-300 shrink-0 mb-3.5"
                 style={{
                   backgroundColor: corPrimaria,
                   borderColor: getLightTint(corPrimaria, 40),
                 }}
               >
                 <span
-                  className="text-[10px] font-bold uppercase tracking-wider block mb-0.5 opacity-85"
+                  className="text-[10px] font-bold uppercase tracking-wider block mb-1 opacity-85"
                   style={{ color: textColor }}
                 >
                   Sua Página Pública

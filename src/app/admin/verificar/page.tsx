@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { notFound, redirect } from 'next/navigation'
 import { getAuthenticatedAdmin } from '@/lib/admin/checkAdmin'
-import { isAdmin2faVerified } from '@/lib/admin/twoFactor'
+import { isAdmin2faVerified, generateAndSendAdminOtp } from '@/lib/admin/twoFactor'
 import Admin2faVerifyClient from '@/components/admin/Admin2faVerifyClient'
 import { Loader2 } from 'lucide-react'
 
@@ -28,17 +28,28 @@ export default async function AdminVerificarPage() {
     redirect('/admin')
   }
 
+  // Disparar OTP ao carregar a página — garante que o código seja enviado
+  // mesmo que o usuário acesse /admin/verificar diretamente (sem passar pelo login)
+  const sendResult = await generateAndSendAdminOtp(
+    admin.id,
+    admin.email,
+    admin.nome
+  )
+
   const maskedEmail = maskEmail(admin.email)
 
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#111111] flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-[#8C5383]" />
+        <div className="min-h-screen bg-[#FAF7F5] dark:bg-[#0b0a10] flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#906cd9] dark:text-[#bfa4f4]" />
         </div>
       }
     >
-      <Admin2faVerifyClient maskedEmail={maskedEmail} />
+      <Admin2faVerifyClient
+        maskedEmail={maskedEmail}
+        otpSentOnLoad={sendResult.success}
+      />
     </Suspense>
   )
 }

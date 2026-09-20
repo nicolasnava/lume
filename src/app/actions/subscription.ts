@@ -30,12 +30,6 @@ export interface SubscriptionData {
     link_pagamento: string | null
     codigo_pix: string | null
   }>
-  referral: {
-    codigoIndicacao: string
-    totalIndicadas: number
-    indicadasAtivas: number
-    descontoPercentual: number
-  }
 }
 
 /**
@@ -86,30 +80,6 @@ export async function getProfissionalSubscriptionData(): Promise<SubscriptionDat
     diasRestantesTrial = Math.max(0, Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24)))
   }
 
-  // 4. Buscar estatísticas de indicação
-  let codigoIndicacao = (prof as any).codigo_indicacao || ''
-  if (!codigoIndicacao) {
-    const base = ((prof as any).slug || (prof as any).nome || 'LUME')
-      .toUpperCase()
-      .replace(/[^A-Z0-9]/g, '')
-      .slice(0, 6)
-    codigoIndicacao = `${base || 'LUME'}${Math.floor(100 + Math.random() * 900)}`
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (adminSupabase.from('profissionais') as any)
-      .update({ codigo_indicacao: codigoIndicacao })
-      .eq('id', user.id)
-  }
-
-  const { data: indicadas } = await adminSupabase
-    .from('profissionais')
-    .select('id, status_conta')
-    .eq('indicado_por', user.id)
-    .is('deletado_em', null)
-
-  const totalIndicadas = (indicadas || []).length
-  const indicadasAtivas = (indicadas || []).filter((p) => p.status_conta === 'ativa').length
-  const descontoPercentual = Math.min(indicadasAtivas * 10, 30)
-
   return {
     statusConta: (prof.status_conta || 'trial') as SubscriptionData['statusConta'],
     planoTipo: (prof.plano_tipo || 'mensal') as SubscriptionData['planoTipo'],
@@ -117,12 +87,6 @@ export async function getProfissionalSubscriptionData(): Promise<SubscriptionDat
     trialEndsAt: prof.trial_ends_at || null,
     proximoVencimento: prof.proximo_vencimento || null,
     diasRestantesTrial,
-    referral: {
-      codigoIndicacao,
-      totalIndicadas,
-      indicadasAtivas,
-      descontoPercentual,
-    },
     planos: (planos || []).map((p) => ({
       id: p.id,
       nome: p.nome,

@@ -14,7 +14,7 @@ export default function RootNotFound() {
       <header className="w-full px-6 sm:px-10 py-6 z-10 flex justify-end">
         <Link href="/" className="inline-block group">
           <Image
-            src="/logo.png"
+            src="/assets/lume_logo.webp"
             alt="Lumê"
             width={110}
             height={34}
