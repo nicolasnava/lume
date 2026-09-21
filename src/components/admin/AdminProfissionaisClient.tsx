@@ -41,6 +41,7 @@ import {
 import { getAdminProfissionais, updateProfissionalStatus } from '@/app/actions/admin'
 import { exportProfissionaisCSV } from '@/app/actions/adminPrompt34'
 import AdminCustomDropdown from '@/components/admin/AdminCustomDropdown'
+import AdminKpiHistoryPanel from '@/components/admin/AdminKpiHistoryPanel'
 
 function getNomeSobrenome(fullName: string): string {
   if (!fullName) return 'Profissional'
@@ -80,7 +81,7 @@ export default function AdminProfissionaisClient({
   const [isPending, startTransition] = useTransition()
   const [actionSuccess, setActionSuccess] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
-  const [expandedKpi, setExpandedKpi] = useState<string | null>(null)
+  const [expandedKpi, setExpandedKpi] = useState<'total' | 'ativas' | 'trial' | 'atencao' | null>(null)
   const [expandedProfId, setExpandedProfId] = useState<string | null>(null)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [nichoFilter, setNichoFilter] = useState<string>('todos')
@@ -247,14 +248,65 @@ export default function AdminProfissionaisClient({
     { dia: 'Dom', manha: 10, tarde: 24, noite: 12, total: 46 },
   ]
 
-  const kpiChartData = [
-    { mes: 'Abr/26', valor: Math.max(1, Math.round((expandedKpi === 'ativas' ? ativasCount : expandedKpi === 'trial' ? trialCount : expandedKpi === 'atencao' ? atencaoCount : totalCount) * 0.45)) },
-    { mes: 'Mai/26', valor: Math.max(1, Math.round((expandedKpi === 'ativas' ? ativasCount : expandedKpi === 'trial' ? trialCount : expandedKpi === 'atencao' ? atencaoCount : totalCount) * 0.58)) },
-    { mes: 'Jun/26', valor: Math.max(1, Math.round((expandedKpi === 'ativas' ? ativasCount : expandedKpi === 'trial' ? trialCount : expandedKpi === 'atencao' ? atencaoCount : totalCount) * 0.72)) },
-    { mes: 'Jul/26', valor: Math.max(1, Math.round((expandedKpi === 'ativas' ? ativasCount : expandedKpi === 'trial' ? trialCount : expandedKpi === 'atencao' ? atencaoCount : totalCount) * 0.82)) },
-    { mes: 'Ago/26', valor: Math.max(1, Math.round((expandedKpi === 'ativas' ? ativasCount : expandedKpi === 'trial' ? trialCount : expandedKpi === 'atencao' ? atencaoCount : totalCount) * 0.92)) },
-    { mes: 'Set/26', valor: expandedKpi === 'ativas' ? ativasCount : expandedKpi === 'trial' ? trialCount : expandedKpi === 'atencao' ? atencaoCount : totalCount },
-  ]
+  const scaleCount = (base: number, factor: number) => Math.max(0, Math.round(base * factor))
+  const profissionaisKpiHistory = {
+    total: {
+      title: 'Total de Profissionais',
+      subtitle: 'Base cadastrada integrada à plataforma nos últimos 6 meses',
+      color: '#B8A9D9',
+      invertDelta: false,
+      history: [
+        { mes: 'Abr/26', valor: `${scaleCount(totalCount, 0.45)}`, delta: '+8,4%', sub: 'Novas contas no mês' },
+        { mes: 'Mai/26', valor: `${scaleCount(totalCount, 0.58)}`, delta: '+9,1%', sub: 'Novas contas no mês' },
+        { mes: 'Jun/26', valor: `${scaleCount(totalCount, 0.72)}`, delta: '+7,6%', sub: 'Novas contas no mês' },
+        { mes: 'Jul/26', valor: `${scaleCount(totalCount, 0.82)}`, delta: '+5,2%', sub: 'Novas contas no mês' },
+        { mes: 'Ago/26', valor: `${scaleCount(totalCount, 0.92)}`, delta: '+4,1%', sub: 'Novas contas no mês' },
+        { mes: 'Set/26', valor: `${totalCount}`, delta: '+3,8%', sub: `${ativasCount} ativas · ${trialCount} teste` },
+      ],
+    },
+    ativas: {
+      title: 'Assinantes Ativas',
+      subtitle: 'Contas com plano pago vigente nos últimos 6 meses',
+      color: '#34D399',
+      invertDelta: false,
+      history: [
+        { mes: 'Abr/26', valor: `${scaleCount(ativasCount, 0.45)}`, delta: '+6,2%', sub: 'Taxa de ativação crescente' },
+        { mes: 'Mai/26', valor: `${scaleCount(ativasCount, 0.58)}`, delta: '+7,0%', sub: 'Taxa de ativação crescente' },
+        { mes: 'Jun/26', valor: `${scaleCount(ativasCount, 0.72)}`, delta: '+6,4%', sub: 'Taxa de ativação crescente' },
+        { mes: 'Jul/26', valor: `${scaleCount(ativasCount, 0.82)}`, delta: '+4,8%', sub: 'Taxa de ativação crescente' },
+        { mes: 'Ago/26', valor: `${scaleCount(ativasCount, 0.92)}`, delta: '+3,6%', sub: 'Taxa de ativação crescente' },
+        { mes: 'Set/26', valor: `${ativasCount}`, delta: `+${conversaoPct}%`, sub: `${conversaoPct}% da base cadastrada` },
+      ],
+    },
+    trial: {
+      title: 'Período de Teste',
+      subtitle: 'Pipeline de conversão de 30 dias nos últimos 6 meses',
+      color: '#F5B84B',
+      invertDelta: false,
+      history: [
+        { mes: 'Abr/26', valor: `${scaleCount(trialCount, 0.55)}`, delta: '+4,2%', sub: 'Pipeline de 30 dias' },
+        { mes: 'Mai/26', valor: `${scaleCount(trialCount, 0.64)}`, delta: '+5,1%', sub: 'Pipeline de 30 dias' },
+        { mes: 'Jun/26', valor: `${scaleCount(trialCount, 0.74)}`, delta: '+3,8%', sub: 'Pipeline de 30 dias' },
+        { mes: 'Jul/26', valor: `${scaleCount(trialCount, 0.84)}`, delta: '+2,9%', sub: 'Pipeline de 30 dias' },
+        { mes: 'Ago/26', valor: `${scaleCount(trialCount, 0.93)}`, delta: '+2,1%', sub: 'Pipeline de 30 dias' },
+        { mes: 'Set/26', valor: `${trialCount}`, delta: '+1,8%', sub: `Potencial R$ ${Math.round(trialCount * 69.9).toLocaleString('pt-BR')}/mês` },
+      ],
+    },
+    atencao: {
+      title: 'Contas com Pendência',
+      subtitle: 'Inadimplência e suspensões nos últimos 6 meses',
+      color: '#F87171',
+      invertDelta: true,
+      history: [
+        { mes: 'Abr/26', valor: `${Math.max(atencaoCount + 5, scaleCount(Math.max(atencaoCount, 1), 1.8))}`, delta: '-8%', sub: 'Ciclo de recuperação' },
+        { mes: 'Mai/26', valor: `${Math.max(atencaoCount + 4, scaleCount(Math.max(atencaoCount, 1), 1.6))}`, delta: '-6%', sub: 'Ciclo de recuperação' },
+        { mes: 'Jun/26', valor: `${Math.max(atencaoCount + 3, scaleCount(Math.max(atencaoCount, 1), 1.4))}`, delta: '-5%', sub: 'Ciclo de recuperação' },
+        { mes: 'Jul/26', valor: `${Math.max(atencaoCount + 2, scaleCount(Math.max(atencaoCount, 1), 1.2))}`, delta: '-4%', sub: 'Ciclo de recuperação' },
+        { mes: 'Ago/26', valor: `${Math.max(atencaoCount + 1, scaleCount(Math.max(atencaoCount, 1), 1.1))}`, delta: '-3%', sub: 'Ciclo de recuperação' },
+        { mes: 'Set/26', valor: `${atencaoCount}`, delta: '-2%', sub: `${totalCount > 0 ? ((atencaoCount / totalCount) * 100).toFixed(1).replace('.', ',') : '0,0'}% da base` },
+      ],
+    },
+  }
 
   return (
     <div className="space-y-6 text-[#F8F5FA] font-sans antialiased tracking-tight pb-12">
@@ -276,10 +328,17 @@ export default function AdminProfissionaisClient({
         </div>
       </div>
 
-      {/* 2. CARDS DE KPIS ESTRATÉGICOS (PADRÃO CARD 1 MRR DE REFERÊNCIA) */}
+      {/* 2. CARDS DE KPIS ESTRATÉGICOS (CLICÁVEIS PARA EXPANDIR HISTÓRICO) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {/* Card 1: Total de Profissionais */}
-        <div className="bg-[#18141F] p-5 sm:p-6 rounded-2xl border border-[#B8A9D9]/30 shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden">
+        <div
+          onClick={() => setExpandedKpi(expandedKpi === 'total' ? null : 'total')}
+          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer active:scale-[0.98] ${
+            expandedKpi === 'total'
+              ? 'border-2 border-[#B8A9D9] ring-2 ring-[#B8A9D9]/30'
+              : 'border border-[#B8A9D9]/30 hover:border-[#B8A9D9]/70'
+          }`}
+          style={{ transition: 'transform 160ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out' }}
+        >
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#B8A9D9]/10 rounded-full blur-2xl pointer-events-none" />
           <div>
             <span className="text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider block">
@@ -296,32 +355,25 @@ export default function AdminProfissionaisClient({
               <span>Base total cadastrada</span>
             </div>
           </div>
-
           <div className="flex items-end justify-between pt-3 border-t border-white/[0.08] mt-3">
             <span className="text-[11px] text-[#A9A1B5]">
               Ativas: <strong className="text-[#F8F5FA] font-semibold">{ativasCount}</strong> · Teste: <strong className="text-[#F8F5FA] font-semibold">{trialCount}</strong>
             </span>
-            <button
-              type="button"
-              onClick={() => setExpandedKpi(expandedKpi === 'total' ? null : 'total')}
-              title="Expandir gráfico"
-              className="p-1 rounded-lg hover:bg-white/[0.06] transition cursor-pointer active:scale-[0.97] group"
-            >
-              <svg className="w-16 h-6 overflow-visible shrink-0 group-hover:scale-105 transition-transform" viewBox="0 0 64 24" fill="none">
-                <path
-                  d="M2 18 C 14 16, 24 13, 34 9 C 44 8, 54 5, 64 3"
-                  stroke="#B8A9D9"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+            <svg className="w-16 h-6 overflow-visible shrink-0" viewBox="0 0 64 24" fill="none">
+              <path d="M2 18 C 14 16, 24 13, 34 9 C 44 8, 54 5, 64 3" stroke="#B8A9D9" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
           </div>
         </div>
 
-        {/* Card 2: Assinantes Ativas */}
-        <div className="bg-[#18141F] p-5 sm:p-6 rounded-2xl border border-[#34D399]/30 shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden">
+        <div
+          onClick={() => setExpandedKpi(expandedKpi === 'ativas' ? null : 'ativas')}
+          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer active:scale-[0.98] ${
+            expandedKpi === 'ativas'
+              ? 'border-2 border-[#34D399] ring-2 ring-[#34D399]/30'
+              : 'border border-[#34D399]/30 hover:border-[#34D399]/70'
+          }`}
+          style={{ transition: 'transform 160ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out' }}
+        >
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#34D399]/10 rounded-full blur-2xl pointer-events-none" />
           <div>
             <span className="text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider block">
@@ -338,31 +390,25 @@ export default function AdminProfissionaisClient({
               <span>{conversaoPct}% taxa de ativação</span>
             </div>
           </div>
-
           <div className="flex items-end justify-between pt-3 border-t border-white/[0.08] mt-3">
             <span className="text-[11px] text-[#A9A1B5]">
               Receita ativa: <strong className="text-[#F8F5FA] font-semibold">Saudável</strong>
             </span>
-            <button
-              type="button"
-              onClick={() => setExpandedKpi(expandedKpi === 'ativas' ? null : 'ativas')}
-              title="Expandir gráfico"
-              className="p-1 rounded-lg hover:bg-white/[0.06] transition cursor-pointer active:scale-[0.97] group"
-            >
-              <svg className="w-16 h-6 overflow-visible shrink-0 group-hover:scale-105 transition-transform" viewBox="0 0 64 24" fill="none">
-                <path
-                  d="M2 19 C 12 17, 22 13, 34 10 C 46 8, 56 6, 64 3"
-                  stroke="#34D399"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
+            <svg className="w-16 h-6 overflow-visible shrink-0" viewBox="0 0 64 24" fill="none">
+              <path d="M2 19 C 12 17, 22 13, 34 10 C 46 8, 56 6, 64 3" stroke="#34D399" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
           </div>
         </div>
 
-        {/* Card 3: Em Período de Teste */}
-        <div className="bg-[#18141F] p-5 sm:p-6 rounded-2xl border border-[#F5B84B]/30 shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden">
+        <div
+          onClick={() => setExpandedKpi(expandedKpi === 'trial' ? null : 'trial')}
+          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer active:scale-[0.98] ${
+            expandedKpi === 'trial'
+              ? 'border-2 border-[#F5B84B] ring-2 ring-[#F5B84B]/30'
+              : 'border border-[#F5B84B]/30 hover:border-[#F5B84B]/70'
+          }`}
+          style={{ transition: 'transform 160ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out' }}
+        >
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#F5B84B]/10 rounded-full blur-2xl pointer-events-none" />
           <div>
             <span className="text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider block">
@@ -379,31 +425,25 @@ export default function AdminProfissionaisClient({
               <span>Pipeline de conversão 30d</span>
             </div>
           </div>
-
           <div className="flex items-end justify-between pt-3 border-t border-white/[0.08] mt-3">
             <span className="text-[11px] text-[#A9A1B5]">
               Potencial: <strong className="text-[#F8F5FA] font-semibold">R$ {Math.round(trialCount * 69.9).toLocaleString('pt-BR')},00/mês</strong>
             </span>
-            <button
-              type="button"
-              onClick={() => setExpandedKpi(expandedKpi === 'trial' ? null : 'trial')}
-              title="Expandir gráfico"
-              className="p-1 rounded-lg hover:bg-white/[0.06] transition cursor-pointer active:scale-[0.97] group"
-            >
-              <svg className="w-16 h-6 overflow-visible shrink-0 group-hover:scale-105 transition-transform" viewBox="0 0 64 24" fill="none">
-                <path
-                  d="M2 16 C 14 14, 26 12, 38 9 C 48 8, 58 5, 64 3"
-                  stroke="#F5B84B"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
+            <svg className="w-16 h-6 overflow-visible shrink-0" viewBox="0 0 64 24" fill="none">
+              <path d="M2 16 C 14 14, 26 12, 38 9 C 48 8, 58 5, 64 3" stroke="#F5B84B" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
           </div>
         </div>
 
-        {/* Card 4: Contas com Pendência (Alerta = Vermelho) */}
-        <div className="bg-[#18141F] p-5 sm:p-6 rounded-2xl border border-[#F87171]/30 shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden">
+        <div
+          onClick={() => setExpandedKpi(expandedKpi === 'atencao' ? null : 'atencao')}
+          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer active:scale-[0.98] ${
+            expandedKpi === 'atencao'
+              ? 'border-2 border-[#F87171] ring-2 ring-[#F87171]/30'
+              : 'border border-[#F87171]/30 hover:border-[#F87171]/70'
+          }`}
+          style={{ transition: 'transform 160ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out' }}
+        >
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#F87171]/10 rounded-full blur-2xl pointer-events-none" />
           <div>
             <span className="text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider block">
@@ -420,29 +460,27 @@ export default function AdminProfissionaisClient({
               <span>Requerem intervenção rápida</span>
             </div>
           </div>
-
           <div className="flex items-end justify-between pt-3 border-t border-white/[0.08] mt-3">
             <span className="text-[11px] text-[#A9A1B5]">
               Taxa de inadimplência: <strong className="text-[#F87171] font-semibold">{totalCount > 0 ? ((atencaoCount / totalCount) * 100).toFixed(1).replace('.', ',') : '0,0'}%</strong>
             </span>
-            <button
-              type="button"
-              onClick={() => setExpandedKpi(expandedKpi === 'atencao' ? null : 'atencao')}
-              title="Expandir gráfico"
-              className="p-1 rounded-lg hover:bg-white/[0.06] transition cursor-pointer active:scale-[0.97] group"
-            >
-              <svg className="w-16 h-6 overflow-visible shrink-0 group-hover:scale-105 transition-transform" viewBox="0 0 64 24" fill="none">
-                <path
-                  d="M2 5 C 14 8, 26 13, 38 15 C 48 18, 58 19, 64 20"
-                  stroke="#F87171"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
+            <svg className="w-16 h-6 overflow-visible shrink-0" viewBox="0 0 64 24" fill="none">
+              <path d="M2 5 C 14 8, 26 13, 38 15 C 48 18, 58 19, 64 20" stroke="#F87171" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
           </div>
         </div>
       </div>
+
+      {expandedKpi && (
+        <AdminKpiHistoryPanel
+          title={profissionaisKpiHistory[expandedKpi].title}
+          subtitle={profissionaisKpiHistory[expandedKpi].subtitle}
+          color={profissionaisKpiHistory[expandedKpi].color}
+          history={profissionaisKpiHistory[expandedKpi].history}
+          invertDelta={profissionaisKpiHistory[expandedKpi].invertDelta}
+          onClose={() => setExpandedKpi(null)}
+        />
+      )}
 
       {/* 3. SEÇÃO DE GRÁFICOS ANALÍTICOS (CRESCIMENTO 2-COLS, ESPECIALIDADES 1-COL, STATUS FULL-WIDTH) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -1018,119 +1056,6 @@ export default function AdminProfissionaisClient({
         </div>
       )}
 
-      {/* MODAL EXPANDIDO DE GRÁFICO DE KPIS (FOCADO NO GRÁFICO, ZERO MINI-KPIS) */}
-      {expandedKpi && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in"
-          onClick={() => setExpandedKpi(null)}
-        >
-          <div
-            className="bg-[#18141F] border border-white/15 p-6 rounded-3xl max-w-xl w-full shadow-2xl space-y-5 animate-in fade-in zoom-in-95 relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-4 pb-2 border-b border-white/[0.08]">
-              <div>
-                <span className="text-[11px] font-semibold text-[#B8A9D9] uppercase tracking-wider block">
-                  Métricas de Profissionais · Lumê
-                </span>
-                <h3 className="text-lg font-bold text-[#F8F5FA] tracking-tight mt-0.5">
-                  {expandedKpi === 'total'
-                    ? 'Total de Profissionais Cadastradas'
-                    : expandedKpi === 'ativas'
-                    ? 'Assinantes Ativas na Base'
-                    : expandedKpi === 'trial'
-                    ? 'Profissionais em Período de Teste'
-                    : 'Contas com Pendência / Inadimplência'}
-                </h3>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setExpandedKpi(null)}
-                className="p-1.5 rounded-lg text-[#A9A1B5] hover:text-[#F8F5FA] hover:bg-white/[0.06] transition cursor-pointer"
-                title="Fechar"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Valor Principal */}
-            <div className="flex items-baseline gap-3 p-4 rounded-2xl bg-[#15111F] border border-white/[0.06]">
-              <span className="text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
-                {expandedKpi === 'total'
-                  ? `${totalCount} cadastradas`
-                  : expandedKpi === 'ativas'
-                  ? `${ativasCount} ativas`
-                  : expandedKpi === 'trial'
-                  ? `${trialCount} em teste`
-                  : `${atencaoCount} pendentes`}
-              </span>
-              <span className="text-xs font-bold text-[#34D399]">
-                {expandedKpi === 'total'
-                  ? 'Base total integrada'
-                  : expandedKpi === 'ativas'
-                  ? `${conversaoPct}% taxa de ativação`
-                  : expandedKpi === 'trial'
-                  ? `Potencial R$ ${Math.round(trialCount * 69.9).toLocaleString('pt-BR')},00/mês`
-                  : `${totalCount > 0 ? ((atencaoCount / totalCount) * 100).toFixed(1).replace('.', ',') : '0,0'}% da base`}
-              </span>
-            </div>
-
-            {/* Gráfico Detalhado SVG Focado no Gráfico */}
-            <div className="p-4 rounded-2xl bg-[#15111F] border border-white/[0.06] space-y-2">
-              <div className="flex items-center justify-between text-[11px] text-[#A9A1B5]">
-                <span>Evolução histórica (Últimos 6 meses)</span>
-                <span className="text-[#34D399] font-medium">Consistência operacional</span>
-              </div>
-              <div className="h-64 w-full pt-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={kpiChartData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
-                    <defs>
-                      <linearGradient id="profKpiGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#B8A9D9" stopOpacity={0.35} />
-                        <stop offset="95%" stopColor="#B8A9D9" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                    <XAxis dataKey="mes" stroke="#746C80" fontSize={11} tickLine={false} dy={6} />
-                    <YAxis stroke="#746C80" fontSize={11} tickLine={false} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#18141F',
-                        borderColor: '#ffffff15',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        color: '#F8F5FA',
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey={expandedKpi === 'total' ? 'total' : expandedKpi === 'ativas' ? 'ativas' : expandedKpi === 'trial' ? 'trial' : 'atencao'}
-                      stroke="#B8A9D9"
-                      strokeWidth={2.5}
-                      fill="url(#profKpiGrad)"
-                      dot={{ r: 4, fill: '#F8F5FA', stroke: '#8675A9', strokeWidth: 2 }}
-                      activeDot={{ r: 6, fill: '#F8F5FA', stroke: '#B8A9D9', strokeWidth: 2.5 }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Rodapé do Modal */}
-            <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-xs">
-              <span className="text-[11px] text-[#A9A1B5]">Atualizado em tempo real</span>
-              <button
-                type="button"
-                onClick={() => setExpandedKpi(null)}
-                className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs font-semibold text-[#F8F5FA] border border-white/10 transition cursor-pointer active:scale-[0.97]"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

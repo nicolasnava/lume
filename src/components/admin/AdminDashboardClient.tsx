@@ -51,6 +51,7 @@ import {
   CartesianGrid,
 } from 'recharts'
 import AdminAiInsightCard from './AdminAiInsightCard'
+import AdminKpiHistoryPanel from './AdminKpiHistoryPanel'
 import { getAdminDashboardData, AdminPeriodFilter } from '@/app/actions/admin'
 
 interface AdminDashboardClientProps {
@@ -72,7 +73,7 @@ export default function AdminDashboardClient({
   const [showDashboardGraphFilters, setShowDashboardGraphFilters] = useState(false)
   const [distribuicaoPeriod, setDistribuicaoPeriod] = useState<'geral' | 'mensal' | 'anual'>('geral')
   const [selectedAuditLog, setSelectedAuditLog] = useState<string | null>(null)
-  const [expandedCard, setExpandedCard] = useState<string | null>(null)
+  const [expandedCard, setExpandedCard] = useState<'mrr' | 'profissionais' | 'gmv' | 'conversao' | null>(null)
   const [alertMsgOpen, setAlertMsgOpen] = useState<string | null>(null)
   const [performerFilter, setPerformerFilter] = useState<'agendamentos' | 'clientes' | 'faturamento' | 'avaliacoes'>('faturamento')
   const [showAllPriorities, setShowAllPriorities] = useState(false)
@@ -247,6 +248,61 @@ export default function AdminDashboardClient({
     },
   }
   const periodMetrics = periodMetricsMap[period as string] || periodMetricsMap['mes']
+
+  const dashboardKpiHistory = {
+    mrr: {
+      title: 'Receita Recorrente Mensal (MRR)',
+      subtitle: 'Evolução dos contratos recorrentes ativos nos últimos 6 meses',
+      color: '#B8A9D9',
+      history: [
+        { mes: 'Abr/26', valor: 'R$ 94.280', delta: '+11,4%', sub: '1.340 assinantes' },
+        { mes: 'Mai/26', valor: 'R$ 105.700', delta: '+12,1%', sub: '1.510 assinantes' },
+        { mes: 'Jun/26', valor: 'R$ 118.560', delta: '+12,2%', sub: '1.690 assinantes' },
+        { mes: 'Jul/26', valor: 'R$ 125.700', delta: '+6,0%', sub: '1.790 assinantes' },
+        { mes: 'Ago/26', valor: 'R$ 134.280', delta: '+6,8%', sub: '1.920 assinantes' },
+        { mes: 'Set/26', valor: 'R$ 142.850', delta: '+6,4%', sub: '2.040 assinantes' },
+      ],
+    },
+    profissionais: {
+      title: 'Profissionais Ativas',
+      subtitle: 'Base de assinantes pagantes nos últimos 6 meses',
+      color: '#38BDF8',
+      history: [
+        { mes: 'Abr/26', valor: '1.180', delta: '+4,8%', sub: '980 Solo · 200 Studio' },
+        { mes: 'Mai/26', valor: '1.240', delta: '+5,1%', sub: '1.020 Solo · 220 Studio' },
+        { mes: 'Jun/26', valor: '1.310', delta: '+5,6%', sub: '1.070 Solo · 240 Studio' },
+        { mes: 'Jul/26', valor: '1.355', delta: '+3,4%', sub: '1.110 Solo · 245 Studio' },
+        { mes: 'Ago/26', valor: '1.392', delta: '+2,7%', sub: '1.150 Solo · 242 Studio' },
+        { mes: 'Set/26', valor: '1.428', delta: '+2,6%', sub: '1.180 Solo · 248 Studio' },
+      ],
+    },
+    gmv: {
+      title: 'Volume Transacionado (GMV)',
+      subtitle: 'Valor bruto agendado e cobrado na vitrine nos últimos 6 meses',
+      color: '#F5B84B',
+      history: [
+        { mes: 'Abr/26', valor: 'R$ 2,45M', delta: '+16,2%', sub: 'Ticket R$ 2.480' },
+        { mes: 'Mai/26', valor: 'R$ 2,76M', delta: '+12,7%', sub: 'Ticket R$ 2.540' },
+        { mes: 'Jun/26', valor: 'R$ 3,15M', delta: '+14,1%', sub: 'Ticket R$ 2.610' },
+        { mes: 'Jul/26', valor: 'R$ 3,38M', delta: '+7,3%', sub: 'Ticket R$ 2.660' },
+        { mes: 'Ago/26', valor: 'R$ 3,62M', delta: '+7,1%', sub: 'Ticket R$ 2.690' },
+        { mes: 'Set/26', valor: 'R$ 3,89M', delta: '+7,5%', sub: 'Ticket R$ 2.726' },
+      ],
+    },
+    conversao: {
+      title: 'Conversão de Teste',
+      subtitle: 'Taxa de ativação do trial para plano pago nos últimos 6 meses',
+      color: '#34D399',
+      history: [
+        { mes: 'Abr/26', valor: '61,8%', delta: '+1,2%', sub: 'Churn 2,4%' },
+        { mes: 'Mai/26', valor: '63,4%', delta: '+1,6%', sub: 'Churn 2,2%' },
+        { mes: 'Jun/26', valor: '64,9%', delta: '+1,5%', sub: 'Churn 2,1%' },
+        { mes: 'Jul/26', valor: '66,2%', delta: '+1,3%', sub: 'Churn 2,0%' },
+        { mes: 'Ago/26', valor: '67,1%', delta: '+0,9%', sub: 'Churn 1,9%' },
+        { mes: 'Set/26', valor: '68,4%', delta: '+1,3%', sub: 'Churn 1,8%' },
+      ],
+    },
+  }
 
   // Métricas consolidadas seguras contra dados vazios em ambiente local
   const currentMrr = data.mrrEstimado && data.mrrEstimado > 50000 ? data.mrrEstimado : 142850
@@ -535,8 +591,7 @@ export default function AdminDashboardClient({
           </p>
         </div>
 
-        {/* CONTROLES DE PERÍODO & ASSISTENTE IA */}
-        <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+        <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-1 bg-[#15111F] p-1 rounded-xl border border-white/[0.08]">
             {(
               [
@@ -550,7 +605,7 @@ export default function AdminDashboardClient({
                 onClick={() => handlePeriodChange(item.id)}
                 disabled={isPending}
                 title={item.title}
-                className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition cursor-pointer active:scale-[0.97] ${
+                className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition-transform duration-150 ease-out cursor-pointer active:scale-[0.97] ${
                   period === item.id
                     ? 'bg-[#B8A9D9] text-[#15111F] font-bold shadow-xs'
                     : 'text-[#A9A1B5] hover:text-[#F8F5FA] hover:bg-white/[0.04]'
@@ -565,7 +620,7 @@ export default function AdminDashboardClient({
           <button
             type="button"
             onClick={toggleShowAiCard}
-            className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer flex items-center gap-2 shadow-xs ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-transform duration-150 ease-out cursor-pointer flex items-center gap-2 shadow-xs active:scale-[0.97] ${
               showAiCard
                 ? 'bg-[#B8A9D9] text-[#15111F] border-[#B8A9D9] font-bold'
                 : 'bg-[#15111F] hover:bg-[#1f1a2b] text-[#A9A1B5] hover:text-[#F8F5FA] border-white/[0.08]'
@@ -586,13 +641,18 @@ export default function AdminDashboardClient({
         />
       )}
 
-      {/* 2. CARDS DE KPIS ESTRATÉGICOS (ROW 1) */}
+      {/* 2. CARDS DE KPIS ESTRATÉGICOS (CLICÁVEIS PARA EXPANDIR HISTÓRICO) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        
-        {/* Card 1: Receita Recorrente / Período (Adaptativo e Sem Quebra) */}
-        <div className="bg-[#18141F] p-5 sm:p-6 rounded-2xl border border-[#B8A9D9]/30 shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden">
+        <div
+          onClick={() => setExpandedCard(expandedCard === 'mrr' ? null : 'mrr')}
+          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer active:scale-[0.98] ${
+            expandedCard === 'mrr'
+              ? 'border-2 border-[#B8A9D9] ring-2 ring-[#B8A9D9]/30'
+              : 'border border-[#B8A9D9]/30 hover:border-[#B8A9D9]/70'
+          }`}
+          style={{ transition: 'transform 160ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out' }}
+        >
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#B8A9D9]/10 rounded-full blur-2xl pointer-events-none" />
-          
           <div>
             <span className="text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider block">
               {period === 'hoje'
@@ -613,7 +673,6 @@ export default function AdminDashboardClient({
               <span>{periodMetrics.mrrPct}</span>
             </div>
           </div>
-
           <div className="flex items-end justify-between pt-3 border-t border-white/[0.08] mt-3">
             <span className="text-[11px] text-[#A9A1B5] font-normal">
               {period === 'hoje' ? (
@@ -624,27 +683,22 @@ export default function AdminDashboardClient({
                 <>Mês vigente: <strong className="text-[#F8F5FA] font-semibold">1º ao fim do mês</strong></>
               )}
             </span>
-            <button
-              type="button"
-              onClick={() => setExpandedCard('mrr')}
-              title="Clique para expandir o gráfico"
-              className="p-1 rounded-lg hover:bg-white/[0.06] transition cursor-pointer active:scale-[0.97] group"
-            >
-              <svg className="w-16 h-6 overflow-visible shrink-0 group-hover:scale-105 transition-transform" viewBox="0 0 64 24" fill="none">
-                <path
-                  d="M2 19 C 12 17, 20 12, 30 11 C 40 10, 48 13, 56 6 L 64 3"
-                  stroke="#B8A9D9"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
+            <svg className="w-16 h-6 overflow-visible shrink-0" viewBox="0 0 64 24" fill="none">
+              <path d="M2 19 C 12 17, 20 12, 30 11 C 40 10, 48 13, 56 6 L 64 3" stroke="#B8A9D9" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
           </div>
         </div>
 
-        {/* Card 2: Profissionais Ativas */}
-        <div className="bg-[#18141F] p-5 sm:p-6 rounded-2xl border border-[#B8A9D9]/30 shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden">
-          <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#B8A9D9]/10 rounded-full blur-2xl pointer-events-none" />
+        <div
+          onClick={() => setExpandedCard(expandedCard === 'profissionais' ? null : 'profissionais')}
+          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer active:scale-[0.98] ${
+            expandedCard === 'profissionais'
+              ? 'border-2 border-[#38BDF8] ring-2 ring-[#38BDF8]/30'
+              : 'border border-[#38BDF8]/30 hover:border-[#38BDF8]/70'
+          }`}
+          style={{ transition: 'transform 160ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out' }}
+        >
+          <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#38BDF8]/10 rounded-full blur-2xl pointer-events-none" />
           <div>
             <span className="text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider block">
               Profissionais ativas
@@ -655,38 +709,31 @@ export default function AdminDashboardClient({
               </span>
               <span className="text-xs text-[#A9A1B5] font-semibold">assinantes</span>
             </div>
-            <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-[#34D399]">
+            <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-[#38BDF8]">
               <TrendingUp className="h-3.5 w-3.5" />
               <span>{periodMetrics.novosLabel}</span>
             </div>
           </div>
-
           <div className="flex items-end justify-between pt-3 border-t border-white/[0.08] mt-3">
             <span className="text-[11px] text-[#A9A1B5] font-normal">
               Mix: <strong className="text-[#F8F5FA] font-semibold">1.180 Solo · 248 Studio</strong>
             </span>
-            <button
-              type="button"
-              onClick={() => setExpandedCard('profissionais')}
-              title="Clique para expandir o gráfico"
-              className="p-1 rounded-lg hover:bg-white/[0.06] transition cursor-pointer active:scale-[0.97] group"
-            >
-              <svg className="w-16 h-6 overflow-visible shrink-0 group-hover:scale-105 transition-transform" viewBox="0 0 64 24" fill="none">
-                <path
-                  d="M2 18 C 14 16, 24 13, 34 9 C 44 8, 54 5, 64 3"
-                  stroke="#B8A9D9"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+            <svg className="w-16 h-6 overflow-visible shrink-0" viewBox="0 0 64 24" fill="none">
+              <path d="M2 18 C 14 16, 24 13, 34 9 C 44 8, 54 5, 64 3" stroke="#38BDF8" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
           </div>
         </div>
 
-        {/* Card 3: Volume Transacionado */}
-        <div className="bg-[#18141F] p-5 sm:p-6 rounded-2xl border border-[#B8A9D9]/30 shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden">
-          <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#B8A9D9]/10 rounded-full blur-2xl pointer-events-none" />
+        <div
+          onClick={() => setExpandedCard(expandedCard === 'gmv' ? null : 'gmv')}
+          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer active:scale-[0.98] ${
+            expandedCard === 'gmv'
+              ? 'border-2 border-[#F5B84B] ring-2 ring-[#F5B84B]/30'
+              : 'border border-[#F5B84B]/30 hover:border-[#F5B84B]/70'
+          }`}
+          style={{ transition: 'transform 160ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out' }}
+        >
+          <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#F5B84B]/10 rounded-full blur-2xl pointer-events-none" />
           <div>
             <span className="text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider block">
               Volume transacionado (GMV)
@@ -700,38 +747,31 @@ export default function AdminDashboardClient({
                   : `R$ ${periodMetrics.gmv.toLocaleString('pt-BR')},00`}
               </span>
             </div>
-            <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-[#34D399]">
+            <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-[#F5B84B]">
               <TrendingUp className="h-3.5 w-3.5" />
               <span>{periodMetrics.gmvPct}</span>
             </div>
           </div>
-
           <div className="flex items-end justify-between pt-3 border-t border-white/[0.08] mt-3">
             <span className="text-[11px] text-[#A9A1B5] font-normal">
               Ticket médio: <strong className="text-[#F8F5FA] font-semibold">{periodMetrics.ticketMedio}</strong>
             </span>
-            <button
-              type="button"
-              onClick={() => setExpandedCard('gmv')}
-              title="Clique para expandir o gráfico"
-              className="p-1 rounded-lg hover:bg-white/[0.06] transition cursor-pointer active:scale-[0.97] group"
-            >
-              <svg className="w-16 h-6 overflow-visible shrink-0 group-hover:scale-105 transition-transform" viewBox="0 0 64 24" fill="none">
-                <path
-                  d="M2 20 C 12 18, 22 14, 32 12 C 42 10, 52 7, 64 2"
-                  stroke="#B8A9D9"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+            <svg className="w-16 h-6 overflow-visible shrink-0" viewBox="0 0 64 24" fill="none">
+              <path d="M2 20 C 12 18, 22 14, 32 12 C 42 10, 52 7, 64 2" stroke="#F5B84B" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
           </div>
         </div>
 
-        {/* Card 4: Conversão do Período de Teste */}
-        <div className="bg-[#18141F] p-5 sm:p-6 rounded-2xl border border-[#B8A9D9]/30 shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden">
-          <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#B8A9D9]/10 rounded-full blur-2xl pointer-events-none" />
+        <div
+          onClick={() => setExpandedCard(expandedCard === 'conversao' ? null : 'conversao')}
+          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer active:scale-[0.98] ${
+            expandedCard === 'conversao'
+              ? 'border-2 border-[#34D399] ring-2 ring-[#34D399]/30'
+              : 'border border-[#34D399]/30 hover:border-[#34D399]/70'
+          }`}
+          style={{ transition: 'transform 160ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out' }}
+        >
+          <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#34D399]/10 rounded-full blur-2xl pointer-events-none" />
           <div>
             <span className="text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider block">
               Conversão de teste
@@ -747,30 +787,26 @@ export default function AdminDashboardClient({
               <span>Retenção 98,2% da base</span>
             </div>
           </div>
-
           <div className="flex items-end justify-between pt-3 border-t border-white/[0.08] mt-3">
             <span className="text-[11px] text-[#A9A1B5] font-normal">
               Churn líquido: <strong className="text-[#F8F5FA] font-semibold">{periodMetrics.churn}</strong>
             </span>
-            <button
-              type="button"
-              onClick={() => setExpandedCard('conversao')}
-              title="Clique para expandir o gráfico"
-              className="p-1 rounded-lg hover:bg-white/[0.06] transition cursor-pointer active:scale-[0.97] group"
-            >
-              <svg className="w-16 h-6 overflow-visible shrink-0 group-hover:scale-105 transition-transform" viewBox="0 0 64 24" fill="none">
-                <path
-                  d="M2 17 C 14 15, 24 13, 34 11 C 44 9, 54 6, 64 4"
-                  stroke="#B8A9D9"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+            <svg className="w-16 h-6 overflow-visible shrink-0" viewBox="0 0 64 24" fill="none">
+              <path d="M2 17 C 14 15, 24 13, 34 11 C 44 9, 54 6, 64 4" stroke="#34D399" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
           </div>
         </div>
       </div>
+
+      {expandedCard && (
+        <AdminKpiHistoryPanel
+          title={dashboardKpiHistory[expandedCard].title}
+          subtitle={dashboardKpiHistory[expandedCard].subtitle}
+          color={dashboardKpiHistory[expandedCard].color}
+          history={dashboardKpiHistory[expandedCard].history}
+          onClose={() => setExpandedCard(null)}
+        />
+      )}
 
       {/* 3. SEÇÃO DE GRÁFICOS: EVOLUÇÃO E DISTRIBUIÇÃO DA BASE ATIVA */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1474,132 +1510,6 @@ export default function AdminDashboardClient({
         </div>
       </div>
 
-      {/* MINI-CARD / MODAL EXPANDIDO DE GRÁFICO (FOCADO NO GRÁFICO, ZERO MINI-KPIS) */}
-      {expandedCard && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in"
-          onClick={() => setExpandedCard(null)}
-        >
-          <div
-            className="bg-[#18141F] border border-white/15 p-6 rounded-3xl max-w-xl w-full shadow-2xl space-y-5 animate-in fade-in zoom-in-95 relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-4 pb-2 border-b border-white/[0.08]">
-              <div>
-                <span className="text-[11px] font-semibold text-[#B8A9D9] uppercase tracking-wider block">
-                  Visão Expandida · Métricas Lumê
-                </span>
-                <h3 className="text-lg font-bold text-[#F8F5FA] tracking-tight mt-0.5">
-                  {expandedCard === 'mrr'
-                    ? (period === 'hoje' ? 'Receita de Hoje' : period === 'ano' ? 'Receita Anual Acumulada (ARR)' : 'Receita Recorrente Mensal (MRR)')
-                    : expandedCard === 'profissionais'
-                    ? 'Profissionais Ativas na Base'
-                    : expandedCard === 'gmv'
-                    ? 'Volume Transacionado (GMV)'
-                    : 'Taxa de Conversão e Retenção'}
-                </h3>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setExpandedCard(null)}
-                className="p-1.5 rounded-lg text-[#A9A1B5] hover:text-[#F8F5FA] hover:bg-white/[0.06] transition cursor-pointer"
-                title="Fechar"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Valor Atual e Variação */}
-            <div className="flex items-baseline gap-3 p-4 rounded-2xl bg-[#15111F] border border-white/[0.06]">
-              <span className="text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
-                {expandedCard === 'mrr'
-                  ? (periodMetrics.mrr >= 1000000
-                      ? `R$ ${(periodMetrics.mrr / 1000000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}M`
-                      : `R$ ${periodMetrics.mrr.toLocaleString('pt-BR')},00`)
-                  : expandedCard === 'profissionais'
-                  ? `${periodMetrics.ativas.toLocaleString('pt-BR')} ativas`
-                  : expandedCard === 'gmv'
-                  ? (periodMetrics.gmv >= 1000000
-                      ? `R$ ${(periodMetrics.gmv / 1000000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}M`
-                      : `R$ ${periodMetrics.gmv.toLocaleString('pt-BR')},00`)
-                  : `${periodMetrics.conversao}`}
-              </span>
-              <span className="text-xs font-bold text-[#34D399]">
-                {expandedCard === 'mrr'
-                  ? periodMetrics.mrrPct
-                  : expandedCard === 'profissionais'
-                  ? periodMetrics.novosLabel
-                  : expandedCard === 'gmv'
-                  ? periodMetrics.gmvPct
-                  : 'Retenção 98,2% da base'}
-              </span>
-            </div>
-
-            {/* Gráfico Detalhado SVG Focado — ocupa todo o espaço que era dos mini KPIs */}
-            <div className="p-4 rounded-2xl bg-[#15111F] border border-white/[0.06] space-y-2">
-              <div className="flex items-center justify-between text-[11px] text-[#A9A1B5]">
-                <span>Evolução no período ({period === 'hoje' ? 'Hoje' : period === 'ano' ? 'Ano' : 'Mês atual'})</span>
-                <span className="text-[#34D399] font-medium">Consistência operacional</span>
-              </div>
-              <div className="h-64 w-full pt-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={evolutionChartData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
-                    <defs>
-                      <linearGradient id="expandedGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#B8A9D9" stopOpacity={0.35} />
-                        <stop offset="95%" stopColor="#B8A9D9" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                    <XAxis dataKey="mes" stroke="#746C80" fontSize={11} tickLine={false} dy={6} />
-                    <YAxis
-                      stroke="#746C80"
-                      fontSize={11}
-                      tickLine={false}
-                      tickFormatter={(val) => {
-                        if (val >= 1000000) return `R$ ${(val / 1000000).toFixed(1)}M`
-                        if (val >= 1000) return `R$ ${(val / 1000).toFixed(0)}k`
-                        return `${val}`
-                      }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#18141F',
-                        borderColor: '#ffffff15',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        color: '#F8F5FA',
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey={expandedCard === 'gmv' ? 'gmv' : expandedCard === 'profissionais' ? 'contas' : 'mrr'}
-                      stroke="#B8A9D9"
-                      strokeWidth={2.5}
-                      fill="url(#expandedGrad)"
-                      dot={{ r: 4, fill: '#F8F5FA', stroke: '#8675A9', strokeWidth: 2 }}
-                      activeDot={{ r: 6, fill: '#F8F5FA', stroke: '#B8A9D9', strokeWidth: 2.5 }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Rodapé do Modal */}
-            <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-xs">
-              <span className="text-[11px] text-[#A9A1B5]">Atualizado em tempo real</span>
-              <button
-                type="button"
-                onClick={() => setExpandedCard(null)}
-                className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs font-semibold text-[#F8F5FA] border border-white/10 transition cursor-pointer active:scale-[0.97]"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

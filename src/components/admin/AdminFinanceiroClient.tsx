@@ -541,11 +541,12 @@ export default function AdminFinanceiroClient({ initialPlansAndCoupons }: AdminF
         {/* Card 1: Receita Recorrente Mensal */}
         <div
           onClick={() => setExpandedKpi(expandedKpi === 'mrr' ? null : 'mrr')}
-          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer transition-all duration-200 hover:border-[#B8A9D9]/70 active:scale-[0.98] ${
+          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer active:scale-[0.98] ${
             expandedKpi === 'mrr'
               ? 'border-2 border-[#B8A9D9] ring-2 ring-[#B8A9D9]/30'
-              : 'border border-[#B8A9D9]/30'
+              : 'border border-[#B8A9D9]/30 hover:border-[#B8A9D9]/70'
           }`}
+          style={{ transition: 'transform 160ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out' }}
         >
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#B8A9D9]/10 rounded-full blur-2xl pointer-events-none" />
           <div>
@@ -583,11 +584,12 @@ export default function AdminFinanceiroClient({ initialPlansAndCoupons }: AdminF
         {/* Card 2: Inadimplência Líquida (Risco/Alerta Âmbar) */}
         <div
           onClick={() => setExpandedKpi(expandedKpi === 'inadimplencia' ? null : 'inadimplencia')}
-          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer transition-all duration-200 hover:border-[#F5B84B]/70 active:scale-[0.98] ${
+          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer active:scale-[0.98] ${
             expandedKpi === 'inadimplencia'
               ? 'border-2 border-[#F5B84B] ring-2 ring-[#F5B84B]/30'
-              : 'border border-[#B8A9D9]/30'
+              : 'border border-[#F5B84B]/30 hover:border-[#F5B84B]/70'
           }`}
+          style={{ transition: 'transform 160ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out' }}
         >
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#F5B84B]/10 rounded-full blur-2xl pointer-events-none" />
           <div>
@@ -625,11 +627,12 @@ export default function AdminFinanceiroClient({ initialPlansAndCoupons }: AdminF
         {/* Card 3: Faturas Pendentes (Alerta Crítico Vermelho) */}
         <div
           onClick={() => setExpandedKpi(expandedKpi === 'faturas' ? null : 'faturas')}
-          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer transition-all duration-200 hover:border-[#F87171]/70 active:scale-[0.98] ${
+          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer active:scale-[0.98] ${
             expandedKpi === 'faturas'
               ? 'border-2 border-[#F87171] ring-2 ring-[#F87171]/30'
-              : 'border border-[#B8A9D9]/30'
+              : 'border border-[#F87171]/30 hover:border-[#F87171]/70'
           }`}
+          style={{ transition: 'transform 160ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out' }}
         >
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#F87171]/10 rounded-full blur-2xl pointer-events-none" />
           <div>
@@ -667,11 +670,12 @@ export default function AdminFinanceiroClient({ initialPlansAndCoupons }: AdminF
         {/* Card 4: Taxa de Aprovação Gateway (Esmeralda) */}
         <div
           onClick={() => setExpandedKpi(expandedKpi === 'aprovacao' ? null : 'aprovacao')}
-          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer transition-all duration-200 hover:border-[#34D399]/70 active:scale-[0.98] ${
+          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer active:scale-[0.98] ${
             expandedKpi === 'aprovacao'
               ? 'border-2 border-[#34D399] ring-2 ring-[#34D399]/30'
-              : 'border border-[#B8A9D9]/30'
+              : 'border border-[#34D399]/30 hover:border-[#34D399]/70'
           }`}
+          style={{ transition: 'transform 160ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out' }}
         >
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#34D399]/10 rounded-full blur-2xl pointer-events-none" />
           <div>
