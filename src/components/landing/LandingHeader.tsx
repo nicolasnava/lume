@@ -5,7 +5,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import {
   LayoutGrid,
-  ArrowRight,
   CreditCard,
   Clock,
   ChevronDown,
@@ -17,6 +16,7 @@ import {
   Store,
 } from 'lucide-react'
 import PwaInstallModal from './PwaInstallModal'
+import SparkleButton from '@/components/ui/SparkleButton'
 
 export default function LandingHeader() {
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -40,18 +40,14 @@ export default function LandingHeader() {
       <header className="sticky top-0 z-50 w-full border-b border-[#E8DFD8] bg-[#FAF8F5]/90 backdrop-blur-md transition-all">
         {/* Faixa Superior Promocional */}
         <div className="w-full bg-gradient-to-r from-[#2E223B] via-[#4A3F5C] to-[#2E223B] text-white py-2 px-2 sm:px-4 text-center font-medium border-b border-white/10 shadow-xs relative overflow-hidden flex items-center justify-center h-9 sm:h-10">
-          <Link
-            href="/cadastro"
-            className="group inline-flex items-center justify-center flex-nowrap whitespace-nowrap gap-1.5 sm:gap-2.5 transition hover:opacity-95 text-[10px] min-[380px]:text-[11.5px] sm:text-[13px] max-w-full overflow-hidden"
-          >
+          <div className="inline-flex max-w-full items-center justify-center gap-1.5 overflow-hidden whitespace-nowrap text-[10px] min-[380px]:text-[11.5px] sm:gap-2.5 sm:text-[13px]">
             <span className="text-white/95 font-medium truncate whitespace-nowrap">
               Teste grátis por 30 dias. Sem pagamento nenhum
             </span>
-            <span className="inline-flex items-center gap-0.5 sm:gap-1 font-bold text-[#2E223B] bg-[#B8A9D9] hover:bg-white px-2 sm:px-2.5 py-0.5 rounded-full transition-all duration-200 shadow-xs text-[9px] sm:text-[11px] shrink-0 whitespace-nowrap">
-              <span>Clique aqui</span>
-              <ArrowRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#2E223B] group-hover:translate-x-0.5 transition-transform shrink-0" />
-            </span>
-          </Link>
+            <SparkleButton href="/cadastro" compact className="shrink-0 bg-[#B8A9D9] text-[#2E223B] shadow-xs hover:bg-white">
+              Clique aqui
+            </SparkleButton>
+          </div>
         </div>
 
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
@@ -208,13 +204,9 @@ export default function LandingHeader() {
             >
               Entrar
             </Link>
-            <Link
-              href="/cadastro"
-              className="group inline-flex items-center justify-center gap-1.5 rounded-full bg-[#3D2E4D] hover:bg-[#2E223B] px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:shadow-sm transition-all duration-180 ease-out active:scale-[0.97] cursor-pointer"
-            >
-              <span>Testar agenda grátis</span>
-              <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 ease-out group-hover:translate-x-1" />
-            </Link>
+            <SparkleButton href="/cadastro" className="bg-[#3D2E4D] text-white shadow-xs hover:bg-[#2E223B] hover:shadow-sm">
+              Testar agenda grátis
+            </SparkleButton>
           </div>
 
           {/* Ações Mobile: [Entrar] ao lado do [Menu Hamburguer] */}

@@ -11,6 +11,7 @@ export interface ComboItem {
   descricao: string | null
   preco_combo: number
   foto_url: string | null
+  duracao_minutos: number | null
   ativo: boolean
   created_at: string
   servicos: Array<{
@@ -31,6 +32,7 @@ export interface ComboFormData {
   descricao?: string | null
   preco_combo: number
   foto_url?: string | null
+  duracao_minutos?: number | null
   servico_ids: string[]
   ativo?: boolean
 }
@@ -83,7 +85,12 @@ export async function getCombosProfissionalAction(profissionalId?: string): Prom
 
     // 3. Montar mapa de serviços por combo
     const servicosPorCombo: Record<string, ComboItem['servicos']> = {}
-    ;(relData || []).forEach((item: any) => {
+    type ComboServiceRelation = {
+      combo_id: string
+      servico_id: string
+      servicos: { id: string; nome: string; duracao_minutos: number; preco: number; foto_url: string | null; ativo: boolean | null } | null
+    }
+    ;((relData || []) as unknown as ComboServiceRelation[]).forEach((item) => {
       if (!item.servicos) return
       if (!servicosPorCombo[item.combo_id]) {
         servicosPorCombo[item.combo_id] = []
@@ -100,7 +107,9 @@ export async function getCombosProfissionalAction(profissionalId?: string): Prom
 
     return combosData.map((c) => {
       const servicos = servicosPorCombo[c.id] || []
-      const duracaoTotalMinutos = servicos.reduce((acc, s) => acc + s.duracao_minutos, 0)
+      const duracaoTotalMinutos = servicos.length > 0
+        ? servicos.reduce((acc, s) => acc + s.duracao_minutos, 0)
+        : Number(c.duracao_minutos || 0)
       const precoOriginalTotal = servicos.reduce((acc, s) => acc + s.preco, 0)
       const precoCombo = Number(c.preco_combo)
       const descontoEconomia = Math.max(0, precoOriginalTotal - precoCombo)
@@ -112,6 +121,7 @@ export async function getCombosProfissionalAction(profissionalId?: string): Prom
         descricao: c.descricao,
         preco_combo: precoCombo,
         foto_url: c.foto_url,
+        duracao_minutos: c.duracao_minutos ? Number(c.duracao_minutos) : null,
         ativo: c.ativo,
         created_at: c.created_at,
         servicos,
@@ -148,8 +158,8 @@ export async function createComboAction(data: ComboFormData): Promise<{
       return { success: false, message: 'O nome do combo é obrigatório.' }
     }
 
-    if (!data.servico_ids || data.servico_ids.length < 1) {
-      return { success: false, message: 'Selecione ao menos 1 serviço para formar um pacote.' }
+    if ((!data.servico_ids || data.servico_ids.length === 0) && (!data.duracao_minutos || data.duracao_minutos <= 0)) {
+      return { success: false, message: 'Informe a duração do pacote independente.' }
     }
 
     if (data.preco_combo === undefined || Number(data.preco_combo) <= 0) {
@@ -159,8 +169,7 @@ export async function createComboAction(data: ComboFormData): Promise<{
     const adminSupabase = createAdminClient()
 
     // 1. Inserir combo
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: newCombo, error: insertError } = await (adminSupabase.from('combos') as any)
+    const { data: newCombo, error: insertError } = await adminSupabase.from('combos')
       .insert([
         {
           profissional_id: user.id,
@@ -168,6 +177,7 @@ export async function createComboAction(data: ComboFormData): Promise<{
           descricao: data.descricao?.trim() || null,
           preco_combo: Number(data.preco_combo),
           foto_url: data.foto_url || null,
+          duracao_minutos: data.servico_ids.length === 0 ? Number(data.duracao_minutos) : null,
           ativo: data.ativo !== undefined ? data.ativo : true,
         },
       ])
@@ -185,8 +195,9 @@ export async function createComboAction(data: ComboFormData): Promise<{
       servico_id: servicoId,
     }))
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: relError } = await (adminSupabase.from('combo_servicos') as any).insert(relRows)
+    const { error: relError } = relRows.length > 0
+      ? await adminSupabase.from('combo_servicos').insert(relRows)
+      : { error: null }
 
     if (relError) {
       console.error('[createComboAction] Erro ao associar serviços:', relError)
@@ -228,20 +239,20 @@ export async function updateComboAction(
       return { success: false, message: 'O nome do combo é obrigatório.' }
     }
 
-    if (!data.servico_ids || data.servico_ids.length < 1) {
-      return { success: false, message: 'Selecione ao menos 1 serviço para formar um pacote.' }
+    if ((!data.servico_ids || data.servico_ids.length === 0) && (!data.duracao_minutos || data.duracao_minutos <= 0)) {
+      return { success: false, message: 'Informe a duração do pacote independente.' }
     }
 
     const adminSupabase = createAdminClient()
 
     // 1. Atualizar combo garantindo posse
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = await (adminSupabase.from('combos') as any)
+    const { error: updateError } = await adminSupabase.from('combos')
       .update({
         nome: data.nome.trim(),
         descricao: data.descricao?.trim() || null,
         preco_combo: Number(data.preco_combo),
         foto_url: data.foto_url || null,
+        duracao_minutos: data.servico_ids.length === 0 ? Number(data.duracao_minutos) : null,
         ativo: data.ativo !== undefined ? data.ativo : true,
       })
       .eq('id', comboId)
@@ -260,8 +271,9 @@ export async function updateComboAction(
       servico_id: servicoId,
     }))
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: relError } = await (adminSupabase.from('combo_servicos') as any).insert(relRows)
+    const { error: relError } = relRows.length > 0
+      ? await adminSupabase.from('combo_servicos').insert(relRows)
+      : { error: null }
 
     if (relError) {
       console.error('[updateComboAction] Erro ao atualizar serviços associados:', relError)

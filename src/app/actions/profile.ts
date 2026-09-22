@@ -21,6 +21,8 @@ export interface ProfileFormData {
   cor_secundaria: string
   foto_url?: string | null
   foto_capa_url?: string | null
+  portfolio_urls?: string[]
+  banner_position_y?: number
   janela_agendamento_dias?: number | null
 }
 
@@ -223,6 +225,8 @@ export async function updatePerfilAction(formData: ProfileFormData) {
       cor_secundaria: validation.data.cor_secundaria,
       foto_url: validation.data.foto_url || null,
       foto_capa_url: validation.data.foto_capa_url || null,
+      portfolio_urls: validation.data.portfolio_urls || [],
+      banner_position_y: validation.data.banner_position_y ?? 50,
       janela_agendamento_dias: validation.data.janela_agendamento_dias || 90,
     }
 

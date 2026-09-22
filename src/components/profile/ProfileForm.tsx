@@ -16,6 +16,7 @@ import { copyToClipboard } from '@/lib/utils/clipboard'
 import { validateImageMagicBytes } from '@/lib/utils/imageValidation'
 import Toast from '@/components/ui/Toast'
 import CustomSelect from '@/components/ui/CustomSelect'
+import ImageCropperModal from '@/components/ui/ImageCropperModal'
 import {
   User,
   Camera,
@@ -40,6 +41,8 @@ import {
   Smartphone,
   QrCode,
   Instagram,
+  Images,
+  ImagePlus,
 } from 'lucide-react'
 
 import StoriesShareModal from '@/components/profile/StoriesShareModal'
@@ -62,14 +65,8 @@ const MODALIDADE_OPTIONS = [
   { id: 'salao', label: 'Salão / Espaço Compartilhado', desc: 'Atendimento em salão parceiro', icon: Store },
 ]
 
-const PRESET_COLORS = [
-  '#B8A9D9', // 1. Lilás Lumê
-  '#E8C5C8', // 2. Rosa Suave
-  '#4A3F5C', // 3. Cinza / Roxo Escuro
-  '#D4B89B', // 4. Nude Warm
-  '#A8D5C5', // 5. Verde Menta
-  '#E2BDAB', // 6. Dourado Rosé
-]
+const PRIMARY_PRESET_COLORS = ['#B8A9D9', '#8C5383', '#4A3F5C', '#A8647A', '#52796F', '#9A6B45']
+const SECONDARY_PRESET_COLORS = ['#FAF7F5', '#F7EFF4', '#F2EEF8', '#F7F1EB', '#EDF5F1', '#F6EEE9']
 
 const FORMA_PAGAMENTO_OPTIONS = [
   { id: 'pix', label: 'Pix' },
@@ -147,6 +144,10 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
   const [colorModalTarget, setColorModalTarget] = useState<'primaria' | 'secundaria' | null>(null)
   const [fotoUrl, setFotoUrl] = useState(initialData.foto_url || '')
   const [fotoCapaUrl, setFotoCapaUrl] = useState(initialData.foto_capa_url || '')
+  const [portfolioUrls, setPortfolioUrls] = useState<string[]>(initialData.portfolio_urls || [])
+  const [bannerPositionY, setBannerPositionY] = useState(initialData.banner_position_y ?? 50)
+  const [cropFile, setCropFile] = useState<File | null>(null)
+  const [cropTarget, setCropTarget] = useState<'avatar' | 'cover' | 'portfolio' | null>(null)
 
   // Defensive image error handling
   const [avatarError, setAvatarError] = useState(false)
@@ -215,6 +216,8 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
         cor_secundaria: overrideData?.cor_secundaria ?? corSecundaria,
         foto_url: overrideData?.foto_url !== undefined ? overrideData.foto_url : fotoUrl || null,
         foto_capa_url: overrideData?.foto_capa_url !== undefined ? overrideData.foto_capa_url : fotoCapaUrl || null,
+        portfolio_urls: overrideData?.portfolio_urls ?? portfolioUrls,
+        banner_position_y: overrideData?.banner_position_y ?? bannerPositionY,
         janela_agendamento_dias: overrideData?.janela_agendamento_dias ?? janelaAgendamentoDias,
         slug: overrideData?.slug !== undefined ? overrideData.slug : currentSlug || undefined,
       }
@@ -232,7 +235,7 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
         setErrorMsg(res.message || 'Erro ao salvar alterações.')
       }
     },
-    [nome, bio, tagline, localizacao, modalidadeAtendimento, whatsapp, instagram, categoria, formasPagamentoAceitas, corPrimaria, corSecundaria, fotoUrl, fotoCapaUrl, janelaAgendamentoDias, currentSlug]
+    [nome, bio, tagline, localizacao, modalidadeAtendimento, whatsapp, instagram, categoria, formasPagamentoAceitas, corPrimaria, corSecundaria, fotoUrl, fotoCapaUrl, portfolioUrls, bannerPositionY, janelaAgendamentoDias, currentSlug]
   )
 
   // Autosave com debounce de 600ms para campos de texto livres
@@ -319,12 +322,11 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
 
     try {
       const supabase = createClient()
-      const ext = file.name.split('.').pop() || 'jpg'
-      const filePath = `${initialData.id}/avatar_${Date.now()}.${ext}`
+      const filePath = `${initialData.id}/avatar_${Date.now()}.webp`
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file, { upsert: true })
+        .upload(filePath, file, { upsert: true, contentType: 'image/webp' })
 
       if (uploadError) throw uploadError
 
@@ -355,12 +357,11 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
 
     try {
       const supabase = createClient()
-      const ext = file.name.split('.').pop() || 'jpg'
-      const filePath = `${initialData.id}/cover_${Date.now()}.${ext}`
+      const filePath = `${initialData.id}/cover_${Date.now()}.webp`
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file, { upsert: true })
+        .upload(filePath, file, { upsert: true, contentType: 'image/webp' })
 
       if (uploadError) throw uploadError
 
@@ -381,6 +382,54 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
     setFotoCapaUrl('')
     await executeSave({ foto_capa_url: null })
     setToast({ show: true, message: 'Capa removida.', type: 'success' })
+  }
+
+  const openCropper = async (file: File, target: 'avatar' | 'cover' | 'portfolio') => {
+    const validation = await validateImageMagicBytes(file)
+    if (!validation.valid) {
+      setToast({ show: true, message: validation.error || 'Arquivo de imagem inválido.', type: 'error' })
+      return
+    }
+    setCropTarget(target)
+    setCropFile(file)
+  }
+
+  const handlePortfolioUpload = async (file: File) => {
+    if (portfolioUrls.length >= 6) {
+      setToast({ show: true, message: 'O portfólio permite até 6 fotos.', type: 'error' })
+      return
+    }
+    setUploadingCapa(true)
+    try {
+      const supabase = createClient()
+      const filePath = `${initialData.id}/portfolio-${Date.now()}.webp`
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true, contentType: 'image/webp' })
+      if (uploadError) throw uploadError
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
+      const next = [...portfolioUrls, data.publicUrl].slice(0, 6)
+      setPortfolioUrls(next)
+      await executeSave({ portfolio_urls: next })
+      setToast({ show: true, message: 'Foto adicionada ao portfólio.', type: 'success' })
+    } catch (err) {
+      setToast({ show: true, message: err instanceof Error ? err.message : 'Erro ao enviar foto.', type: 'error' })
+    } finally {
+      setUploadingCapa(false)
+    }
+  }
+
+  const handleCroppedImage = async (file: File) => {
+    const target = cropTarget
+    setCropFile(null)
+    setCropTarget(null)
+    if (target === 'avatar') await handleAvatarUpload(file)
+    if (target === 'cover') await handleCoverUpload(file)
+    if (target === 'portfolio') await handlePortfolioUpload(file)
+  }
+
+  const removePortfolioImage = async (url: string) => {
+    const next = portfolioUrls.filter((item) => item !== url)
+    setPortfolioUrls(next)
+    await executeSave({ portfolio_urls: next })
   }
 
   // Gerenciamento de Categorias de Atuação
@@ -458,7 +507,7 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
         .update({
           google_calendar_token: null,
           google_refresh_token: null,
-        } as any)
+        })
         .eq('id', initialData.id)
 
       if (error) throw error
@@ -551,7 +600,7 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0]
-                      if (file) handleAvatarUpload(file)
+                      if (file) openCropper(file, 'avatar')
                     }}
                   />
                 </label>
@@ -1047,6 +1096,7 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
                     alt="Capa do studio"
                     fill
                     className="object-cover"
+                    style={{ objectPosition: `center ${bannerPositionY}%` }}
                     unoptimized
                     onError={() => setCapaError(true)}
                   />
@@ -1072,7 +1122,7 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0]
-                      if (file) handleCoverUpload(file)
+                      if (file) openCropper(file, 'cover')
                     }}
                   />
                 </label>
@@ -1094,6 +1144,47 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
                 Tamanho recomendado: mínimo 1200x400px (proporção 3:1). Formatos JPG, PNG ou WebP até 5MB.
               </p>
             )}
+            {fotoCapaUrl && (
+              <label className="block space-y-2 text-[11px] font-bold text-[#4A3F5C]">
+                <span>Área visível do banner</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={bannerPositionY}
+                  onChange={(event) => setBannerPositionY(Number(event.target.value))}
+                  onMouseUp={() => executeSave({ banner_position_y: bannerPositionY })}
+                  onTouchEnd={() => executeSave({ banner_position_y: bannerPositionY })}
+                  className="w-full accent-[#4A3F5C]"
+                />
+                <span className="block font-medium text-gray-500">Mova para escolher qual faixa vertical ficará em destaque.</span>
+              </label>
+            )}
+          </div>
+
+          {/* Portfólio da vitrine */}
+          <div className="rounded-3xl border border-gray-200/80 bg-white p-5 shadow-2xs sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="flex items-center gap-2 text-sm font-bold text-[#4A3F5C]"><Images className="h-4 w-4 text-[#8675A9]" /> Portfólio</h3>
+                <p className="mt-1 text-xs text-gray-500">Adicione até 6 fotos dos seus trabalhos.</p>
+              </div>
+              <span className="text-xs font-bold text-[#4A3F5C]/60">{portfolioUrls.length}/6</span>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {portfolioUrls.map((url, index) => (
+                <div key={url} className="group relative aspect-[4/5] overflow-hidden rounded-2xl bg-[#FAF7F5]">
+                  <Image src={url} alt={`Portfólio ${index + 1}`} fill className="object-cover" unoptimized />
+                  <button type="button" onClick={() => removePortfolioImage(url)} className="absolute right-2 top-2 rounded-full bg-[#241C2E]/70 p-1.5 text-white opacity-0 backdrop-blur-xs transition-[opacity,transform] duration-150 ease-out group-hover:opacity-100 active:scale-[0.97]" title="Remover foto"><Trash2 className="h-3.5 w-3.5" /></button>
+                </div>
+              ))}
+              {portfolioUrls.length < 6 && (
+                <label className="flex aspect-[4/5] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[#B8A9D9] bg-[#FAF7F5] text-center text-xs font-bold text-[#4A3F5C] transition-[transform,background-color] duration-150 ease-out hover:bg-[#B8A9D9]/10 active:scale-[0.98]">
+                  <ImagePlus className="h-5 w-5 text-[#8675A9]" /> Adicionar foto
+                  <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) openCropper(file, 'portfolio'); event.currentTarget.value = '' }} />
+                </label>
+              )}
+            </div>
           </div>
 
           {/* Identidade Visual & Cores Personalizadas */}
@@ -1139,7 +1230,7 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                  {PRESET_COLORS.map((hex) => {
+                  {PRIMARY_PRESET_COLORS.map((hex) => {
                     const isSelected = corPrimaria.toLowerCase() === hex.toLowerCase()
                     return (
                       <button
@@ -1198,7 +1289,7 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                  {PRESET_COLORS.map((hex) => {
+                  {SECONDARY_PRESET_COLORS.map((hex) => {
                     const isSelected = corSecundaria.toLowerCase() === hex.toLowerCase()
                     return (
                       <button
@@ -1524,6 +1615,15 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
             executeSave({ cor_secundaria: hex })
           }
         }}
+      />
+
+      <ImageCropperModal
+        file={cropFile}
+        title={cropTarget === 'cover' ? 'Ajustar banner' : cropTarget === 'portfolio' ? 'Recortar foto do portfólio' : 'Recortar foto de perfil'}
+        aspectRatio={cropTarget === 'cover' ? 3 : cropTarget === 'portfolio' ? 4 / 5 : 1}
+        outputWidth={cropTarget === 'cover' ? 1800 : cropTarget === 'portfolio' ? 1000 : 800}
+        onCancel={() => { setCropFile(null); setCropTarget(null) }}
+        onConfirm={handleCroppedImage}
       />
     </div>
   )

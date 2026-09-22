@@ -6,11 +6,13 @@ import {
   completeBookingAction,
   markNoShowBookingAction,
   updateBookingStatusAction,
+  getProfissionalServicesAndClientsAction,
+  updateBookingServicesAction,
 } from '@/app/actions/booking'
 import Toast from '@/components/ui/Toast'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import CustomSelect from '@/components/ui/CustomSelect'
 import WhatsAppIcon from '@/components/ui/WhatsAppIcon'
-import { copyToClipboard } from '@/lib/utils/clipboard'
 import { formatPhoneNumber } from '@/lib/utils/phone'
 import {
   X,
@@ -32,6 +34,8 @@ import {
   ChevronDown,
   Banknote,
   Wallet,
+  Plus,
+  Trash2,
 } from 'lucide-react'
 import { PixIcon } from '@/components/common/PaymentIcon'
 
@@ -97,6 +101,11 @@ export default function BookingDetailModal({
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [completing, setCompleting] = useState(false)
   const [markingNoShow, setMarkingNoShow] = useState(false)
+  const [editingServices, setEditingServices] = useState(false)
+  const [savingServices, setSavingServices] = useState(false)
+  const [availableServices, setAvailableServices] = useState<Array<{ id: string; nome: string; preco: number; duracao_minutos: number; foto_url: string | null }>>([])
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([])
+  const [pendingServiceChange, setPendingServiceChange] = useState<{ type: 'add' | 'remove'; id: string; nome: string } | null>(null)
 
   const [showCompleteForm, setShowCompleteForm] = useState(false)
   const [isServicesExpanded, setIsServicesExpanded] = useState(false)
@@ -144,6 +153,21 @@ export default function BookingDetailModal({
     setPago(booking.pago !== false)
     setObservacaoPagamento(booking.observacao_pagamento || '')
     setShowCompleteForm(false)
+  }, [booking])
+
+  useEffect(() => {
+    if (!booking) return
+    const ids = booking.agendamento_servicos?.map((item) => item.servicos?.id).filter((id): id is string => !!id)
+      || []
+    setSelectedServiceIds(ids.length > 0 ? ids : booking.servico_id ? [booking.servico_id] : [])
+    setEditingServices(false)
+    setPendingServiceChange(null)
+
+    if (booking.status === 'confirmado') {
+      getProfissionalServicesAndClientsAction().then((result) => {
+        if (result.success) setAvailableServices(result.services)
+      })
+    }
   }, [booking])
 
   const hasMultipleServices = !!(booking?.agendamento_servicos && booking.agendamento_servicos.length > 1)
@@ -299,7 +323,6 @@ export default function BookingDetailModal({
 
   const clienteNome = booking.clientes?.nome || 'Cliente sem nome'
   const clienteTelefone = booking.clientes?.telefone || ''
-  const servicoPreco = `R$ ${totalAgendamentoServicosValor.toFixed(2)}`
   const servicoDuracao = totalDuracaoMinutos ? `${totalDuracaoMinutos} min` : ''
 
   // Link direto para o WhatsApp Web
@@ -395,6 +418,32 @@ export default function BookingDetailModal({
         onClose()
       }, 1000)
     }
+  }
+
+  const confirmServiceChange = async () => {
+    if (!booking || !pendingServiceChange) return
+    const nextIds = pendingServiceChange.type === 'add'
+      ? [...new Set([...selectedServiceIds, pendingServiceChange.id])]
+      : selectedServiceIds.filter((id) => id !== pendingServiceChange.id)
+
+    if (nextIds.length === 0) {
+      setToast({ show: true, message: 'O atendimento precisa manter ao menos um procedimento.', type: 'error' })
+      setPendingServiceChange(null)
+      return
+    }
+
+    setSavingServices(true)
+    const result = await updateBookingServicesAction(booking.id, nextIds)
+    setSavingServices(false)
+    if (!result.success) {
+      setToast({ show: true, message: result.message || 'Não foi possível editar os procedimentos.', type: 'error' })
+      return
+    }
+
+    setSelectedServiceIds(nextIds)
+    setPendingServiceChange(null)
+    setToast({ show: true, message: result.message || 'Procedimentos atualizados.', type: 'success' })
+    onRefresh()
   }
 
   const effectiveHeaderPaymentMethod =
@@ -821,6 +870,48 @@ export default function BookingDetailModal({
           </div>
         )}
 
+        {currentStatus === 'confirmado' && (
+          <div className="border-t border-gray-100 pt-3">
+            <button
+              type="button"
+              onClick={() => setEditingServices((value) => !value)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[#B8A9D9]/50 bg-white px-3 py-2 text-xs font-bold text-[#4A3F5C] transition-[transform,background-color] duration-150 ease-out hover:bg-[#FAF7F5] active:scale-[0.97]"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Editar procedimentos
+            </button>
+
+            {editingServices && (
+              <div className="mt-3 space-y-3 rounded-2xl border border-[#B8A9D9]/35 bg-[#FAF7F5] p-4 animate-in fade-in duration-150">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#8675A9]">No atendimento</p>
+                  <div className="mt-2 space-y-1.5">
+                    {availableServices.filter((service) => selectedServiceIds.includes(service.id)).map((service) => (
+                      <div key={service.id} className="flex items-center justify-between border-b border-[#B8A9D9]/20 py-2 last:border-0">
+                        <div><p className="text-xs font-bold text-[#4A3F5C]">{service.nome}</p><p className="text-[10px] text-gray-500">{service.duracao_minutos} min · R$ {Number(service.preco).toFixed(2)}</p></div>
+                        <button type="button" onClick={() => setPendingServiceChange({ type: 'remove', id: service.id, nome: service.nome })} className="rounded-lg p-2 text-rose-600 transition-transform duration-150 ease-out active:scale-[0.97]" aria-label={`Remover ${service.nome}`}><Trash2 className="h-4 w-4" /></button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {availableServices.some((service) => !selectedServiceIds.includes(service.id)) && (
+                  <div className="border-t border-[#B8A9D9]/25 pt-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#8675A9]">Adicionar agora</p>
+                    <div className="mt-2 space-y-1.5">
+                      {availableServices.filter((service) => !selectedServiceIds.includes(service.id)).map((service) => (
+                        <button key={service.id} type="button" onClick={() => setPendingServiceChange({ type: 'add', id: service.id, nome: service.nome })} className="flex w-full items-center justify-between border-b border-[#B8A9D9]/20 py-2 text-left transition-transform duration-150 ease-out last:border-0 active:scale-[0.98]">
+                          <div><p className="text-xs font-bold text-[#4A3F5C]">{service.nome}</p><p className="text-[10px] text-gray-500">{service.duracao_minutos} min · R$ {Number(service.preco).toFixed(2)}</p></div>
+                          <Plus className="h-4 w-4 text-[#8675A9]" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Formulário de Conclusão e Registro de Pagamento */}
         {showCompleteForm ? (
           <form
@@ -1038,6 +1129,16 @@ export default function BookingDetailModal({
         message={toast?.message || ''}
         type={toast?.type}
         onClose={() => setToast(null)}
+      />
+      <ConfirmDialog
+        open={!!pendingServiceChange}
+        title={pendingServiceChange?.type === 'add' ? 'Adicionar procedimento?' : 'Remover procedimento?'}
+        description={pendingServiceChange ? `${pendingServiceChange.type === 'add' ? 'Deseja adicionar' : 'Deseja remover'} ${pendingServiceChange.nome} deste atendimento? A duração e o valor serão recalculados.` : ''}
+        confirmLabel={pendingServiceChange?.type === 'add' ? 'Adicionar' : 'Remover'}
+        destructive={pendingServiceChange?.type === 'remove'}
+        loading={savingServices}
+        onClose={() => setPendingServiceChange(null)}
+        onConfirm={confirmServiceChange}
       />
     </div>
   )

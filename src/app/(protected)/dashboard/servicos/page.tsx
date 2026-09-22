@@ -28,6 +28,7 @@ export default async function ServicosPage() {
       .from('servicos')
       .select('*')
       .eq('profissional_id', user.id)
+      .is('deletado_em', null)
       .order('created_at', { ascending: false }),
     (adminSupabase
       .from('agendamentos') as any)

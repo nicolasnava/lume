@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { Fragment, useState, useRef, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -12,6 +12,8 @@ import {
 } from '@/app/actions/services'
 import { validateImageMagicBytes } from '@/lib/utils/imageValidation'
 import Toast from '@/components/ui/Toast'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import ImageCropperModal from '@/components/ui/ImageCropperModal'
 import {
   Scissors,
   Plus,
@@ -26,7 +28,6 @@ import {
   Camera,
   AlertTriangle,
   CheckCircle2,
-  Tag,
   Check,
   Package,
   Layers,
@@ -34,6 +35,7 @@ import {
   User,
   Phone,
   ShoppingBag,
+  Eye,
 } from 'lucide-react'
 import {
   ComboItem,
@@ -109,6 +111,8 @@ export default function ServicesManager({ initialServices, initialCombos, initia
       return a.nome.localeCompare(b.nome)
     })
   }, [services])
+  const activeServicesCount = services.filter((service) => service.ativo !== false).length
+  const inactiveServicesCount = services.length - activeServicesCount
 
   const [showModal, setShowModal] = useState(false)
   const [editingService, setEditingService] = useState<ServiceRow | null>(null)
@@ -138,6 +142,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
   const [comboPreco, setComboPreco] = useState('')
   const [comboFotoUrl, setComboFotoUrl] = useState('')
   const [comboServicoIds, setComboServicoIds] = useState<string[]>([])
+  const [comboDuracaoPropria, setComboDuracaoPropria] = useState('60')
   const [comboSaving, setComboSaving] = useState(false)
   const [comboUploading, setComboUploading] = useState(false)
   const [isComboDragging, setIsComboDragging] = useState(false)
@@ -155,6 +160,10 @@ export default function ServicesManager({ initialServices, initialCombos, initia
   const [comandaUploading, setComandaUploading] = useState(false)
   const [isComandaDragging, setIsComandaDragging] = useState(false)
   const [deletingComandaId, setDeletingComandaId] = useState<string | null>(null)
+  const [cropFile, setCropFile] = useState<File | null>(null)
+  const [cropTarget, setCropTarget] = useState<'service' | 'combo' | 'comanda' | null>(null)
+  const [serviceToDelete, setServiceToDelete] = useState<ServiceRow | null>(null)
+  const [previewItem, setPreviewItem] = useState<{ kind: 'service' | 'combo' | 'comanda'; item: ServiceRow | ComboItem | ComandaProduto } | null>(null)
 
   // Seleção de serviços do combo (Simples ou Múltipla com Dropdown Rico idêntico ao agendamento)
   const [isComboMultiSelect, setIsComboMultiSelect] = useState(false)
@@ -178,6 +187,25 @@ export default function ServicesManager({ initialServices, initialCombos, initia
     }
   }, [isComboServiceDropdownOpen])
 
+  const openCropper = async (file: File, target: 'service' | 'combo' | 'comanda') => {
+    const validation = await validateImageMagicBytes(file)
+    if (!validation.valid) {
+      setToast({ show: true, message: validation.error || 'Arquivo de imagem inválido.', type: 'error' })
+      return
+    }
+    setCropTarget(target)
+    setCropFile(file)
+  }
+
+  const handleCroppedImage = async (file: File) => {
+    const target = cropTarget
+    setCropFile(null)
+    setCropTarget(null)
+    if (target === 'service') await handlePhotoUpload(file)
+    if (target === 'combo') await handleComboPhotoUpload(file)
+    if (target === 'comanda') await handleComandaPhotoUpload(file)
+  }
+
   const handleComboDragOver = (e: React.DragEvent) => {
     e.preventDefault()
     setIsComboDragging(true)
@@ -193,7 +221,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
     setIsComboDragging(false)
     const files = e.dataTransfer.files
     if (files && files.length > 0) {
-      handleComboPhotoUpload(files[0])
+      openCropper(files[0], 'combo')
     }
   }
 
@@ -210,7 +238,8 @@ export default function ServicesManager({ initialServices, initialCombos, initia
     setComboDescricao('')
     setComboPreco('')
     setComboFotoUrl('')
-    setComboServicoIds(services.length > 0 ? [services[0].id] : [])
+    setComboServicoIds([])
+    setComboDuracaoPropria('60')
     setIsComboMultiSelect(false)
     setIsComboServiceDropdownOpen(false)
     setShowComboModal(true)
@@ -223,23 +252,17 @@ export default function ServicesManager({ initialServices, initialCombos, initia
     setComboPreco(String(c.preco_combo))
     setComboFotoUrl(c.foto_url || '')
     setComboServicoIds(c.servicos.map((s) => s.id))
+    setComboDuracaoPropria(String(c.duracao_minutos || c.duracaoTotalMinutos || 60))
     setIsComboMultiSelect(c.servicos.length > 1)
     setIsComboServiceDropdownOpen(false)
     setShowComboModal(true)
   }
 
-  const toggleComboServico = (id: string) => {
-    setComboServicoIds((prev) =>
-      prev.includes(id) ? prev.filter((sId) => sId !== id) : [...prev, id]
-    )
-  }
-
   const selectedServicosForCombo = services.filter((s) => comboServicoIds.includes(s.id))
-  const comboDuracaoCalculada = selectedServicosForCombo.reduce((acc, s) => acc + s.duracao_minutos, 0)
+  const comboDuracaoCalculada = comboServicoIds.length > 0
+    ? selectedServicosForCombo.reduce((acc, s) => acc + s.duracao_minutos, 0)
+    : Number(comboDuracaoPropria) || 0
   const comboPrecoOriginalSoma = selectedServicosForCombo.reduce((acc, s) => acc + Number(s.preco), 0)
-  const comboPrecoNum = Number(comboPreco) || 0
-  const comboEconomiaCalculada = Math.max(0, comboPrecoOriginalSoma - comboPrecoNum)
-
   const handleComboPhotoUpload = async (file: File) => {
     if (!file) return
 
@@ -287,12 +310,11 @@ export default function ServicesManager({ initialServices, initialCombos, initia
 
       if (!profId) throw new Error('Usuário não autenticado.')
 
-      const fileExt = validation.detectedType || file.name.split('.').pop()?.toLowerCase() || 'jpg'
-      const filePath = `${profId}/combo-${Date.now()}.${fileExt}`
+      const filePath = `${profId}/combo-${Date.now()}.webp`
 
       const { error: uploadError } = await supabase.storage
         .from('servicos')
-        .upload(filePath, file, { upsert: true })
+        .upload(filePath, file, { upsert: true, contentType: 'image/webp' })
 
       if (uploadError) throw uploadError
 
@@ -316,10 +338,10 @@ export default function ServicesManager({ initialServices, initialCombos, initia
 
   const handleComboSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (comboServicoIds.length < 1) {
+    if (comboServicoIds.length < 1 && (!Number(comboDuracaoPropria) || Number(comboDuracaoPropria) <= 0)) {
       setToast({
         show: true,
-        message: 'Selecione ao menos 1 serviço para compor o pacote.',
+        message: 'Informe a duração do pacote independente.',
         type: 'error',
       })
       return
@@ -345,6 +367,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
           preco_combo: precoNumVal,
           foto_url: comboFotoUrl || null,
           servico_ids: comboServicoIds,
+          duracao_minutos: comboServicoIds.length === 0 ? Number(comboDuracaoPropria) : null,
         })
 
         if (!res.success) {
@@ -365,6 +388,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                   descricao: comboDescricao || null,
                   preco_combo: precoNumVal,
                   foto_url: comboFotoUrl || null,
+                  duracao_minutos: comboServicoIds.length === 0 ? Number(comboDuracaoPropria) : null,
                   servicos: selectedServicos.map((s) => ({
                     id: s.id,
                     nome: s.nome,
@@ -372,7 +396,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                     preco: s.preco,
                     foto_url: s.foto_url,
                   })),
-                  duracaoTotalMinutos,
+                  duracaoTotalMinutos: comboServicoIds.length === 0 ? Number(comboDuracaoPropria) : duracaoTotalMinutos,
                   precoOriginalTotal,
                   descontoEconomia: Math.max(0, precoOriginalTotal - precoNumVal),
                 }
@@ -387,6 +411,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
           preco_combo: precoNumVal,
           foto_url: comboFotoUrl || null,
           servico_ids: comboServicoIds,
+          duracao_minutos: comboServicoIds.length === 0 ? Number(comboDuracaoPropria) : null,
         })
 
         if (!res.success) {
@@ -507,12 +532,11 @@ export default function ServicesManager({ initialServices, initialCombos, initia
 
       if (!profId) throw new Error('Usuário não autenticado.')
 
-      const fileExt = validation.detectedType || file.name.split('.').pop()?.toLowerCase() || 'jpg'
-      const filePath = `${profId}/comanda-${Date.now()}.${fileExt}`
+      const filePath = `${profId}/comanda-${Date.now()}.webp`
 
       const { error: uploadError } = await supabase.storage
         .from('servicos')
-        .upload(filePath, file, { upsert: true })
+        .upload(filePath, file, { upsert: true, contentType: 'image/webp' })
 
       if (uploadError) throw uploadError
 
@@ -734,12 +758,11 @@ export default function ServicesManager({ initialServices, initialCombos, initia
         throw new Error('Usuário não autenticado.')
       }
 
-      const fileExt = validation.detectedType || file.name.split('.').pop()?.toLowerCase() || 'jpg'
-      const filePath = `${profId}/servico-${Date.now()}.${fileExt}`
+      const filePath = `${profId}/servico-${Date.now()}.webp`
 
       const { error: uploadError } = await supabase.storage
         .from('servicos')
-        .upload(filePath, file, { upsert: true })
+        .upload(filePath, file, { upsert: true, contentType: 'image/webp' })
 
       if (uploadError) {
         throw uploadError
@@ -815,7 +838,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
 
     const files = e.dataTransfer.files
     if (files && files.length > 0) {
-      handlePhotoUpload(files[0])
+      openCropper(files[0], 'service')
     }
   }
 
@@ -861,9 +884,8 @@ export default function ServicesManager({ initialServices, initialCombos, initia
   }
 
   const handleDelete = async (serviceId: string) => {
-    if (!confirm('Deseja realmente excluir este serviço?')) return
-
     setDeletingId(serviceId)
+    setServiceToDelete(null)
     setToast(null)
 
     const res = await deleteServiceAction(serviceId)
@@ -881,9 +903,9 @@ export default function ServicesManager({ initialServices, initialCombos, initia
       } else {
         setToast({ show: true, message: 'Serviço excluído com sucesso!', type: 'success' })
       }
-      setServices((prev) =>
-        prev.map((s) => (s.id === serviceId ? { ...s, ativo: false } : s)).filter((s) => !res.isSoftDeleted || s.id === serviceId)
-      )
+      setServices((prev) => res.isSoftDeleted
+        ? prev.map((s) => (s.id === serviceId ? { ...s, ativo: false, pending_bookings_count: res.pendingCount ?? s.pending_bookings_count } : s))
+        : prev.filter((s) => s.id !== serviceId))
       setTimeout(() => {
         window.location.reload()
       }, 1200)
@@ -977,7 +999,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                 <div>
                   <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Total de Serviços Cadastrados</span>
                   <strong className="text-xl font-bold text-[#4A3F5C]">
-                    {services.length} {services.length === 1 ? 'serviço' : 'serviços'}
+                    {activeServicesCount} ativos · {inactiveServicesCount} desativados
                   </strong>
                 </div>
               </div>
@@ -1009,11 +1031,18 @@ export default function ServicesManager({ initialServices, initialCombos, initia
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {sortedServices.map((s) => {
+              {sortedServices.map((s, index) => {
                 const isAtivo = s.ativo !== false
                 return (
+                  <Fragment key={s.id}>
+                  {!isAtivo && index > 0 && sortedServices[index - 1].ativo !== false && (
+                    <div className="col-span-full flex items-center gap-3 py-1" aria-label="Serviços desativados">
+                      <div className="h-px flex-1 bg-gray-200" />
+                      <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">Desativados</span>
+                      <div className="h-px flex-1 bg-gray-200" />
+                    </div>
+                  )}
                   <div
-                    key={s.id}
                     className={`rounded-3xl bg-white p-4 shadow-xs border transition flex flex-col justify-between h-full space-y-4 ${
                       isAtivo ? 'border-gray-200/80 hover:border-[#B8A9D9]' : 'border-gray-200/90 bg-gray-50/40'
                     }`}
@@ -1121,6 +1150,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                   </button>
 
                   <div className="flex items-center gap-1.5">
+                    <button onClick={() => setPreviewItem({ kind: 'service', item: s })} className="inline-flex items-center gap-1 rounded-xl border border-[#B8A9D9]/40 px-2.5 py-2 text-[11px] font-bold text-[#4A3F5C] transition-[transform,background-color] duration-150 ease-out hover:bg-[#B8A9D9]/10 active:scale-[0.97]" title="Ver como fica na vitrine"><Eye className="h-3.5 w-3.5" /><span className="hidden xl:inline">Ver vitrine</span></button>
                     <button
                       onClick={() => openEditModal(s)}
                       className="p-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-[#4A3F5C] transition cursor-pointer"
@@ -1129,7 +1159,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                     <button
-                      onClick={() => handleDelete(s.id)}
+                      onClick={() => setServiceToDelete(s)}
                       disabled={deletingId === s.id}
                       className="p-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 transition cursor-pointer disabled:opacity-50"
                       title="Excluir serviço"
@@ -1143,6 +1173,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                   </div>
                 </div>
               </div>
+              </Fragment>
             )
           })}
         </div>
@@ -1337,6 +1368,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                         </button>
 
                         <div className="flex items-center gap-1.5">
+                          <button type="button" onClick={() => setPreviewItem({ kind: 'combo', item: combo })} className="inline-flex items-center gap-1 rounded-xl border border-[#B8A9D9]/40 px-2.5 py-2 text-[11px] font-bold text-[#4A3F5C] transition-[transform,background-color] duration-150 ease-out hover:bg-[#B8A9D9]/10 active:scale-[0.97]" title="Ver como fica na vitrine"><Eye className="h-3.5 w-3.5" /><span className="hidden xl:inline">Ver vitrine</span></button>
                           <button
                             type="button"
                             onClick={() => openEditComboModal(combo)}
@@ -1495,6 +1527,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                       </button>
 
                       <div className="flex items-center gap-1.5">
+                        <button type="button" onClick={() => setPreviewItem({ kind: 'comanda', item: produto })} className="inline-flex items-center gap-1 rounded-xl border border-[#B8A9D9]/40 px-2.5 py-2 text-[11px] font-bold text-[#4A3F5C] transition-[transform,background-color] duration-150 ease-out hover:bg-[#B8A9D9]/10 active:scale-[0.97]" title="Ver como fica na vitrine"><Eye className="h-3.5 w-3.5" /><span className="hidden xl:inline">Ver vitrine</span></button>
                         <button
                           type="button"
                           onClick={() => openEditComandaModal(produto)}
@@ -1620,7 +1653,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                             className="hidden"
                             onChange={(e) => {
                               const file = e.target.files?.[0]
-                              if (file) handlePhotoUpload(file)
+                              if (file) openCropper(file, 'service')
                             }}
                           />
                         </label>
@@ -1663,7 +1696,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                         className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0]
-                          if (file) handlePhotoUpload(file)
+                          if (file) openCropper(file, 'service')
                         }}
                       />
                     </label>
@@ -1827,7 +1860,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                             className="hidden"
                             onChange={(e) => {
                               const file = e.target.files?.[0]
-                              if (file) handleComboPhotoUpload(file)
+                              if (file) openCropper(file, 'combo')
                             }}
                           />
                         </label>
@@ -1870,7 +1903,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                         className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0]
-                          if (file) handleComboPhotoUpload(file)
+                          if (file) openCropper(file, 'combo')
                         }}
                       />
                     </label>
@@ -1883,7 +1916,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-[#4A3F5C]/80 uppercase tracking-wider flex items-center gap-1.5">
                     <Scissors className="h-3.5 w-3.5 text-[#B8A9D9]" />
-                    <span>{isComboMultiSelect ? 'Serviços Inclusos' : 'Serviço Incluso'} *</span>
+                    <span>{isComboMultiSelect ? 'Serviços Inclusos' : 'Serviço Incluso'} (opcional)</span>
                   </label>
 
                   <button
@@ -1915,6 +1948,18 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                     )}
                   </button>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (comboServicoIds.length > 0) setComboServicoIds([])
+                    else if (services.length > 0) setComboServicoIds([services[0].id])
+                    setIsComboServiceDropdownOpen(false)
+                  }}
+                  className={`w-full rounded-xl border px-3 py-2 text-left text-xs font-bold transition-[transform,background-color,border-color] duration-150 ease-out active:scale-[0.98] ${comboServicoIds.length === 0 ? 'border-[#B8A9D9] bg-[#B8A9D9]/12 text-[#4A3F5C]' : 'border-gray-200 bg-white text-gray-600'}`}
+                >
+                  {comboServicoIds.length === 0 ? 'Pacote independente, sem serviço vinculado' : 'Criar como pacote independente'}
+                </button>
 
                 {services.length === 0 ? (
                   <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 font-semibold">
@@ -2018,9 +2063,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                                 onClick={() => {
                                   if (isComboMultiSelect) {
                                     if (comboServicoIds.includes(s.id)) {
-                                      if (comboServicoIds.length > 1) {
-                                        setComboServicoIds(comboServicoIds.filter((id) => id !== s.id))
-                                      }
+                                      setComboServicoIds(comboServicoIds.filter((id) => id !== s.id))
                                     } else {
                                       setComboServicoIds([...comboServicoIds, s.id])
                                     }
@@ -2112,10 +2155,11 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                   <label className="block text-xs font-semibold uppercase tracking-wider text-[#4A3F5C]/80 mb-1">
                     Duração Total
                   </label>
-                  <div className="w-full rounded-xl border border-gray-200 bg-gray-100/70 py-3 px-4 text-sm font-bold text-[#4A3F5C] flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-[#B8A9D9]" />
-                    <span>{comboDuracaoCalculada} min</span>
-                  </div>
+                  {comboServicoIds.length === 0 ? (
+                    <input type="number" min="5" step="5" required value={comboDuracaoPropria} onChange={(event) => setComboDuracaoPropria(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm font-bold text-[#4A3F5C] focus:border-[#B8A9D9] focus:outline-none" />
+                  ) : (
+                    <div className="flex w-full items-center gap-2 rounded-xl border border-gray-200 bg-gray-100/70 px-4 py-3 text-sm font-bold text-[#4A3F5C]"><Clock className="h-4 w-4 text-[#B8A9D9]" /><span>{comboDuracaoCalculada} min</span></div>
+                  )}
                 </div>
 
                 <div>
@@ -2145,7 +2189,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                 </button>
                 <button
                   type="submit"
-                  disabled={comboSaving || comboUploading || comboServicoIds.length < 1}
+                  disabled={comboSaving || comboUploading || comboDuracaoCalculada <= 0}
                   className="rounded-xl bg-[#4A3F5C] px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-[#393047] transition disabled:opacity-50 flex items-center gap-2 cursor-pointer"
                 >
                   {comboSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar Pacote'}
@@ -2368,7 +2412,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                             className="hidden"
                             onChange={(e) => {
                               if (e.target.files && e.target.files[0]) {
-                                handleComandaPhotoUpload(e.target.files[0])
+                                openCropper(e.target.files[0], 'comanda')
                               }
                             }}
                           />
@@ -2398,7 +2442,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                       e.preventDefault()
                       setIsComandaDragging(false)
                       if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                        handleComandaPhotoUpload(e.dataTransfer.files[0])
+                        openCropper(e.dataTransfer.files[0], 'comanda')
                       }
                     }}
                     className={`rounded-2xl border-2 border-dashed p-5 text-center transition cursor-pointer flex flex-col items-center justify-center ${
@@ -2419,7 +2463,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                       id="comanda-photo-input"
                       onChange={(e) => {
                         if (e.target.files && e.target.files[0]) {
-                          handleComandaPhotoUpload(e.target.files[0])
+                          openCropper(e.target.files[0], 'comanda')
                         }
                       }}
                     />
@@ -2456,6 +2500,56 @@ export default function ServicesManager({ initialServices, initialCombos, initia
           </div>
         </div>
       )}
+
+      {previewItem && (() => {
+        const item = previewItem.item
+        const price = previewItem.kind === 'combo' ? Number((item as ComboItem).preco_combo) : Number((item as ServiceRow | ComandaProduto).preco)
+        const duration = previewItem.kind === 'service' ? (item as ServiceRow).duracao_minutos : previewItem.kind === 'combo' ? (item as ComboItem).duracaoTotalMinutos : null
+        return (
+          <div className="fixed inset-0 z-[75] flex items-center justify-center bg-[#241C2E]/50 p-4 backdrop-blur-xs animate-in fade-in duration-150">
+            <button type="button" aria-label="Fechar prévia" className="absolute inset-0" onClick={() => setPreviewItem(null)} />
+            <div className="relative w-full max-w-sm origin-center overflow-hidden rounded-3xl border border-white/70 bg-white shadow-2xl animate-in zoom-in-95 duration-200">
+              <div className="relative h-56 bg-[#FAF7F5]">
+                {item.foto_url ? <Image src={item.foto_url} alt={item.nome} fill className="object-cover" unoptimized /> : <div className="flex h-full items-center justify-center"><Scissors className="h-10 w-10 text-[#B8A9D9]" /></div>}
+                <button type="button" onClick={() => setPreviewItem(null)} className="absolute right-3 top-3 rounded-full bg-[#241C2E]/65 p-2 text-white backdrop-blur-xs transition-transform duration-150 ease-out active:scale-[0.97]"><X className="h-4 w-4" /></button>
+              </div>
+              <div className="space-y-3 p-5">
+                <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#8675A9]">Prévia da vitrine</p><h3 className="mt-1 text-base font-extrabold text-[#4A3F5C]">{item.nome}</h3>{item.descricao && <p className="mt-1 text-xs leading-relaxed text-gray-500">{item.descricao}</p>}</div>
+                <div className="flex items-center justify-between border-t border-gray-100 pt-3">
+                  <div><strong className="text-lg font-black text-emerald-700">R$ {price.toFixed(2)}</strong>{duration ? <p className="text-[11px] font-semibold text-gray-500">{duration} min</p> : null}</div>
+                  <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#4A3F5C] px-4 py-2.5 text-xs font-bold text-white"><Plus className="h-4 w-4" /> {previewItem.kind === 'comanda' ? 'Adicionar' : 'Agendar'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      <ConfirmDialog
+        open={!!serviceToDelete}
+        title={serviceToDelete?.ativo === false && (serviceToDelete.pending_bookings_count || 0) > 0 ? 'Atendimentos ainda pendentes' : 'Excluir serviço?'}
+        description={serviceToDelete?.ativo === false && (serviceToDelete.pending_bookings_count || 0) > 0
+          ? `Este serviço ainda possui ${serviceToDelete.pending_bookings_count} atendimento(s) confirmado(s). Conclua esses atendimentos antes que ele possa desaparecer da lista.`
+          : 'Se houver agendamentos vinculados, o serviço será desativado para novas clientes e só poderá desaparecer depois que os atendimentos forem concluídos.'}
+        confirmLabel={serviceToDelete?.ativo === false && (serviceToDelete.pending_bookings_count || 0) > 0 ? 'Entendi' : 'Confirmar exclusão'}
+        destructive={!(serviceToDelete?.ativo === false && (serviceToDelete?.pending_bookings_count || 0) > 0)}
+        loading={!!deletingId}
+        onClose={() => setServiceToDelete(null)}
+        onConfirm={() => {
+          if (!serviceToDelete) return
+          if (serviceToDelete.ativo === false && (serviceToDelete.pending_bookings_count || 0) > 0) setServiceToDelete(null)
+          else handleDelete(serviceToDelete.id)
+        }}
+      />
+
+      <ImageCropperModal
+        file={cropFile}
+        title="Recortar imagem do card"
+        aspectRatio={4 / 3}
+        outputWidth={1200}
+        onCancel={() => { setCropFile(null); setCropTarget(null) }}
+        onConfirm={handleCroppedImage}
+      />
 
       <Toast
         show={!!toast?.show}

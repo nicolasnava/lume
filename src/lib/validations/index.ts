@@ -66,6 +66,8 @@ export const perfilSchema = z.object({
   janela_agendamento_dias: z.number().min(15).max(180).optional().nullable(),
   foto_url: z.string().optional().nullable(),
   foto_capa_url: z.string().optional().nullable(),
+  portfolio_urls: z.array(z.string().url()).max(6, 'O portfólio permite até 6 fotos').optional(),
+  banner_position_y: z.number().int().min(0).max(100).optional(),
 })
 
 export type PerfilInput = z.infer<typeof perfilSchema>
@@ -102,7 +104,7 @@ export type AgendamentoInput = z.infer<typeof agendamentoSchema>
 
 export const clienteAgendamentoSchema = z.object({
   profissional_id: z.string().uuid('ID de profissional inválido'),
-  servico_id: z.string().uuid('ID de serviço inválido'),
+  servico_id: z.string().uuid('ID de serviço inválido').nullable(),
   data_hora_inicio: z.string().refine((val) => !isNaN(Date.parse(val)), 'Data e horário de início inválidos'),
   cliente_nome: z.string().min(2, 'Informe seu nome completo (mínimo de 2 caracteres)'),
   cliente_telefone: z.string().refine((val) => {

@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { Database } from '@/lib/supabase/database.types'
 import BookingWizardPageClient from '@/components/booking/BookingWizardPageClient'
 import { getCombosProfissionalAction } from '@/app/actions/combos'
+import { getComandaProdutosAction } from '@/app/actions/comanda'
 
 interface PageProps {
   params: Promise<{
@@ -10,6 +11,8 @@ interface PageProps {
   }>
   searchParams: Promise<{
     servico?: string
+    combo?: string
+    produto?: string
   }>
 }
 
@@ -21,7 +24,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function AgendarPage({ params, searchParams }: PageProps) {
   const { slug } = await params
-  const { servico: servicoIdParam } = await searchParams
+  const { servico: servicoIdParam, combo: comboIdParam, produto: produtoIdParam } = await searchParams
 
   const adminSupabase = createAdminClient()
 
@@ -39,7 +42,7 @@ export default async function AgendarPage({ params, searchParams }: PageProps) {
   const prof = profissional as ProfissionalRow
 
   // Buscar serviços ativos e combos cadastrados
-  const [servicosResult, combosResult] = await Promise.all([
+  const [servicosResult, combosResult, comandaProdutos] = await Promise.all([
     adminSupabase
       .from('servicos')
       .select('*')
@@ -47,6 +50,7 @@ export default async function AgendarPage({ params, searchParams }: PageProps) {
       .neq('ativo', false)
       .order('nome', { ascending: true }),
     getCombosProfissionalAction(prof.id),
+    getComandaProdutosAction(prof.id, true),
   ])
 
   const servicos = (servicosResult.data || []) as ServicoRow[]
@@ -58,6 +62,9 @@ export default async function AgendarPage({ params, searchParams }: PageProps) {
       allServicos={servicos}
       allCombos={activeCombos}
       initialServicoId={servicoIdParam}
+      initialComboId={comboIdParam}
+      allComandaProdutos={comandaProdutos}
+      initialProdutoId={produtoIdParam}
     />
   )
 }

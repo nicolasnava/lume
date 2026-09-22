@@ -20,13 +20,14 @@ import {
   User,
   Clock,
   Info,
-  Star,
   Scissors,
   ChevronLeft,
   Package,
   ShoppingBag,
   Plus,
   X,
+  ChevronDown,
+  Images,
 } from 'lucide-react'
 
 type ProfissionalRow = Database['public']['Views']['profissionais_publico']['Row']
@@ -58,6 +59,7 @@ export default function PublicShowcaseView({
   const [isClientBookingsOpen, setIsClientBookingsOpen] = useState(false)
   const [isWorkingHoursOpen, setIsWorkingHoursOpen] = useState(false)
   const [selectedComandaItem, setSelectedComandaItem] = useState<ComandaProduto | null>(null)
+  const [expandedComboId, setExpandedComboId] = useState<string | null>(null)
 
   const corPrimaria = profissional.cor_primaria || '#B8A9D9'
   const textColorOnPrimary = getContrastingTextColor(corPrimaria)
@@ -79,10 +81,7 @@ export default function PublicShowcaseView({
   const isOpenNow = isStudioOpenNow(disponibilidades)
   const hasCapa = !!profissional.foto_capa_url
 
-  // Média de avaliações para o badge do topo
-  const totalAvaliacoes = avaliacoes.length
-  const somaNotas = avaliacoes.reduce((acc, curr) => acc + Number(curr.nota), 0)
-  const mediaNotas = totalAvaliacoes > 0 ? (somaNotas / totalAvaliacoes).toFixed(1) : null
+  const isDemo = (profissional as ProfissionalRow & { is_demo?: boolean }).is_demo
 
   return (
     <div className="min-h-screen bg-[#FAF7F5] text-[#4A3F5C] transition-colors duration-300 pb-16">
@@ -111,9 +110,9 @@ export default function PublicShowcaseView({
       <PublicStudioToast studioNome={profissional.nome} />
 
       {/* Banner de Vitrine Demo (Prompt 62 Parte 3) */}
-      {(profissional as any).is_demo && (
-        <div className="bg-[#4A3F5C] text-white text-xs py-2 px-4 text-center font-bold border-b border-[#3d334d] flex items-center justify-center gap-1.5 shadow-xs">
-          <Info className="h-3.5 w-3.5 text-amber-300 shrink-0" />
+      {isDemo && (
+        <div className="border-b border-[#B8A9D9]/35 bg-white px-4 py-2 text-center text-xs font-semibold text-[#4A3F5C] flex items-center justify-center gap-1.5">
+          <Info className="h-3.5 w-3.5 text-[#8675A9] shrink-0" />
           <span>Esta é uma vitrine de demonstração oficial do Lumê</span>
         </div>
       )}
@@ -128,6 +127,7 @@ export default function PublicShowcaseView({
                 alt={`Capa de ${profissional.nome}`}
                 fill
                 className="object-cover"
+                style={{ objectPosition: `center ${profissional.banner_position_y ?? 50}%` }}
                 priority
                 unoptimized
               />
@@ -176,17 +176,10 @@ export default function PublicShowcaseView({
 
             {/* Status Aberto/Fechado (Item 9: textos curtos "Aberto" / "Fechado") */}
             <div className="mt-3 flex items-center justify-center gap-2">
-              {isOpenNow ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200 shadow-2xs">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Aberto
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 border border-rose-200 shadow-2xs">
-                  <span className="h-2 w-2 rounded-full bg-rose-500" />
-                  Fechado
-                </span>
-              )}
+              <span className={`inline-flex items-center gap-2 text-xs font-bold ${isOpenNow ? 'text-emerald-700' : 'text-[#4A3F5C]/65'}`}>
+                <span className={`h-2 w-2 rounded-full ${isOpenNow ? 'bg-emerald-600 shadow-[0_0_0_3px_rgba(5,150,105,.12)]' : 'bg-[#4A3F5C]/35'}`} />
+                {isOpenNow ? 'Aberto agora' : 'Fechado agora'}
+              </span>
 
               <button
                 type="button"
@@ -264,19 +257,20 @@ export default function PublicShowcaseView({
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold tracking-tight text-[#4A3F5C] flex items-center gap-2">
                 <Package className="h-5 w-5 text-[#B8A9D9]" />
-                <span>Pacotes & Combos</span>
+                <span>Pacotes</span>
               </h2>
               <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                 {combos.length} {combos.length === 1 ? 'pacote' : 'pacotes'}
               </span>
             </div>
 
-            <div className="space-y-3">
+            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 no-scrollbar" style={{ scrollbarWidth: 'none' }}>
               {combos.map((combo) => (
                 <div
                   key={combo.id}
-                  className="rounded-3xl bg-white p-4 sm:p-5 border border-gray-200/80 shadow-2xs space-y-3"
+                  className="w-[86%] shrink-0 snap-center rounded-3xl bg-white p-4 sm:w-[280px] sm:p-5 border border-gray-200/80 shadow-2xs space-y-3"
                 >
+                  {combo.foto_url && <div className="relative h-40 overflow-hidden rounded-2xl bg-[#FAF7F5]"><Image src={combo.foto_url} alt={combo.nome} fill className="object-cover" unoptimized /></div>}
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="text-sm font-extrabold text-[#4A3F5C]">
@@ -288,25 +282,15 @@ export default function PublicShowcaseView({
                         </p>
                       )}
                     </div>
-                    {combo.descontoEconomia > 0 && (
-                      <span className="shrink-0 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        Economize {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(combo.descontoEconomia)}
-                      </span>
-                    )}
                   </div>
 
-                  {/* Serviços inclusos no combo */}
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {combo.servicos.map((s) => (
-                      <span
-                        key={s.id}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-purple-50/60 border border-[#B8A9D9]/30 text-[11px] font-semibold text-[#4A3F5C]"
-                      >
-                        <Scissors className="h-3 w-3 text-[#8675A9]" />
-                        <span>{s.nome}</span>
-                      </span>
-                    ))}
-                  </div>
+                  {combo.servicos.length > 0 && <div className="border-y border-gray-100 py-2">
+                    <button type="button" onClick={() => setExpandedComboId(expandedComboId === combo.id ? null : combo.id)} className="flex w-full items-center justify-between text-[11px] font-bold text-[#4A3F5C] transition-transform duration-150 ease-out active:scale-[0.98]">
+                      <span>{combo.servicos.length} {combo.servicos.length === 1 ? 'serviço incluso' : 'serviços inclusos'}</span>
+                      <ChevronDown className={`h-4 w-4 transition-transform duration-200 ease-out ${expandedComboId === combo.id ? 'rotate-180' : ''}`} />
+                    </button>
+                    {expandedComboId === combo.id && <div className="mt-3 space-y-0 animate-in fade-in duration-150">{combo.servicos.map((s, index) => <div key={s.id} className="relative flex gap-2.5 pb-3 last:pb-0"><div className="flex w-4 justify-center"><span className="relative z-10 mt-1.5 h-2 w-2 rounded-full bg-[#8675A9]" />{index < combo.servicos.length - 1 && <span className="absolute bottom-0 top-3 w-px bg-[#B8A9D9]/45" />}</div><div className="flex min-w-0 flex-1 items-center gap-2"><div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-[#FAF7F5]">{s.foto_url ? <Image src={s.foto_url} alt={s.nome} fill className="object-cover" unoptimized /> : <Scissors className="m-2 h-5 w-5 text-[#B8A9D9]" />}</div><div className="min-w-0"><p className="truncate text-[11px] font-bold text-[#4A3F5C]">{s.nome}</p><p className="text-[10px] text-gray-500">{s.duracao_minutos} min</p></div></div></div>)}</div>}
+                  </div>}
 
                   <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
                     <div>
@@ -316,6 +300,7 @@ export default function PublicShowcaseView({
                       <strong className="text-base font-black text-emerald-700">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(combo.preco_combo)}
                       </strong>
+                      <span className="ml-2 text-[11px] font-semibold text-gray-500">{combo.duracaoTotalMinutos} min</span>
                     </div>
 
                     <Link
@@ -351,26 +336,26 @@ export default function PublicShowcaseView({
             </p>
 
             {/* Grid com Formato Diferenciado: Foco Principal na Foto + NOME E VALOR */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 no-scrollbar" style={{ scrollbarWidth: 'none' }}>
               {comandaProdutos.map((produto) => (
                 <div
                   key={produto.id}
                   onClick={() => setSelectedComandaItem(produto)}
-                  className="group rounded-3xl bg-white p-3 sm:p-3.5 border border-gray-200/80 shadow-2xs hover:border-[#B8A9D9] hover:shadow-md transition-all duration-300 cursor-pointer flex flex-col justify-between"
+                  className="group w-[76%] shrink-0 snap-center rounded-3xl bg-white p-3 sm:w-[250px] sm:p-3.5 border border-gray-200/80 shadow-2xs hover:border-[#B8A9D9] hover:shadow-md transition-[transform,box-shadow,border-color] duration-200 ease-out active:scale-[0.98] cursor-pointer flex flex-col justify-between"
                 >
                   {/* FOCO NA FOTO: Grande, nítida, com aspect-square arredondado */}
-                  <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-[#FAF7F5] border border-gray-100/80 shrink-0">
+                  <div className="relative h-56 w-full rounded-2xl overflow-hidden bg-[#FAF7F5] border border-gray-100/80 shrink-0">
                     {produto.foto_url ? (
                       <Image
                         src={produto.foto_url}
                         alt={produto.nome}
                         fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-106"
+                        className="object-cover transition-transform duration-200 ease-out group-hover:scale-106"
                         unoptimized
                       />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-purple-50/80 to-pink-50/50">
-                        <ShoppingBag className="h-10 w-10 text-[#B8A9D9]/70 group-hover:scale-110 transition-transform duration-300" />
+                        <ShoppingBag className="h-10 w-10 text-[#B8A9D9]/70 group-hover:scale-110 transition-transform duration-200 ease-out" />
                         <span className="text-[10px] font-bold text-[#4A3F5C]/40 uppercase tracking-wider mt-1">
                           Lumê Care
                         </span>
@@ -390,13 +375,23 @@ export default function PublicShowcaseView({
                           currency: 'BRL',
                         }).format(produto.preco)}
                       </span>
-                      <span className="h-7 w-7 rounded-xl bg-purple-50 group-hover:bg-[#4A3F5C] group-hover:text-white text-[#4A3F5C] border border-[#B8A9D9]/30 flex items-center justify-center transition-colors">
+                      <Link onClick={(event) => event.stopPropagation()} href={`${studioContext ? `/studio/${studioContext.slug}/${profissional.slug}` : `/p/${profissional.slug}`}/agendar?produto=${produto.id}`} className="h-8 w-8 rounded-xl bg-purple-50 group-hover:bg-[#4A3F5C] group-hover:text-white text-[#4A3F5C] border border-[#B8A9D9]/30 flex items-center justify-center transition-[transform,background-color,color] duration-150 ease-out active:scale-[0.97]" aria-label={`Adicionar ${produto.nome} ao atendimento`}>
                         <Plus className="h-3.5 w-3.5" />
-                      </span>
+                      </Link>
                     </div>
                   </div>
                 </div>
               ))}
+            </div>
+          </section>
+        )}
+
+        {/* PORTFÓLIO */}
+        {profissional.portfolio_urls && profissional.portfolio_urls.length > 0 && (
+          <section className="space-y-3.5">
+            <h2 className="flex items-center gap-2 text-base font-bold tracking-tight text-[#4A3F5C]"><Images className="h-5 w-5 text-[#B8A9D9]" /> Portfólio</h2>
+            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 no-scrollbar" style={{ scrollbarWidth: 'none' }}>
+              {profissional.portfolio_urls.slice(0, 6).map((url, index) => <div key={url} className="relative h-64 w-[78%] shrink-0 snap-center overflow-hidden rounded-3xl bg-white shadow-2xs sm:w-[260px]"><Image src={url} alt={`Trabalho de ${profissional.nome} ${index + 1}`} fill className="object-cover" unoptimized /></div>)}
             </div>
           </section>
         )}
@@ -459,7 +454,7 @@ export default function PublicShowcaseView({
                   const modInfo = MODALIDADE_MAP[modKey]
                   return (
                     <p key={modKey} className="text-xs text-[#4A3F5C] font-semibold">
-                      {modInfo ? modInfo.label : modKey}
+                      {modInfo ? modInfo.label : modKey.charAt(0).toUpperCase() + modKey.slice(1)}
                     </p>
                   )
                 })}

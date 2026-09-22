@@ -16,6 +16,8 @@ export type Database = {
           bio: string | null
           foto_url: string | null
           foto_capa_url: string | null
+          portfolio_urls: string[]
+          banner_position_y: number
           localizacao: string | null
           whatsapp: string | null
           instagram: string | null
@@ -24,6 +26,7 @@ export type Database = {
           cor_primaria: string
           cor_secundaria: string
           google_calendar_token: string | null
+          google_refresh_token?: string | null
           formas_pagamento_aceitas?: string[]
           slug_alterado_em?: string | null
           tagline?: string | null
@@ -55,6 +58,8 @@ export type Database = {
           bio?: string | null
           foto_url?: string | null
           foto_capa_url?: string | null
+          portfolio_urls?: string[]
+          banner_position_y?: number
           localizacao?: string | null
           whatsapp?: string | null
           instagram?: string | null
@@ -63,6 +68,7 @@ export type Database = {
           cor_primaria?: string
           cor_secundaria?: string
           google_calendar_token?: string | null
+          google_refresh_token?: string | null
           formas_pagamento_aceitas?: string[]
           slug_alterado_em?: string | null
           tagline?: string | null
@@ -94,6 +100,8 @@ export type Database = {
           bio?: string | null
           foto_url?: string | null
           foto_capa_url?: string | null
+          portfolio_urls?: string[]
+          banner_position_y?: number
           localizacao?: string | null
           whatsapp?: string | null
           instagram?: string | null
@@ -102,6 +110,7 @@ export type Database = {
           cor_primaria?: string
           cor_secundaria?: string
           google_calendar_token?: string | null
+          google_refresh_token?: string | null
           formas_pagamento_aceitas?: string[]
           slug_alterado_em?: string | null
           tagline?: string | null
@@ -323,6 +332,7 @@ export type Database = {
           descricao: string | null
           preco_combo: number
           foto_url: string | null
+          duracao_minutos: number | null
           ativo: boolean
           created_at: string
         }
@@ -333,6 +343,7 @@ export type Database = {
           descricao?: string | null
           preco_combo: number
           foto_url?: string | null
+          duracao_minutos?: number | null
           ativo?: boolean
           created_at?: string
         }
@@ -343,6 +354,7 @@ export type Database = {
           descricao?: string | null
           preco_combo?: number
           foto_url?: string | null
+          duracao_minutos?: number | null
           ativo?: boolean
           created_at?: string
         }
@@ -1061,6 +1073,33 @@ export type Database = {
         }
         Relationships: []
       }
+      agendamento_comanda_produtos: {
+        Row: {
+          id: string
+          agendamento_id: string
+          produto_id: string | null
+          nome_no_momento: string
+          preco_no_momento: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          agendamento_id: string
+          produto_id?: string | null
+          nome_no_momento: string
+          preco_no_momento: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          agendamento_id?: string
+          produto_id?: string | null
+          nome_no_momento?: string
+          preco_no_momento?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       profissionais_publico: {
@@ -1070,6 +1109,8 @@ export type Database = {
           bio: string | null
           foto_url: string | null
           foto_capa_url: string | null
+          portfolio_urls: string[]
+          banner_position_y: number
           categoria: string[]
           slug: string
           cor_primaria: string

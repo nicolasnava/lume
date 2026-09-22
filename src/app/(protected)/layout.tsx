@@ -9,7 +9,7 @@ import PlatformAnnouncementBanner from '@/components/dashboard/PlatformAnnouncem
 import MobileNotificationBell from '@/components/dashboard/MobileNotificationBell'
 import NpsSurveyModal from '@/components/dashboard/NpsSurveyModal'
 import { getContrastingTextColor, getLightTint } from '@/lib/utils/contrast'
-import { ExternalLink, User as UserIcon, AlertTriangle, ShieldAlert, LogOut, Smartphone } from 'lucide-react'
+import { ExternalLink, User as UserIcon, AlertTriangle, ShieldAlert, LogOut } from 'lucide-react'
 import Image from 'next/image'
 
 export const dynamic = 'force-dynamic'
@@ -189,9 +189,6 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
         {/* Conteúdo Principal das Páginas */}
         <div className="flex-1 md:pl-64 flex flex-col min-w-0">
           <main className="flex-1 pb-20 md:pb-8 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-            {/* Banner de Aviso Ativo da Plataforma */}
-            <PlatformAnnouncementBanner aviso={ativoAviso} />
-
             {profissional?.status_conta === 'suspensa' && (
               <div className="mb-6 mt-4 rounded-2xl bg-rose-50 border border-rose-200 p-4 flex items-start gap-3 text-rose-900 shadow-2xs">
                 <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
@@ -212,6 +209,9 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
           <DashboardNav mobile />
         </nav>
       </div>
+
+      {/* Aviso flutuante: não altera o fluxo nem cria espaçamento na página */}
+      <PlatformAnnouncementBanner aviso={ativoAviso} />
 
       {/* Modal de Pesquisa NPS (Exibido no máximo 1x a cada 30 dias) */}
       <NpsSurveyModal />

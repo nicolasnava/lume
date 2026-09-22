@@ -44,7 +44,7 @@ function AnimatedNumber({
     const obj = { val: prevValueRef.current }
     const tween = gsap.to(obj, {
       val: value,
-      duration: 0.4,
+      duration: 0.22,
       ease: 'power2.out',
       onUpdate: () => {
         if (spanRef.current) {

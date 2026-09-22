@@ -101,9 +101,10 @@ export async function getProfissionalServicesAndClientsAction() {
  */
 export async function createBookingAction(formData: {
   profissional_id: string
-  servico_id: string
+  servico_id: string | null
   servico_ids?: string[]
   combo_id?: string | null
+  produto_ids?: string[]
   cupom_id?: string | null
   desconto_cupom?: number | null
   data_hora_inicio: string
@@ -146,23 +147,35 @@ export async function createBookingAction(formData: {
 
   const servicoIdsList = formData.servico_ids && formData.servico_ids.length > 0
     ? formData.servico_ids
-    : [servico_id]
+    : servico_id ? [servico_id] : []
+
+  if (servicoIdsList.length === 0 && !formData.combo_id) {
+    return {
+      success: false,
+      errorType: 'VALIDATION_ERROR',
+      message: 'Selecione ao menos um serviço ou pacote.',
+    }
+  }
 
   const supabase = createAdminClient()
 
   try {
     // 2. Buscar informações de todos os serviços selecionados
-    const { data: servicosList, error: servicosError } = await supabase
-      .from('servicos')
-      .select('id, duracao_minutos, nome, preco, ativo')
-      .in('id', servicoIdsList)
+    let servicosList: Array<{ id: string; duracao_minutos: number; nome: string; preco: number; ativo?: boolean | null }> = []
+    if (servicoIdsList.length > 0) {
+      const { data, error: servicosError } = await supabase
+        .from('servicos')
+        .select('id, duracao_minutos, nome, preco, ativo')
+        .in('id', servicoIdsList)
 
-    if (servicosError || !servicosList || servicosList.length === 0) {
-      return {
-        success: false,
-        errorType: 'SERVICE_NOT_FOUND',
-        message: 'Um ou mais serviços selecionados não foram encontrados ou foram removidos.',
+      if (servicosError || !data || data.length !== servicoIdsList.length) {
+        return {
+          success: false,
+          errorType: 'SERVICE_NOT_FOUND',
+          message: 'Um ou mais serviços selecionados não foram encontrados ou foram removidos.',
+        }
       }
+      servicosList = data
     }
 
     // Bloquear agendamento caso qualquer serviço selecionado tenha sido desativado pela profissional
@@ -176,7 +189,7 @@ export async function createBookingAction(formData: {
     }
 
     // Calcular duração total acumulada e preço total acumulado
-    const totalDuracaoMinutos = servicosList.reduce((sum, s) => sum + s.duracao_minutos, 0)
+    let totalDuracaoMinutos = servicosList.reduce((sum, s) => sum + s.duracao_minutos, 0)
     let totalPreco = servicosList.reduce((sum, s) => sum + Number(s.preco), 0)
     let nomesCombo = servicosList.map((s) => s.nome).join(' + ')
 
@@ -184,7 +197,7 @@ export async function createBookingAction(formData: {
     if (formData.combo_id) {
       const { data: comboData } = await supabase
         .from('combos')
-        .select('id, nome, preco_combo')
+        .select('id, nome, preco_combo, duracao_minutos')
         .eq('id', formData.combo_id)
         .maybeSingle()
 
@@ -193,9 +206,41 @@ export async function createBookingAction(formData: {
           totalPreco = Number(comboData.preco_combo)
         }
         if (comboData.nome) {
-          nomesCombo = `${comboData.nome} (${nomesCombo})`
+          nomesCombo = nomesCombo ? `${comboData.nome} (${nomesCombo})` : comboData.nome
+        }
+        if (servicosList.length === 0 && comboData.duracao_minutos) {
+          totalDuracaoMinutos = comboData.duracao_minutos
         }
       }
+    }
+
+    if (totalDuracaoMinutos <= 0) {
+      return {
+        success: false,
+        errorType: 'VALIDATION_ERROR',
+        message: 'Este pacote ainda não possui uma duração válida.',
+      }
+    }
+
+    const produtoIds = [...new Set(formData.produto_ids || [])]
+    let produtosSelecionados: Array<{ id: string; nome: string; preco: number }> = []
+    if (produtoIds.length > 0) {
+      const { data: produtos, error: produtosError } = await supabase
+        .from('comanda_produtos')
+        .select('id, nome, preco')
+        .eq('profissional_id', profissional_id)
+        .eq('ativo', true)
+        .in('id', produtoIds)
+
+      if (produtosError || !produtos || produtos.length !== produtoIds.length) {
+        return {
+          success: false,
+          errorType: 'VALIDATION_ERROR',
+          message: 'Um item da comanda não está mais disponível.',
+        }
+      }
+      produtosSelecionados = produtos
+      totalPreco += produtos.reduce((sum, produto) => sum + Number(produto.preco), 0)
     }
 
     // Prompt 62: Se houver cupom aplicado, deduz o desconto do valor total
@@ -271,7 +316,7 @@ export async function createBookingAction(formData: {
     const basePayload: Record<string, unknown> = {
       profissional_id,
       cliente_id: clienteId,
-      servico_id: servicoIdsList[0],
+      servico_id: servicoIdsList[0] || null,
       combo_id: formData.combo_id || null,
       data_hora_inicio: data_hora_inicio_iso,
       data_hora_fim: data_hora_fim_iso,
@@ -295,7 +340,7 @@ export async function createBookingAction(formData: {
       const fallbackPayload: Record<string, unknown> = {
         profissional_id,
         cliente_id: clienteId,
-        servico_id: servicoIdsList[0],
+        servico_id: servicoIdsList[0] || null,
         data_hora_inicio: data_hora_inicio_iso,
         data_hora_fim: data_hora_fim_iso,
         valor_cobrado: totalPreco,
@@ -342,12 +387,27 @@ export async function createBookingAction(formData: {
       duracao_no_momento_minutos: s.duracao_minutos,
     }))
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: servicosInsertError } = await (supabase.from('agendamento_servicos') as any)
-      .insert(agendamentoServicosRows)
+    if (agendamentoServicosRows.length > 0) {
+      const { error: servicosInsertError } = await supabase.from('agendamento_servicos')
+        .insert(agendamentoServicosRows)
 
-    if (servicosInsertError) {
-      console.error('[agendamento_servicos] Erro ao registrar serviços do combo:', servicosInsertError)
+      if (servicosInsertError) {
+        console.error('[agendamento_servicos] Erro ao registrar serviços do pacote:', servicosInsertError)
+      }
+    }
+
+    if (produtosSelecionados.length > 0) {
+      const produtoRows = produtosSelecionados.map((produto) => ({
+        agendamento_id: novoAgendamento.id,
+        produto_id: produto.id,
+        nome_no_momento: produto.nome,
+        preco_no_momento: Number(produto.preco),
+      }))
+      const { error: produtosInsertError } = await supabase.from('agendamento_comanda_produtos')
+        .insert(produtoRows)
+      if (produtosInsertError) {
+        console.error('[agendamento_comanda_produtos] Erro ao registrar produtos:', produtosInsertError)
+      }
     }
 
     // Prompt 62: Registrar o uso do cupom se aplicável
@@ -416,6 +476,105 @@ export async function createBookingAction(formData: {
       errorType: 'UNKNOWN',
       message: 'Não foi possível concluir seu agendamento no momento. Por favor, tente novamente em instantes.',
     }
+  }
+}
+
+export async function updateBookingServicesAction(
+  bookingId: string,
+  serviceIds: string[]
+): Promise<{ success: boolean; message?: string }> {
+  try {
+    const { createClient } = await import('@/lib/supabase/server')
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, message: 'Sessão expirada. Entre novamente.' }
+
+    const uniqueServiceIds = [...new Set(serviceIds)]
+    if (uniqueServiceIds.length === 0) {
+      return { success: false, message: 'O atendimento precisa manter ao menos um serviço.' }
+    }
+
+    const admin = createAdminClient()
+    const { data: booking } = await admin
+      .from('agendamentos')
+      .select('id, profissional_id, data_hora_inicio, google_event_id, status, clientes(nome, telefone)')
+      .eq('id', bookingId)
+      .eq('profissional_id', user.id)
+      .maybeSingle()
+
+    if (!booking) return { success: false, message: 'Agendamento não encontrado.' }
+    if (booking.status !== 'confirmado') {
+      return { success: false, message: 'Só é possível editar procedimentos de atendimentos confirmados.' }
+    }
+
+    const { data: services, error: servicesError } = await admin
+      .from('servicos')
+      .select('id, nome, preco, duracao_minutos, ativo')
+      .eq('profissional_id', user.id)
+      .eq('ativo', true)
+      .in('id', uniqueServiceIds)
+
+    if (servicesError || !services || services.length !== uniqueServiceIds.length) {
+      return { success: false, message: 'Um dos serviços escolhidos não está mais disponível.' }
+    }
+
+    const duration = services.reduce((sum, service) => sum + service.duracao_minutos, 0)
+    const servicesTotal = services.reduce((sum, service) => sum + Number(service.preco), 0)
+    const { data: productRows } = await admin.from('agendamento_comanda_produtos')
+      .select('preco_no_momento')
+      .eq('agendamento_id', bookingId)
+    const productsTotal = (productRows || []).reduce((sum: number, row: { preco_no_momento: number }) => sum + Number(row.preco_no_momento), 0)
+    const end = new Date(new Date(booking.data_hora_inicio).getTime() + duration * 60 * 1000).toISOString()
+
+    const { error: updateError } = await admin
+      .from('agendamentos')
+      .update({
+        servico_id: uniqueServiceIds[0],
+        combo_id: null,
+        data_hora_fim: end,
+        valor_cobrado: servicesTotal + productsTotal,
+      })
+      .eq('id', bookingId)
+      .eq('profissional_id', user.id)
+
+    if (updateError) {
+      const conflict = updateError.code === '23P01' || updateError.message?.toLowerCase().includes('overlap')
+      return { success: false, message: conflict ? 'A nova duração invade outro horário da agenda.' : 'Não foi possível atualizar o atendimento.' }
+    }
+
+    await admin.from('agendamento_servicos').delete().eq('agendamento_id', bookingId)
+    const { error: detailError } = await admin.from('agendamento_servicos').insert(
+      services.map((service) => ({
+        agendamento_id: bookingId,
+        servico_id: service.id,
+        preco_no_momento: Number(service.preco),
+        duracao_no_momento_minutos: service.duracao_minutos,
+      }))
+    )
+    if (detailError) return { success: false, message: 'O atendimento foi atualizado, mas os detalhes dos serviços não puderam ser salvos.' }
+
+    if (booking.google_event_id) {
+      try {
+        const client = Array.isArray(booking.clientes) ? booking.clientes[0] : booking.clientes
+        await updateGoogleCalendarEvent({
+          profissionalId: user.id,
+          googleEventId: booking.google_event_id,
+          clienteNome: client?.nome || 'Cliente',
+          clienteTelefone: client?.telefone || '',
+          servicoNome: services.map((service) => service.nome).join(' + '),
+          dataHoraInicio: booking.data_hora_inicio,
+          dataHoraFim: end,
+        })
+      } catch (calendarError) {
+        console.error('[Google Calendar] Erro ao sincronizar serviços editados:', calendarError)
+      }
+    }
+
+    revalidatePath('/dashboard/agenda')
+    return { success: true, message: 'Procedimentos atualizados.' }
+  } catch (error) {
+    console.error('[updateBookingServicesAction] Erro:', error)
+    return { success: false, message: 'Não foi possível atualizar os procedimentos.' }
   }
 }
 
@@ -1165,4 +1324,3 @@ export async function updateBookingStatusAction(
     return { success: false, message: err?.message || 'Erro ao atualizar status.' }
   }
 }
-

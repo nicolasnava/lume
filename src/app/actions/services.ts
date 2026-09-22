@@ -45,6 +45,7 @@ export async function createServiceAction(formData: ServiceFormData) {
     }
 
     const adminSupabase = createAdminClient()
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (adminSupabase.from('servicos') as any).insert([
       {
@@ -161,6 +162,15 @@ export async function deleteServiceAction(serviceId: string) {
 
     const adminSupabase = createAdminClient()
 
+    const { data: service } = await adminSupabase
+      .from('servicos')
+      .select('id')
+      .eq('id', serviceId)
+      .eq('profissional_id', user.id)
+      .maybeSingle()
+
+    if (!service) return { success: false, message: 'Serviço não encontrado.' }
+
     // 1. Verificar se já existem agendamentos vinculados a este serviço
     const { count, error: countError } = await adminSupabase
       .from('agendamentos')
@@ -174,16 +184,7 @@ export async function deleteServiceAction(serviceId: string) {
     const hasBookings = count && count > 0
 
     if (hasBookings) {
-      // Regra de negócio: Impedir exclusão física e desativar o serviço
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: deactivateError } = await (adminSupabase.from('servicos') as any)
-        .update({ ativo: false })
-        .eq('id', serviceId)
-        .eq('profissional_id', user.id)
-
-      if (deactivateError) throw deactivateError
-
-      // Contar agendamentos futuros pendentes
+      // Serviços com atendimentos em aberto permanecem apenas desativados até a conclusão.
       const nowIso = new Date().toISOString()
       const { count: pendingCount } = await adminSupabase
         .from('agendamentos')
@@ -194,6 +195,27 @@ export async function deleteServiceAction(serviceId: string) {
 
       const pending = pendingCount || 0
 
+      if (pending === 0) {
+        const { error: archiveError } = await adminSupabase
+          .from('servicos')
+          .update({ ativo: false, deletado_em: nowIso })
+          .eq('id', serviceId)
+          .eq('profissional_id', user.id)
+        if (archiveError) throw archiveError
+
+        revalidatePath('/dashboard/servicos')
+        revalidatePath('/p/[slug]', 'page')
+        return { success: true, isSoftDeleted: false, pendingCount: 0, message: 'Serviço removido da sua lista.' }
+      }
+
+      const { error: deactivateError } = await adminSupabase
+        .from('servicos')
+        .update({ ativo: false })
+        .eq('id', serviceId)
+        .eq('profissional_id', user.id)
+
+      if (deactivateError) throw deactivateError
+
       revalidatePath('/dashboard/servicos')
       revalidatePath('/p/[slug]', 'page')
       return {
@@ -201,9 +223,7 @@ export async function deleteServiceAction(serviceId: string) {
         isSoftDeleted: true,
         pendingCount: pending,
         message:
-          pending > 0
-            ? `Serviço desativado para novas clientes! Você ainda possui ${pending} ${pending === 1 ? 'atendimento agendado' : 'atendimentos agendados'} para este procedimento.`
-            : 'Este serviço possui histórico e foi desativado para preservar seus relatórios.',
+          `Serviço desativado para novas clientes! Você ainda possui ${pending} ${pending === 1 ? 'atendimento agendado' : 'atendimentos agendados'} para este procedimento.`,
       }
     } else {
       // Exclusão física se não houver agendamentos

@@ -1193,7 +1193,7 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
 
                 {/* Detalhamento que abre ao clicar (Plano Individual) */}
                 {showPlanDetails && (
-                  <div className="mt-3.5 p-4 sm:p-5 rounded-2xl bg-white/10 border border-white/15 text-left text-xs space-y-3 animate-in fade-in duration-300">
+                  <div className="mt-3.5 border-t border-white/15 pt-4 text-left text-xs space-y-3 animate-in fade-in duration-200">
                     <div className="flex items-center justify-between pb-2.5 border-b border-white/10">
                       <span className="font-extrabold text-white text-xs tracking-wide flex items-center gap-2">
                         <Sparkles className="h-4 w-4 text-[#B8A9D9] shrink-0" />
@@ -1206,7 +1206,7 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
 
                     <div className="space-y-2.5">
                       {/* Bloco 1 */}
-                      <div className="bg-white/10 p-3 rounded-xl border border-white/10 space-y-1">
+                      <div className="space-y-1 border-b border-white/10 pb-3">
                         <span className="font-bold text-white block text-xs">
                           1. Sua cliente agenda sozinha 24h por dia
                         </span>
@@ -1216,7 +1216,7 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
                       </div>
 
                       {/* Bloco 2 */}
-                      <div className="bg-white/10 p-3 rounded-xl border border-white/10 space-y-1">
+                      <div className="space-y-1">
                         <span className="font-bold text-white block text-xs">
                           2. Fim das faltas com avisos automáticos no WhatsApp
                         </span>
@@ -1227,7 +1227,7 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
                     </div>
 
                     {/* Faixa inferior de benefício */}
-                    <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex items-center gap-2 text-[11px] text-[#FAF7F5]/90">
+                    <div className="flex items-center gap-2 border-t border-white/10 pt-3 text-[11px] text-[#FAF7F5]/90">
                       <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
                       <span>
                         <strong>Google Agenda integrado:</strong> bloqueia horários pessoais e evita duplicidade de atendimentos.
@@ -1386,7 +1386,7 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
 
                 {/* Detalhamento que abre ao clicar (Lumê Studio) */}
                 {showPlanDetails && (
-                  <div className="mt-3.5 p-4 sm:p-5 rounded-2xl bg-[#FAF0F5] border border-[#8C5383]/20 text-left text-xs space-y-3 animate-in fade-in duration-300">
+                  <div className="mt-3.5 border-t border-[#8C5383]/20 pt-4 text-left text-xs space-y-3 animate-in fade-in duration-200">
                     <div className="flex items-center justify-between pb-2.5 border-b border-[#8C5383]/15">
                       <span className="font-extrabold text-[#3D2E4D] text-xs tracking-wide flex items-center gap-2">
                         <Store className="h-4 w-4 text-[#8C5383] shrink-0" />
@@ -1399,7 +1399,7 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
 
                     <div className="space-y-2.5">
                       {/* Bloco 1 */}
-                      <div className="bg-white p-3 rounded-xl border border-[#E8DFD8] shadow-2xs space-y-1">
+                      <div className="space-y-1 border-b border-[#E8DFD8] pb-3">
                         <span className="font-bold text-[#8C5383] block text-xs">
                           1. Salão com equipe comissionada (tradicional)
                         </span>
@@ -1409,7 +1409,7 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
                       </div>
 
                       {/* Bloco 2 */}
-                      <div className="bg-white p-3 rounded-xl border border-[#E8DFD8] shadow-2xs space-y-1">
+                      <div className="space-y-1">
                         <span className="font-bold text-[#3D2E4D] block text-xs">
                           2. Espaço compartilhado (aluguel de cadeira ou maca)
                         </span>
@@ -1420,7 +1420,7 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
                     </div>
 
                     {/* Faixa inferior de benefício */}
-                    <div className="p-2.5 rounded-xl bg-white/60 border border-[#E8DFD8] flex items-center gap-2 text-[11px] text-[#5A4F6A]">
+                    <div className="flex items-center gap-2 border-t border-[#E8DFD8] pt-3 text-[11px] text-[#5A4F6A]">
                       <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>
                         <strong>Custo zero para as parceiras:</strong> a equipe usa de graça e a recepção visualiza tudo em uma só tela.

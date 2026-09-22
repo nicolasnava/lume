@@ -11,6 +11,7 @@ import {
 } from '@/app/actions/booking'
 import { TimeSlot, WorkingDayInfo } from '@/lib/booking/availability'
 import Toast from '@/components/ui/Toast'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import VerticalDayList from './VerticalDayList'
 import PaymentIcon from '@/components/common/PaymentIcon'
 import { getContrastingTextColor } from '@/lib/utils/contrast'
@@ -32,6 +33,7 @@ import {
   Tag,
 } from 'lucide-react'
 import { ComboItem } from '@/app/actions/combos'
+import { ComandaProduto } from '@/app/actions/comanda'
 import { validarCupomAgendamentoAction } from '@/app/actions/coupons'
 
 type ProfissionalRow = Database['public']['Views']['profissionais_publico']['Row']
@@ -42,6 +44,9 @@ interface BookingWizardPageClientProps {
   allServicos: ServicoRow[]
   allCombos?: ComboItem[]
   initialServicoId?: string
+  initialComboId?: string
+  allComandaProdutos?: ComandaProduto[]
+  initialProdutoId?: string
   studioContext?: {
     nome: string
     slug: string
@@ -59,21 +64,30 @@ export default function BookingWizardPageClient({
   allServicos,
   allCombos = [],
   initialServicoId,
+  initialComboId,
+  allComandaProdutos = [],
+  initialProdutoId,
   studioContext,
 }: BookingWizardPageClientProps) {
   const initialServico = allServicos.find((s) => s.id === initialServicoId && s.ativo !== false) || null
+  const initialCombo = allCombos.find((combo) => combo.id === initialComboId && combo.ativo) || null
+  const initialProduto = allComandaProdutos.find((produto) => produto.id === initialProdutoId && produto.ativo) || null
 
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(() => (initialServico ? 2 : 1))
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(() => (initialServico && !initialCombo && !initialProduto ? 2 : 1))
 
   const vitrineUrl = studioContext
     ? `/studio/${studioContext.slug}/${profissional.slug}`
     : `/p/${profissional.slug}`
 
-  const [selectedServicos, setSelectedServicos] = useState<ServicoRow[]>(() =>
-    initialServico ? [initialServico] : []
-  )
+  const comboInitialServices = initialCombo
+    ? allServicos.filter((service) => initialCombo.servicos.some((comboService) => comboService.id === service.id))
+    : []
+  const [selectedServicos, setSelectedServicos] = useState<ServicoRow[]>(() => initialServico ? [initialServico] : comboInitialServices)
 
-  const [selectedCombo, setSelectedCombo] = useState<ComboItem | null>(null)
+  const [selectedCombo, setSelectedCombo] = useState<ComboItem | null>(initialCombo)
+  const [selectedProdutos, setSelectedProdutos] = useState<ComandaProduto[]>(() => initialProduto ? [initialProduto] : [])
+  const [pendingCombo, setPendingCombo] = useState<ComboItem | null>(null)
+  const [isSelectedComboExpanded, setIsSelectedComboExpanded] = useState(false)
 
   // Estados para expansão de pacotes e serviços
   const [expandedComboIds, setExpandedComboIds] = useState<Record<string, boolean>>({})
@@ -127,7 +141,9 @@ export default function BookingWizardPageClient({
   const corPrimaria = profissional.cor_primaria || '#B8A9D9'
   const textColorOnPrimary = getContrastingTextColor(corPrimaria)
 
-  const totalDuracaoMinutos = selectedServicos.reduce((sum, s) => sum + s.duracao_minutos, 0)
+  const totalDuracaoMinutos = selectedCombo?.servicos.length === 0
+    ? selectedCombo.duracaoTotalMinutos + selectedServicos.reduce((sum, s) => sum + s.duracao_minutos, 0)
+    : selectedServicos.reduce((sum, s) => sum + s.duracao_minutos, 0)
   // Se houver combo selecionado, usa o preço promocional do combo mais eventuais avulsos extras
   const totalPreco = selectedCombo
     ? Number(selectedCombo.preco_combo) +
@@ -135,6 +151,8 @@ export default function BookingWizardPageClient({
         .filter((s) => !selectedCombo.servicos.some((cs) => cs.id === s.id))
         .reduce((sum, s) => sum + Number(s.preco), 0)
     : selectedServicos.reduce((sum, s) => sum + Number(s.preco), 0)
+  const produtosTotal = selectedProdutos.reduce((sum, produto) => sum + Number(produto.preco), 0)
+  const totalGeral = totalPreco + produtosTotal
 
   // Item 17: Carregar dias considerando a janela configurada da profissional
   useEffect(() => {
@@ -169,7 +187,7 @@ export default function BookingWizardPageClient({
   }
 
   // Prompt 61: Adicionar combo completo ao atendimento
-  const handleAddCombo = (combo: ComboItem) => {
+  const applyCombo = (combo: ComboItem) => {
     const hasInactive = combo.servicos.some(
       (s) => s.ativo === false || allServicos.some((as) => as.id === s.id && as.ativo === false)
     )
@@ -181,8 +199,6 @@ export default function BookingWizardPageClient({
       })
       return
     }
-
-    setSelectedCombo(combo)
 
     // Converte os serviços do combo em objetos ServicoRow compatíveis
     const comboServicosList: ServicoRow[] = combo.servicos.map((cs) => {
@@ -207,12 +223,24 @@ export default function BookingWizardPageClient({
       } as ServicoRow
     })
 
-    setSelectedServicos(comboServicosList)
+    const extras = selectedServicos.filter((service) => !combo.servicos.some((comboService) => comboService.id === service.id))
+    setSelectedCombo(combo)
+    setSelectedServicos([...comboServicosList, ...extras])
+  }
+
+  const handleAddCombo = (combo: ComboItem) => {
+    const duplicated = selectedServicos.some((service) => combo.servicos.some((comboService) => comboService.id === service.id))
+    if (duplicated && selectedCombo?.id !== combo.id) {
+      setPendingCombo(combo)
+      return
+    }
+    applyCombo(combo)
   }
 
   const handleRemoveCombo = () => {
+    const comboServiceIds = new Set(selectedCombo?.servicos.map((service) => service.id) || [])
     setSelectedCombo(null)
-    setSelectedServicos([])
+    setSelectedServicos((current) => current.filter((service) => !comboServiceIds.has(service.id)))
   }
 
   const handleSelectDate = async (dateStr: string) => {
@@ -248,7 +276,7 @@ export default function BookingWizardPageClient({
 
   const handleSubmitBooking = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedSlot || !selectedDateStr || selectedServicos.length === 0) return
+    if (!selectedSlot || !selectedDateStr || (selectedServicos.length === 0 && !selectedCombo)) return
 
     setSubmitting(true)
     setErrorMsg(null)
@@ -257,9 +285,10 @@ export default function BookingWizardPageClient({
 
     const res = await createBookingAction({
       profissional_id: profissional.id,
-      servico_id: servicoIdsList[0],
+      servico_id: servicoIdsList[0] || null,
       servico_ids: servicoIdsList,
       combo_id: selectedCombo?.id || null,
+      produto_ids: selectedProdutos.map((produto) => produto.id),
       cupom_id: cupomAplicado?.cupomId || null,
       desconto_cupom: cupomAplicado?.descontoCalculado || null,
       data_hora_inicio: selectedSlot.dataHoraInicio,
@@ -299,7 +328,7 @@ export default function BookingWizardPageClient({
       profissionalId: profissional.id,
       codigo: cupomCodigoInput,
       clienteTelefone: clienteTelefone || null,
-      valorTotal: totalPreco,
+      valorTotal: totalGeral,
     })
 
     setValidatingCupom(false)
@@ -309,7 +338,7 @@ export default function BookingWizardPageClient({
         cupomId: res.cupomId,
         codigo: res.codigo || cupomCodigoInput.toUpperCase(),
         descontoCalculado: res.descontoCalculado,
-        valorFinal: res.valorFinal ?? (totalPreco - res.descontoCalculado),
+        valorFinal: res.valorFinal ?? (totalGeral - res.descontoCalculado),
       })
       setToast({
         show: true,
@@ -450,7 +479,7 @@ export default function BookingWizardPageClient({
               <p>
                 Valor Total:{' '}
                 <strong className="text-emerald-700 font-semibold">
-                  R$ {totalPreco.toFixed(2)}
+                  R$ {totalGeral.toFixed(2)}
                 </strong>
               </p>
             </div>
@@ -471,10 +500,22 @@ export default function BookingWizardPageClient({
                 <div className="space-y-2">
                   <h3 className="text-lg font-bold text-[#4A3F5C] flex items-center gap-1.5">
                     <Scissors className="h-5 w-5 text-[#B8A9D9]" />
-                    <span>Monte seu atendimento ({selectedServicos.length})</span>
+                    <span>Monte seu atendimento ({selectedServicos.length + selectedProdutos.length + (selectedCombo ? 1 : 0)})</span>
                   </h3>
 
-                  {selectedServicos.length === 0 ? (
+                  {selectedCombo && (
+                    <div className="overflow-hidden rounded-2xl border border-[#B8A9D9]/45 bg-white shadow-2xs">
+                      <div className="flex items-center gap-3 p-3.5">
+                        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[#FAF7F5]">{selectedCombo.foto_url ? <Image src={selectedCombo.foto_url} alt={selectedCombo.nome} fill className="object-cover" unoptimized /> : <Package className="m-5 h-6 w-6 text-[#8675A9]" />}</div>
+                        <div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-wider text-[#8675A9]">Pacote selecionado</p><h4 className="truncate text-sm font-extrabold text-[#4A3F5C]">{selectedCombo.nome}</h4><div className="mt-1 flex gap-3 text-[11px] font-semibold"><span className="text-emerald-700">R$ {Number(selectedCombo.preco_combo).toFixed(2)}</span><span className="text-gray-500">{selectedCombo.duracaoTotalMinutos} min</span></div></div>
+                        <button type="button" onClick={() => setIsSelectedComboExpanded((current) => !current)} className="rounded-full p-2 text-[#4A3F5C] transition-transform duration-150 ease-out active:scale-[0.97]" aria-label="Mostrar serviços do pacote"><ChevronDown className={`h-4 w-4 transition-transform duration-200 ease-out ${isSelectedComboExpanded ? 'rotate-180' : ''}`} /></button>
+                        <button type="button" onClick={handleRemoveCombo} className="rounded-full p-2 text-rose-600 transition-transform duration-150 ease-out active:scale-[0.97]" aria-label="Remover pacote"><Trash2 className="h-4 w-4" /></button>
+                      </div>
+                      {isSelectedComboExpanded && selectedCombo.servicos.length > 0 && <div className="space-y-2 border-t border-gray-100 px-3.5 py-3 animate-in fade-in duration-150">{selectedCombo.servicos.map((service) => <div key={service.id} className="flex items-center gap-2.5"><div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-[#FAF7F5]">{service.foto_url ? <Image src={service.foto_url} alt={service.nome} fill className="object-cover" unoptimized /> : <Scissors className="m-2 h-5 w-5 text-[#B8A9D9]" />}</div><div><p className="text-xs font-bold text-[#4A3F5C]">{service.nome}</p><p className="text-[10px] text-gray-500">{service.duracao_minutos} min · R$ {Number(service.preco).toFixed(2)}</p></div></div>)}</div>}
+                    </div>
+                  )}
+
+                  {selectedServicos.length === 0 && !selectedCombo ? (
                     <div className="rounded-xl border border-dashed border-gray-300 p-4 text-center text-xs text-gray-400 font-medium">
                       Nenhum serviço selecionado. Escolha um serviço abaixo.
                     </div>
@@ -531,6 +572,26 @@ export default function BookingWizardPageClient({
                             className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition cursor-pointer shrink-0"
                             title="Remover este serviço"
                           >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {selectedProdutos.length > 0 && (
+                    <div className="space-y-2 pt-2">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#8675A9]">Comanda digital</p>
+                      {selectedProdutos.map((produto) => (
+                        <div key={produto.id} className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-3">
+                          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#FAF7F5]">
+                            {produto.foto_url ? <Image src={produto.foto_url} alt={produto.nome} fill className="object-cover" unoptimized /> : <Package className="m-4 h-6 w-6 text-[#B8A9D9]" />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-bold text-[#4A3F5C]">{produto.nome}</p>
+                            <p className="text-xs font-bold text-emerald-700">R$ {Number(produto.preco).toFixed(2)}</p>
+                          </div>
+                          <button type="button" onClick={() => setSelectedProdutos((items) => items.filter((item) => item.id !== produto.id))} className="rounded-xl p-2 text-rose-600 transition-transform duration-150 ease-out active:scale-[0.97]" aria-label={`Remover ${produto.nome}`}>
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
@@ -772,14 +833,14 @@ export default function BookingWizardPageClient({
                       </span>
                       <span className="text-gray-300">•</span>
                       <span className="text-sm font-bold text-emerald-700">
-                        R$ {totalPreco.toFixed(2)}
+                        R$ {totalGeral.toFixed(2)}
                       </span>
                     </div>
                   </div>
 
                   <button
                     type="button"
-                    disabled={selectedServicos.length === 0}
+                    disabled={selectedServicos.length === 0 && !selectedCombo}
                     onClick={() => setStep(2)}
                     className="px-5 py-2.5 rounded-xl font-semibold text-xs text-white shadow-md transition hover:opacity-90 disabled:opacity-50 cursor-pointer"
                     style={{ backgroundColor: corPrimaria, color: textColorOnPrimary }}
@@ -834,7 +895,7 @@ export default function BookingWizardPageClient({
                         />
                       </div>
                       <span className="font-black text-emerald-700 shrink-0 ml-2">
-                        R$ {totalPreco.toFixed(2)}
+                        R$ {totalGeral.toFixed(2)}
                       </span>
                     </button>
 
@@ -1095,7 +1156,7 @@ export default function BookingWizardPageClient({
                     <div className="pt-2 border-t border-gray-200/60 flex items-center justify-between text-xs sm:text-sm">
                       <span className="text-gray-500 font-semibold">Subtotal:</span>
                       <span className="line-through text-gray-400 font-bold">
-                        R$ {totalPreco.toFixed(2)}
+                        R$ {totalGeral.toFixed(2)}
                       </span>
                     </div>
                   )}
@@ -1115,8 +1176,8 @@ export default function BookingWizardPageClient({
                     <span className="text-xl sm:text-2xl font-extrabold text-emerald-700">
                       R${' '}
                       {(cupomAplicado
-                        ? Math.max(0, totalPreco - cupomAplicado.descontoCalculado)
-                        : totalPreco
+                        ? Math.max(0, totalGeral - cupomAplicado.descontoCalculado)
+                        : totalGeral
                       ).toFixed(2)}
                     </span>
                   </div>
@@ -1307,6 +1368,18 @@ export default function BookingWizardPageClient({
         message={toast?.message || ''}
         type={toast?.type}
         onClose={() => setToast(null)}
+      />
+      <ConfirmDialog
+        open={!!pendingCombo}
+        title="Serviço já selecionado"
+        description={pendingCombo ? `O pacote ${pendingCombo.nome} já inclui um serviço escolhido individualmente. Deseja manter o pacote e evitar cobrança duplicada?` : ''}
+        confirmLabel="Adicionar pacote"
+        cancelLabel="Voltar"
+        onClose={() => setPendingCombo(null)}
+        onConfirm={() => {
+          if (pendingCombo) applyCombo(pendingCombo)
+          setPendingCombo(null)
+        }}
       />
     </div>
   )

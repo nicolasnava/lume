@@ -9,7 +9,6 @@ import {
   ShieldCheck,
   Lock,
   Scissors,
-  Clock,
   MessageCircle,
   XCircle,
 } from 'lucide-react'
@@ -125,7 +124,6 @@ export default function JornadaClientePage() {
 
             <div className="space-y-10">
               {journeyMoments.map((moment, idx) => {
-                const Icon = moment.icon
                 const isLast = idx === journeyMoments.length - 1
                 return (
                   <div key={moment.number} className="relative flex gap-6 sm:gap-8">
@@ -140,7 +138,7 @@ export default function JornadaClientePage() {
                     <div className={`pb-2 flex-1 space-y-2 ${isLast ? '' : 'pb-4'}`}>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[11px] font-bold text-[#8C5383] uppercase tracking-widest">{moment.badge}</span>
-                        <span className="text-[11px] text-[#6B5E7A] font-medium bg-[#FAF8F5] px-2 py-0.5 rounded-full border border-[#E8DFD8]">
+                        <span className="text-[11px] text-[#6B5E7A] font-medium">
                           {moment.time}
                         </span>
                       </div>
