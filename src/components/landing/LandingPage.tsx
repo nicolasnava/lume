@@ -1,44 +1,26 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import Link from 'next/link'
 import Image from 'next/image'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import {
   ArrowRight,
   CheckCircle2,
-  Clock,
-  Smartphone,
-  Calendar,
-  DollarSign,
-  TrendingUp,
-  Percent,
-  Store,
-  Users,
   ChevronDown,
-  Lock,
-  Check,
-  Zap,
-  HelpCircle,
-  ShieldCheck,
   Scissors,
   Eye,
   Heart,
-  MessageCircle,
-  ExternalLink,
-  CalendarX,
-  CalendarDays,
   Play,
-  Sparkles,
 } from 'lucide-react'
 import LandingHeader from './LandingHeader'
 import LandingFooter from './LandingFooter'
 import InteractiveShowcaseSimulator from './InteractiveShowcaseSimulator'
 import FinancialSimulator from './FinancialSimulator'
-import { Button } from '@/components/ui/button'
 import CornerFillButton from '@/components/ui/CornerFillButton'
 import CasinoPriceTicker from '@/components/ui/CasinoPriceTicker'
+import PlanComparisonDialog from './PlanComparisonDialog'
+import BillingCycleToggle from './BillingCycleToggle'
 
 interface LandingPageProps {
   planPrice?: number
@@ -54,7 +36,7 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
   // Estado do FAQ Accordion
   const [openFaq, setOpenFaq] = useState<number | null>(0)
 
-  // Estado unificado para expansão simultânea dos detalhes de ambos os planos
+  // Comparação detalhada aberta a partir de qualquer um dos planos
   const [showPlanDetails, setShowPlanDetails] = useState(false)
 
   // Ciclo de cobrança: Mensal ou Anual
@@ -256,7 +238,7 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
   ]
 
   return (
-    <div ref={pageRef} className="min-h-screen bg-[#FAF8F5] text-[#3D2E4D] selection:bg-[#8C5383]/20 font-sans scroll-smooth">
+    <div ref={pageRef} className="landing-motion-scope min-h-screen bg-[#FAF8F5] text-[#3D2E4D] selection:bg-[#8C5383]/20 font-sans scroll-smooth">
       <LandingHeader />
 
       {/* ===================================================================== */}
@@ -1003,39 +985,7 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
 
           {/* Toggle de Ciclo de Faturamento (Mensal / Anual) */}
           <div className="flex flex-col items-center justify-center gap-3 pt-2">
-            <div className="inline-flex items-center p-1.5 rounded-full bg-white border border-[#E8DFD8] shadow-sm shadow-[#3D2E4D]/5">
-              <button
-                type="button"
-                onClick={() => setBillingCycle('monthly')}
-                className={`px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer active:scale-[0.98] ${
-                  billingCycle === 'monthly'
-                    ? 'bg-[#3D2E4D] text-white shadow-md'
-                    : 'text-[#6B5E7A] hover:text-[#3D2E4D]'
-                }`}
-              >
-                Mensal
-              </button>
-              <button
-                type="button"
-                onClick={() => setBillingCycle('annual')}
-                className={`px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer active:scale-[0.98] flex items-center gap-2 ${
-                  billingCycle === 'annual'
-                    ? 'bg-[#3D2E4D] text-white shadow-md'
-                    : 'text-[#6B5E7A] hover:text-[#3D2E4D]'
-                }`}
-              >
-                <span>Anual</span>
-                <span
-                  className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full transition-colors duration-200 ${
-                    billingCycle === 'annual'
-                      ? 'bg-white/20 text-white'
-                      : 'bg-[#8C5383]/10 text-[#8C5383] border border-[#8C5383]/15'
-                  }`}
-                >
-                  2 meses grátis
-                </span>
-              </button>
-            </div>
+            <BillingCycleToggle value={billingCycle} onChange={setBillingCycle} />
             <p className="text-xs text-[#6B5E7A] font-medium">
               {billingCycle === 'annual'
                 ? 'Economize 17% com faturamento anual antecipado'
@@ -1169,21 +1119,22 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
               </div>
 
               <div className="pt-6 border-t border-white/10 mt-6">
-                <Link
+                <CornerFillButton
                   href={billingCycle === 'annual' ? '/cadastro?plano=anual' : '/cadastro'}
-                  className="group w-full inline-flex items-center justify-center gap-2 rounded-full bg-white hover:bg-[#FAF7F5] py-4 text-xs sm:text-sm font-bold text-[#3D2E4D] shadow-sm hover:shadow-md hover:brightness-[1.02] transition-all duration-200 ease-out active:scale-[0.97] cursor-pointer whitespace-nowrap"
+                  variant="light"
+                  className="w-full py-4 text-xs sm:text-sm"
                 >
                   <span className="whitespace-nowrap">Começar 30 dias de teste grátis</span>
-                  <ArrowRight className="h-4 w-4 shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-1" />
-                </Link>
+                </CornerFillButton>
 
                 {/* Gatilho com setinha para ver mais detalhes (sincronizado) */}
                 <button
                   type="button"
-                  onClick={() => setShowPlanDetails((prev) => !prev)}
+                  onClick={() => setShowPlanDetails((open) => !open)}
+                  aria-expanded={showPlanDetails}
                   className="w-full mt-3.5 py-1.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-[#D5CBDD] hover:text-white transition-colors duration-200 active:scale-[0.98] cursor-pointer group"
                 >
-                  <span>{showPlanDetails ? 'Ocultar detalhes dos planos' : 'Ver mais detalhes dos planos'}</span>
+                  <span>{showPlanDetails ? 'Ocultar detalhes dos planos' : 'Ver detalhes dos planos'}</span>
                   <ChevronDown
                     className={`h-4 w-4 transition-transform duration-250 ease-out ${
                       showPlanDetails ? 'rotate-180 text-white' : 'text-[#D5CBDD]'
@@ -1191,50 +1142,6 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
                   />
                 </button>
 
-                {/* Detalhamento que abre ao clicar (Plano Individual) */}
-                {showPlanDetails && (
-                  <div className="mt-3.5 border-t border-white/15 pt-4 text-left text-xs space-y-3 animate-in fade-in duration-200">
-                    <div className="flex items-center justify-between pb-2.5 border-b border-white/10">
-                      <span className="font-extrabold text-white text-xs tracking-wide flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-[#B8A9D9] shrink-0" />
-                        <span>Como funciona na rotina da profissional solo:</span>
-                      </span>
-                      <span className="text-[10px] text-[#D5CBDD] font-bold uppercase tracking-wider">
-                        Autônoma
-                      </span>
-                    </div>
-
-                    <div className="space-y-2.5">
-                      {/* Bloco 1 */}
-                      <div className="space-y-1 border-b border-white/10 pb-3">
-                        <span className="font-bold text-white block text-xs">
-                          1. Sua cliente agenda sozinha 24h por dia
-                        </span>
-                        <p className="text-[11px] text-[#FAF7F5]/90 leading-relaxed">
-                          Você coloca seu link na bio do Instagram e WhatsApp. A cliente clica, vê seus procedimentos com fotos e marca na hora o horário livre. Você nunca mais para um atendimento nem perde tempo na folga respondendo mensagens.
-                        </p>
-                      </div>
-
-                      {/* Bloco 2 */}
-                      <div className="space-y-1">
-                        <span className="font-bold text-white block text-xs">
-                          2. Fim das faltas com avisos automáticos no WhatsApp
-                        </span>
-                        <p className="text-[11px] text-[#FAF7F5]/90 leading-relaxed">
-                          O sistema envia mensagem de confirmação para a cliente antes do horário marcado. Reduz faltas e cancelamentos de última hora em mais de 70%, garantindo que você não perca dinheiro com horário vago na sua agenda.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Faixa inferior de benefício */}
-                    <div className="flex items-center gap-2 border-t border-white/10 pt-3 text-[11px] text-[#FAF7F5]/90">
-                      <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <span>
-                        <strong>Google Agenda integrado:</strong> bloqueia horários pessoais e evita duplicidade de atendimentos.
-                      </span>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -1362,21 +1269,22 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
               </div>
 
               <div className="pt-6 border-t border-[#E8DFD8] mt-6">
-                <Link
+                <CornerFillButton
                   href={billingCycle === 'annual' ? '/studio?plano=anual' : '/studio'}
-                  className="group w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#8C5383] hover:bg-[#783F6F] py-4 text-xs sm:text-sm font-bold text-white shadow-sm hover:shadow-md hover:brightness-[1.03] transition-all duration-200 ease-out active:scale-[0.97] cursor-pointer whitespace-nowrap"
+                  variant="dark"
+                  className="w-full bg-[#8C5383] py-4 text-xs sm:text-sm"
                 >
                   <span className="whitespace-nowrap">Conhecer o Lumê Studio</span>
-                  <ExternalLink className="h-4 w-4 shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-1" />
-                </Link>
+                </CornerFillButton>
 
                 {/* Gatilho com setinha para ver mais detalhes (sincronizado) */}
                 <button
                   type="button"
-                  onClick={() => setShowPlanDetails((prev) => !prev)}
+                  onClick={() => setShowPlanDetails((open) => !open)}
+                  aria-expanded={showPlanDetails}
                   className="w-full mt-3.5 py-1.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-[#8C5383] hover:text-[#6A3D63] transition-colors duration-200 active:scale-[0.98] cursor-pointer group"
                 >
-                  <span>{showPlanDetails ? 'Ocultar detalhes dos planos' : 'Ver mais detalhes dos planos'}</span>
+                  <span>{showPlanDetails ? 'Ocultar detalhes dos planos' : 'Ver detalhes dos planos'}</span>
                   <ChevronDown
                     className={`h-4 w-4 transition-transform duration-250 ease-out ${
                       showPlanDetails ? 'rotate-180 text-[#6A3D63]' : 'text-[#8C5383]'
@@ -1384,54 +1292,12 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
                   />
                 </button>
 
-                {/* Detalhamento que abre ao clicar (Lumê Studio) */}
-                {showPlanDetails && (
-                  <div className="mt-3.5 border-t border-[#8C5383]/20 pt-4 text-left text-xs space-y-3 animate-in fade-in duration-200">
-                    <div className="flex items-center justify-between pb-2.5 border-b border-[#8C5383]/15">
-                      <span className="font-extrabold text-[#3D2E4D] text-xs tracking-wide flex items-center gap-2">
-                        <Store className="h-4 w-4 text-[#8C5383] shrink-0" />
-                        <span>Como funciona nos 2 modelos de salão:</span>
-                      </span>
-                      <span className="text-[10px] text-[#8C5383] font-bold uppercase tracking-wider">
-                        Salões & Equipes
-                      </span>
-                    </div>
-
-                    <div className="space-y-2.5">
-                      {/* Bloco 1 */}
-                      <div className="space-y-1 border-b border-[#E8DFD8] pb-3">
-                        <span className="font-bold text-[#8C5383] block text-xs">
-                          1. Salão com equipe comissionada (tradicional)
-                        </span>
-                        <p className="text-[11px] text-[#5A4F6A] leading-relaxed">
-                          O Lumê calcula a comissão de cada profissional automaticamente por porcentagem. No dia do acerto, você envia o extrato de repasse pronto no WhatsApp da parceira com 1 toque, sem calculadora nem confusão.
-                        </p>
-                      </div>
-
-                      {/* Bloco 2 */}
-                      <div className="space-y-1">
-                        <span className="font-bold text-[#3D2E4D] block text-xs">
-                          2. Espaço compartilhado (aluguel de cadeira ou maca)
-                        </span>
-                        <p className="text-[11px] text-[#5A4F6A] leading-relaxed">
-                          Cada profissional parceira tem seu próprio login no celular com privacidade blindada: uma nunca vê o dinheiro nem os clientes da outra. Ao mesmo tempo, todas aparecem reunidas na vitrine coletiva do salão.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Faixa inferior de benefício */}
-                    <div className="flex items-center gap-2 border-t border-[#E8DFD8] pt-3 text-[11px] text-[#5A4F6A]">
-                      <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>
-                        <strong>Custo zero para as parceiras:</strong> a equipe usa de graça e a recepção visualiza tudo em uma só tela.
-                      </span>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
 
           </div>
+
+          <PlanComparisonDialog open={showPlanDetails} onClose={() => setShowPlanDetails(false)} />
 
         </div>
       </section>
@@ -1533,13 +1399,9 @@ export default function LandingPage({ planPrice = 69.90 }: LandingPageProps) {
             </p>
 
             <div className="pt-2 flex justify-center">
-              <Link
-                href="/cadastro"
-                className="group inline-flex items-center justify-center gap-2 rounded-full bg-white hover:bg-[#FAF7F5] px-6 sm:px-8 py-3.5 sm:py-4 text-xs sm:text-sm font-bold text-[#3D2E4D] shadow-sm hover:shadow-md hover:brightness-[1.02] transition-all duration-200 ease-out active:scale-[0.97] cursor-pointer max-w-full text-center"
-              >
+              <CornerFillButton href="/cadastro" variant="light" className="max-w-full px-6 py-3.5 text-center text-xs sm:px-8 sm:py-4 sm:text-sm">
                 <span className="truncate sm:whitespace-nowrap">Testar minha agenda grátis (30 dias)</span>
-                <ArrowRight className="h-4 w-4 text-[#3D2E4D] shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-1" />
-              </Link>
+              </CornerFillButton>
             </div>
           </div>
         </div>

@@ -1,21 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import {
-  ArrowRight,
   CheckCircle2,
-  Calendar,
-  Users,
-  TrendingUp,
   ChevronDown,
   HelpCircle,
-  Check,
-  Sparkles,
+  ArrowRight,
 } from 'lucide-react'
 import LandingHeader from './LandingHeader'
 import LandingFooter from './LandingFooter'
 import { CasinoPriceTicker, CornerFillButton } from '@/components/ui'
+import BillingCycleToggle from './BillingCycleToggle'
+import PlanComparisonDialog from './PlanComparisonDialog'
 
 interface PrecosPageProps {
   planPrice?: number
@@ -28,6 +24,7 @@ export default function PrecosPage({ planPrice = 69.90, trialDays = 30 }: Precos
 
   // Ciclo de cobrança: Mensal ou Anual
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly')
+  const [showPlanDetails, setShowPlanDetails] = useState(false)
 
   const faqs = [
     {
@@ -63,7 +60,7 @@ export default function PrecosPage({ planPrice = 69.90, trialDays = 30 }: Precos
   ]
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#3D2E4D] font-sans selection:bg-[#8C5383]/20">
+    <div className="landing-motion-scope min-h-screen bg-[#FAF8F5] text-[#3D2E4D] font-sans selection:bg-[#8C5383]/20">
       <LandingHeader />
 
       {/* Hero da Página de Preços */}
@@ -87,39 +84,7 @@ export default function PrecosPage({ planPrice = 69.90, trialDays = 30 }: Precos
           
           {/* Toggle de Ciclo de Faturamento (Mensal / Anual) */}
           <div className="flex flex-col items-center justify-center gap-3 pt-2">
-            <div className="inline-flex items-center p-1.5 rounded-full bg-white border border-[#E8DFD8] shadow-sm shadow-[#3D2E4D]/5">
-              <button
-                type="button"
-                onClick={() => setBillingCycle('monthly')}
-                className={`px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer active:scale-[0.98] ${
-                  billingCycle === 'monthly'
-                    ? 'bg-[#3D2E4D] text-white shadow-md'
-                    : 'text-[#6B5E7A] hover:text-[#3D2E4D]'
-                }`}
-              >
-                Mensal
-              </button>
-              <button
-                type="button"
-                onClick={() => setBillingCycle('annual')}
-                className={`px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer active:scale-[0.98] flex items-center gap-2 ${
-                  billingCycle === 'annual'
-                    ? 'bg-[#3D2E4D] text-white shadow-md'
-                    : 'text-[#6B5E7A] hover:text-[#3D2E4D]'
-                }`}
-              >
-                <span>Anual</span>
-                <span
-                  className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full transition-colors duration-200 ${
-                    billingCycle === 'annual'
-                      ? 'bg-white/20 text-white'
-                      : 'bg-[#8C5383]/10 text-[#8C5383] border border-[#8C5383]/15'
-                  }`}
-                >
-                  2 meses grátis
-                </span>
-              </button>
-            </div>
+            <BillingCycleToggle value={billingCycle} onChange={setBillingCycle} />
             <p className="text-xs text-[#6B5E7A] font-medium">
               {billingCycle === 'annual'
                 ? 'Economize 17% com faturamento anual antecipado'
@@ -130,55 +95,43 @@ export default function PrecosPage({ planPrice = 69.90, trialDays = 30 }: Precos
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch max-w-5xl mx-auto pt-2">
             
             {/* CARD 1: PLANO SOLO (FUNDO ESCURO, BORDA LILÁS LUMÊ, MAIS POPULAR) */}
-            <div className="bg-gradient-to-b from-[#3D2E4D] via-[#362744] to-[#2B1F37] text-white rounded-3xl p-8 sm:p-10 border-2 border-[#B8A9D9] shadow-xl shadow-[#3D2E4D]/20 ring-4 ring-[#B8A9D9]/15 space-y-7 flex flex-col justify-between h-full relative transition-shadow duration-300 hover:shadow-2xl hover:shadow-[#B8A9D9]/20">
+            <div className="pricing-card bg-gradient-to-b from-[#3D2E4D] via-[#362744] to-[#2B1F37] text-white rounded-3xl p-6 sm:p-9 border-2 border-[#B8A9D9] shadow-xl shadow-[#3D2E4D]/20 ring-4 ring-[#B8A9D9]/15 flex flex-col justify-between h-full relative transition-shadow duration-300 hover:shadow-2xl hover:shadow-[#B8A9D9]/20">
               <span className="absolute -top-3.5 right-6 px-4 py-1 rounded-full bg-[#B8A9D9] text-[#3D2E4D] text-[10px] font-black uppercase tracking-wider shadow-md">
                 Mais popular
               </span>
-              <div className="space-y-6">
+              <div className="space-y-6 flex-1 flex flex-col">
                 <div className="space-y-2 border-b border-white/10 pb-6 text-center">
-                  <div className="mb-2">
+                  <div className="h-7 flex items-center justify-center">
                     <span className="text-[11px] font-extrabold uppercase tracking-widest text-[#B8A9D9]">
                       Para Profissional Autônoma
                     </span>
                   </div>
-                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white">Plano Solo</h2>
-                  <p className="text-xs sm:text-sm text-[#D5CBDD]">
-                    Tudo o que você precisa para atender de forma individual com excelência.
-                  </p>
-                  <div className="flex items-baseline justify-center gap-1 pt-3">
+                  <div className="h-9 sm:h-10 flex items-center justify-center">
+                    <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">Lumê Individual</h2>
+                  </div>
+                  <div className="pt-2 pb-1 flex flex-col items-center justify-center">
+                    <span className="text-xs font-semibold text-[#D5CBDD]/70 line-through">{billingCycle === 'annual' ? 'De R$ 69,90 por' : 'De R$ 97,00 por'}</span>
+                    <div className="flex items-baseline justify-center gap-1.5 pt-0.5">
                     <CasinoPriceTicker
                       price={billingCycle === 'annual' ? '57,90' : planPrice.toFixed(2).replace('.', ',')}
                       className="text-4xl sm:text-5xl font-extrabold text-white"
                       suffixClassName="text-sm text-[#D5CBDD] font-semibold ml-1.5"
                     />
+                    </div>
                   </div>
-                  <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-[11px] text-[#C4B6CE] font-medium">
-                    {billingCycle === 'annual' ? (
-                      <>
-                        <span>R$ 694,80 faturado anualmente</span>
-                        <span>•</span>
-                        <span>2 meses grátis</span>
-                        <span>•</span>
-                        <span>30 dias de teste</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Teste grátis por {trialDays} dias</span>
-                        <span>•</span>
-                        <span>Sem taxa de adesão</span>
-                        <span>•</span>
-                        <span>Cancele quando quiser</span>
-                      </>
-                    )}
+                  <div className="h-6 flex items-center justify-center text-center">
+                    <p className="text-[11px] text-[#C4B6CE] font-medium">
+                      {billingCycle === 'annual' ? 'R$ 694,80 faturados anualmente (2 meses grátis)' : `${trialDays} dias de teste grátis · Cancele quando quiser`}
+                    </p>
                   </div>
                 </div>
 
                 {/* Lista Solo */}
-                <div className="space-y-3 text-left">
-                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                    Recursos incluídos no Solo:
-                  </h3>
-                  <ul className="space-y-3 text-xs font-medium text-[#FAF7F5]">
+                <div className="space-y-4 text-left flex-1 flex flex-col">
+                  <div className="h-9 flex items-center border-b border-white/10 pb-2">
+                    <h3 className="text-xs font-extrabold text-white uppercase tracking-wider">Tudo o que está incluído no plano:</h3>
+                  </div>
+                  <ul className="space-y-3 text-xs font-medium text-[#FAF7F5] flex-1">
                     <li className="flex items-start gap-2.5">
                       <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
                       <span><strong className="text-white">1 Profissional:</strong> acesso completo à sua conta e agenda pessoal.</span>
@@ -203,6 +156,8 @@ export default function PrecosPage({ planPrice = 69.90, trialDays = 30 }: Precos
                       <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
                       <span><strong className="text-white">Google Calendar em 2 vias:</strong> sincronização direta no seu celular.</span>
                     </li>
+                    <li className="flex items-start gap-2.5"><CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" /><span><strong className="text-white">Ficha completa de clientes:</strong> histórico de atendimentos, preferências e fotos.</span></li>
+                    <li className="flex items-start gap-2.5"><CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" /><span><strong className="text-white">Controle de disponibilidade:</strong> organize expediente, folgas e intervalos.</span></li>
                     <li className="flex items-start gap-2.5">
                       <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
                       <span><strong className="text-white">Gestão de combos, cupons e avaliações:</strong> fidelização completa.</span>
@@ -215,66 +170,59 @@ export default function PrecosPage({ planPrice = 69.90, trialDays = 30 }: Precos
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-white/10">
-                <Link
+              <div className="pt-6 border-t border-white/10 mt-6">
+                <CornerFillButton
                   href={billingCycle === 'annual' ? '/cadastro?plano=anual' : '/cadastro'}
-                  className="group w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-white hover:bg-[#FAF7F5] py-3.5 text-xs sm:text-sm font-bold text-[#3D2E4D] shadow-sm hover:shadow-md hover:brightness-[1.02] transition-all duration-200 ease-out active:scale-[0.97] cursor-pointer"
+                  variant="light"
+                  className="w-full py-4 text-xs sm:text-sm"
                 >
-                  <span>Começar Teste Grátis Solo</span>
-                  <ArrowRight className="h-4 w-4 transition-transform duration-200 ease-out group-hover:translate-x-1" />
-                </Link>
+                  <span className="whitespace-nowrap">Começar 30 dias de teste grátis</span>
+                </CornerFillButton>
+                <button type="button" onClick={() => setShowPlanDetails((open) => !open)} aria-expanded={showPlanDetails} className="w-full mt-3.5 py-1.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-[#D5CBDD] transition-colors duration-200 hover:text-white active:scale-[0.98]">
+                  <span>{showPlanDetails ? 'Ocultar detalhes dos planos' : 'Ver detalhes dos planos'}</span><ChevronDown className={`h-4 w-4 transition-transform duration-250 ease-out ${showPlanDetails ? 'rotate-180 text-white' : 'text-[#D5CBDD]'}`} />
+                </button>
               </div>
             </div>
 
             {/* CARD 2: PLANO STUDIO (FUNDO CLARO LÍMPIDO, BORDA E ACENTOS VINHO LUMÊ) */}
-            <div className="bg-white text-[#3D2E4D] rounded-3xl p-8 sm:p-10 border-2 border-[#8C5383] shadow-lg shadow-[#8C5383]/10 ring-2 ring-[#8C5383]/10 space-y-7 flex flex-col justify-between h-full relative transition-shadow duration-300 hover:shadow-xl hover:shadow-[#8C5383]/20">
+            <div className="pricing-card bg-white text-[#3D2E4D] rounded-3xl p-6 sm:p-9 border-2 border-[#8C5383] shadow-lg shadow-[#8C5383]/10 ring-2 ring-[#8C5383]/10 flex flex-col justify-between h-full relative transition-shadow duration-300 hover:shadow-xl hover:shadow-[#8C5383]/20">
               <span className="absolute -top-3.5 right-6 px-4 py-1 rounded-full bg-[#8C5383] text-white text-[10px] font-black uppercase tracking-wider shadow-md">
                 Mais Completo para Espaços
               </span>
 
-              <div className="space-y-6">
+              <div className="space-y-6 flex-1 flex flex-col">
                 <div className="space-y-2 border-b border-[#E8DFD8] pb-6 text-center">
-                  <div className="mb-2">
+                  <div className="h-7 flex items-center justify-center">
                     <span className="text-[11px] font-extrabold uppercase tracking-widest text-[#8C5383]">
                       Para Salões & Equipes
                     </span>
                   </div>
-                  <h2 className="text-2xl sm:text-3xl font-extrabold text-[#3D2E4D]">Plano Studio</h2>
-                  <p className="text-xs sm:text-sm text-[#6B5E7A]">
-                    Controle total da sua equipe, repasses automáticos e recepção unificada.
-                  </p>
-                  <div className="flex items-baseline justify-center gap-1 pt-3">
+                  <div className="h-9 sm:h-10 flex items-center justify-center">
+                    <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#3D2E4D]">Lumê Studio</h2>
+                  </div>
+                  <div className="pt-2 pb-1 flex flex-col items-center justify-center">
+                    <span className="text-xs font-semibold text-[#6B5E7A]/70 line-through">{billingCycle === 'annual' ? 'De R$ 169,00 por' : 'De R$ 249,00 por'}</span>
+                    <div className="flex items-baseline justify-center gap-1.5 pt-0.5">
                     <CasinoPriceTicker
                       price={billingCycle === 'annual' ? '139,00' : '169,00'}
                       className="text-4xl sm:text-5xl font-extrabold text-[#3D2E4D]"
                       suffixClassName="text-sm text-[#6B5E7A] font-semibold ml-1.5"
                     />
+                    </div>
                   </div>
-                  <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-[11px] text-[#6B5E7A] font-semibold">
-                    {billingCycle === 'annual' ? (
-                      <>
-                        <span>R$ 1.668,00 faturado anualmente</span>
-                        <span>•</span>
-                        <span>2 meses grátis</span>
-                        <span>•</span>
-                        <span>Até 6 profissionais</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Até 6 profissionais inclusas</span>
-                        <span>•</span>
-                        <span>+R$ 29/mês por profissional extra</span>
-                      </>
-                    )}
+                  <div className="h-6 flex items-center justify-center text-center">
+                    <p className="text-[11px] text-[#6B5E7A] font-medium">
+                      {billingCycle === 'annual' ? 'R$ 1.668,00 faturados anualmente (2 meses grátis)' : '30 dias de teste grátis · Até 6 profissionais incluídas'}
+                    </p>
                   </div>
                 </div>
 
                 {/* Lista Studio */}
-                <div className="space-y-3 text-left">
-                  <h3 className="text-xs font-bold text-[#3D2E4D] uppercase tracking-wider">
-                    Tudo do Solo mais recursos exclusivos de Studio:
-                  </h3>
-                  <ul className="space-y-3 text-xs font-medium text-[#3D2E4D]">
+                <div className="space-y-4 text-left flex-1 flex flex-col">
+                  <div className="h-9 flex items-center border-b border-[#E8DFD8] pb-2">
+                    <h3 className="text-xs font-extrabold text-[#3D2E4D] uppercase tracking-wider">Recursos exclusivos do Studio:</h3>
+                  </div>
+                  <ul className="space-y-3 text-xs font-medium text-[#3D2E4D] flex-1">
                     <li className="flex items-start gap-2.5">
                       <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
                       <span><strong>Equipe inclusa:</strong> até 6 profissionais (sem custo para as profissionais da equipe).</span>
@@ -307,6 +255,7 @@ export default function PrecosPage({ planPrice = 69.90, trialDays = 30 }: Precos
                       <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
                       <span><strong>Termo de integração digital (LGPD):</strong> respaldo jurídico alinhado à Lei do Salão-Parceiro.</span>
                     </li>
+                    <li className="flex items-start gap-2.5"><CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" /><span><strong>Suporte prioritário:</strong> canal direto de atendimento para o espaço.</span></li>
                     <li className="flex items-start gap-2.5">
                       <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
                       <span><strong>E muito mais:</strong> infraestrutura completa e atualizada para seu estúdio.</span>
@@ -315,18 +264,22 @@ export default function PrecosPage({ planPrice = 69.90, trialDays = 30 }: Precos
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-[#E8DFD8]">
-                <Link
+              <div className="pt-6 border-t border-[#E8DFD8] mt-6">
+                <CornerFillButton
                   href={billingCycle === 'annual' ? '/studio?plano=anual' : '/studio'}
-                  className="group w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#8C5383] hover:bg-[#783F6F] py-3.5 text-xs sm:text-sm font-bold text-white shadow-sm hover:shadow-md hover:brightness-[1.03] transition-all duration-200 ease-out active:scale-[0.97] cursor-pointer"
+                  variant="dark"
+                  className="w-full bg-[#8C5383] py-4 text-xs sm:text-sm"
                 >
-                  <span>Criar Meu Studio no Lumê</span>
-                  <ArrowRight className="h-4 w-4 transition-transform duration-200 ease-out group-hover:translate-x-1" />
-                </Link>
+                  <span className="whitespace-nowrap">Conhecer o Lumê Studio</span>
+                </CornerFillButton>
+                <button type="button" onClick={() => setShowPlanDetails((open) => !open)} aria-expanded={showPlanDetails} className="w-full mt-3.5 py-1.5 flex items-center justify-center gap-1.5 text-xs font-semibold text-[#8C5383] transition-colors duration-200 hover:text-[#6A3D63] active:scale-[0.98]">
+                  <span>{showPlanDetails ? 'Ocultar detalhes dos planos' : 'Ver detalhes dos planos'}</span><ChevronDown className={`h-4 w-4 transition-transform duration-250 ease-out ${showPlanDetails ? 'rotate-180 text-[#6A3D63]' : 'text-[#8C5383]'}`} />
+                </button>
               </div>
             </div>
 
           </div>
+          <PlanComparisonDialog open={showPlanDetails} onClose={() => setShowPlanDetails(false)} />
         </div>
       </section>
 
@@ -436,13 +389,9 @@ export default function PrecosPage({ planPrice = 69.90, trialDays = 30 }: Precos
               Experimente por {trialDays} dias grátis e transforme a rotina da sua agenda.
             </p>
             <div className="pt-2">
-              <Link
-                href="/cadastro"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-sm font-bold text-[#3D2E4D] shadow-lg hover:bg-[#F4EAE4] transition transform hover:-translate-y-0.5 cursor-pointer"
-              >
+              <CornerFillButton href={billingCycle === 'annual' ? '/cadastro?plano=anual' : '/cadastro'} variant="light" className="px-8 py-4 text-sm font-bold shadow-lg" icon={<ArrowRight className="h-4 w-4" />}>
                 <span>Testar agenda grátis</span>
-                <ArrowRight className="h-4 w-4 text-[#3D2E4D]" />
-              </Link>
+              </CornerFillButton>
             </div>
           </div>
         </div>

@@ -7,9 +7,9 @@ import {
   CalendarCheck,
   MessageSquare,
   Clock,
-  ArrowRight,
   ChevronDown,
 } from 'lucide-react'
+import CasinoPriceTicker from '@/components/ui/CasinoPriceTicker'
 
 interface FinancialSimulatorProps {
   planPrice?: number
@@ -26,46 +26,18 @@ function AnimatedNumber({
   suffix?: string
   className?: string
 }) {
-  const spanRef = useRef<HTMLSpanElement | null>(null)
-  const prevValueRef = useRef<number>(value)
-
-  useEffect(() => {
-    if (!spanRef.current) return
-    const isReduced =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-    if (isReduced) {
-      spanRef.current.textContent = `${prefix}${Math.round(value).toLocaleString('pt-BR')}${suffix}`
-      prevValueRef.current = value
-      return
-    }
-
-    const obj = { val: prevValueRef.current }
-    const tween = gsap.to(obj, {
-      val: value,
-      duration: 0.22,
-      ease: 'power2.out',
-      onUpdate: () => {
-        if (spanRef.current) {
-          spanRef.current.textContent = `${prefix}${Math.round(obj.val).toLocaleString('pt-BR')}${suffix}`
-        }
-      },
-      onComplete: () => {
-        prevValueRef.current = value
-      },
-    })
-
-    return () => {
-      tween.kill()
-    }
-  }, [value, prefix, suffix])
-
   return (
-    <span ref={spanRef} className={className}>
-      {prefix}
-      {Math.round(value).toLocaleString('pt-BR')}
-      {suffix}
+    <span className={className} role="text" aria-label={`${prefix}${Math.round(value).toLocaleString('pt-BR')}${suffix}`}>
+      <span aria-hidden="true">
+        {prefix}
+        <CasinoPriceTicker
+          price={Math.round(value).toLocaleString('pt-BR')}
+          prefix=""
+          suffix=""
+          className="align-baseline"
+        />
+        {suffix}
+      </span>
     </span>
   )
 }
@@ -300,10 +272,9 @@ export default function FinancialSimulator({ planPrice = 69.9 }: FinancialSimula
                 <button
                   type="button"
                   onClick={() => goToStep(2)}
-                  className="group w-full min-h-[52px] sm:min-h-[56px] flex items-center justify-center gap-2.5 rounded-2xl bg-[#4A3F5C] hover:bg-[#3D2E4D] text-white text-sm sm:text-base font-bold shadow-sm hover:shadow-md transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer"
+                  className="simulator-primary-action w-full min-h-[52px] sm:min-h-[56px] flex items-center justify-center gap-2.5 rounded-2xl bg-[#4A3F5C] text-white text-sm sm:text-base font-bold shadow-sm transition-transform duration-200 ease-out active:scale-[0.98] cursor-pointer"
                 >
                   <span>Descobrir meu potencial de ganho</span>
-                  <ArrowRight className="h-4 w-4 stroke-[2.5] transition-transform duration-200 ease-out group-hover:translate-x-0.5" />
                 </button>
                 <p className="text-center text-[11px] text-[#4A3F5C]/70 font-medium">
                   Leva menos de 30 segundos · Não precisa fazer cadastro
@@ -448,17 +419,16 @@ export default function FinancialSimulator({ planPrice = 69.9 }: FinancialSimula
                 <button
                   type="button"
                   onClick={() => goToStep(1)}
-                  className="w-full sm:w-auto py-2.5 px-4 text-xs font-bold text-[#4A3F5C]/80 hover:text-[#4A3F5C] transition cursor-pointer text-center"
+                  className="simulator-secondary-action w-full sm:w-auto py-2.5 px-4 text-xs font-bold text-[#4A3F5C]/80 hover:text-[#4A3F5C] transition cursor-pointer text-center"
                 >
-                  ← Voltar e ajustar números
+                  Voltar e ajustar números
                 </button>
                 <button
                   type="button"
                   onClick={() => goToStep(3)}
-                  className="group w-full sm:flex-1 min-h-[52px] sm:min-h-[56px] flex items-center justify-center gap-2 rounded-2xl bg-[#4A3F5C] hover:bg-[#3D2E4D] text-white text-sm sm:text-base font-bold shadow-sm hover:shadow-md transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer"
+                  className="simulator-primary-action w-full sm:flex-1 min-h-[52px] sm:min-h-[56px] flex items-center justify-center gap-2 rounded-2xl bg-[#4A3F5C] hover:bg-[#3D2E4D] text-white text-sm sm:text-base font-bold shadow-sm hover:shadow-md transition-transform duration-200 ease-out active:scale-[0.98] cursor-pointer"
                 >
                   <span>Ver meu resultado final</span>
-                  <ArrowRight className="h-4 w-4 stroke-[2.5] transition-transform duration-200 ease-out group-hover:translate-x-0.5" />
                 </button>
               </div>
             </div>
@@ -576,10 +546,9 @@ export default function FinancialSimulator({ planPrice = 69.9 }: FinancialSimula
               <div className="space-y-2 pt-2">
                 <Link
                   href="/cadastro"
-                  className="group w-full min-h-[54px] sm:min-h-[58px] flex items-center justify-center gap-2.5 rounded-2xl bg-[#4A3F5C] hover:bg-[#3D2E4D] text-white text-sm sm:text-base font-bold shadow-sm hover:shadow-md transition-all duration-200 ease-out active:scale-[0.98] cursor-pointer text-center px-4"
+                  className="simulator-primary-action w-full min-h-[54px] sm:min-h-[58px] flex items-center justify-center gap-2.5 rounded-2xl bg-[#4A3F5C] hover:bg-[#3D2E4D] text-white text-sm sm:text-base font-bold shadow-sm hover:shadow-md transition-transform duration-200 ease-out active:scale-[0.98] cursor-pointer text-center px-4"
                 >
                   <span>Quero recuperar esse potencial</span>
-                  <ArrowRight className="h-4 w-4 stroke-[2.5] transition-transform duration-200 ease-out group-hover:translate-x-0.5" />
                 </Link>
 
                 <p className="text-center text-[11px] text-[#4A3F5C]/75 font-medium">
@@ -590,9 +559,9 @@ export default function FinancialSimulator({ planPrice = 69.9 }: FinancialSimula
                   <button
                     type="button"
                     onClick={() => goToStep(1)}
-                    className="text-xs sm:text-sm font-bold text-[#4A3F5C]/80 hover:text-[#4A3F5C] transition cursor-pointer"
+                    className="simulator-secondary-action text-xs sm:text-sm font-bold text-[#4A3F5C]/80 hover:text-[#4A3F5C] transition cursor-pointer"
                   >
-                    ← Recalcular com outros números
+                    Recalcular com outros números
                   </button>
                 </div>
               </div>

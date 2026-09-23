@@ -174,6 +174,43 @@ export async function updateAvaliacaoAction(
   }
 }
 
+export async function setAvaliacaoOcultaAction(
+  id: string,
+  oculta: boolean
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, message: 'Usuária não autenticada.' }
+
+    const adminSupabase = createAdminClient()
+    const { data: avaliacao, error } = await adminSupabase
+      .from('avaliacoes')
+      .select('id, profissional_id, nota')
+      .eq('id', id)
+      .maybeSingle()
+    if (error || !avaliacao) return { success: false, message: 'Avaliação não encontrada.' }
+    if (avaliacao.profissional_id !== user.id) return { success: false, message: 'Você não pode alterar esta avaliação.' }
+    if (Number(avaliacao.nota) > 3) return { success: false, message: 'Somente avaliações de até 3 estrelas podem ser ocultadas.' }
+
+    const { error: updateError } = await adminSupabase
+      .from('avaliacoes')
+      .update({ oculta })
+      .eq('id', id)
+      .eq('profissional_id', user.id)
+    if (updateError) throw updateError
+
+    revalidatePath('/dashboard/avaliacoes')
+    revalidatePath('/p/[slug]', 'page')
+    revalidatePath('/studio/[slug]', 'page')
+    revalidatePath('/studio/[slug]/[profissionalSlug]', 'page')
+    return { success: true, message: oculta ? 'Avaliação ocultada da vitrine e do ranking.' : 'Avaliação voltou a aparecer na vitrine e no ranking.' }
+  } catch (error: unknown) {
+    console.error('[setAvaliacaoOcultaAction] Erro:', error)
+    return { success: false, message: 'Não foi possível alterar a visibilidade da avaliação.' }
+  }
+}
+
 // 3. Excluir avaliação (pela profissional logada)
 export async function deleteAvaliacaoAction(
   id: string

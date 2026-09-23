@@ -41,6 +41,7 @@ import {
 import {
   StudioUserStatus,
   StudioMember,
+  StudioInvite,
   StudioData,
   criarEstudio,
   atualizarEstudio,
@@ -65,12 +66,15 @@ import { parseCategorias, getCategoryLabel } from '@/lib/utils/categories'
 import CustomColorPickerModal from '@/components/ui/CustomColorPickerModal'
 import CustomDatePicker from '@/components/ui/CustomDatePicker'
 import StudioNewBookingModal from './StudioNewBookingModal'
+import type { SubscriptionData } from '@/app/actions/subscription'
 
 interface StudioDashboardViewProps {
   status: StudioUserStatus
+  planType: SubscriptionData['planoTipo']
+  studioPrice: number
 }
 
-export default function StudioDashboardView({ status }: StudioDashboardViewProps) {
+export default function StudioDashboardView({ status, planType, studioPrice }: StudioDashboardViewProps) {
   // --------------------------------------------------------------------------
   // ESTADO 1: SEM STUDIO
   // --------------------------------------------------------------------------
@@ -95,6 +99,10 @@ export default function StudioDashboardView({ status }: StudioDashboardViewProps
     )
   }
 
+  if (planType !== 'studio' && planType !== 'cortesia') {
+    return <StudioUpgradeSection price={studioPrice} />
+  }
+
   // --------------------------------------------------------------------------
   // ESTADO 3: DONA / ADMINISTRADORA
   // --------------------------------------------------------------------------
@@ -106,6 +114,61 @@ export default function StudioDashboardView({ status }: StudioDashboardViewProps
       ativoNoEstudio={status.ativoNoEstudio}
       donaNaEquipe={status.donaNaEquipe}
     />
+  )
+}
+
+function StudioUpgradeSection({ price }: { price: number }) {
+  const paymentRequestUrl = `https://wa.me/5511965758459?text=${encodeURIComponent(
+    'Olá! Quero liberar o acesso ao Lumê Studio. Podem me enviar as instruções oficiais de pagamento integral?'
+  )}`
+
+  return (
+    <section className="mx-auto max-w-4xl rounded-3xl border border-[#B8A9D9]/35 bg-white px-6 py-8 shadow-sm sm:px-10 sm:py-10">
+      <div className="mx-auto max-w-2xl text-center">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#B8A9D9]/20 text-[#4A3F5C]">
+          <Building2 className="h-6 w-6" />
+        </div>
+        <p className="mt-5 text-xs font-bold uppercase tracking-[0.16em] text-[#8675A9]">Lumê Studio</p>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight text-[#4A3F5C] sm:text-3xl">Seu salão, em uma só gestão</h1>
+        <p className="mt-3 text-sm leading-6 text-[#6D6478]">
+          Reúna a equipe em uma vitrine coletiva e acompanhe agenda, permissões e resultados do Studio.
+        </p>
+      </div>
+
+      <div className="mx-auto mt-7 max-w-xl divide-y divide-[#4A3F5C]/10 border-y border-[#4A3F5C]/10">
+        {[
+          'Vitrine única para o salão e suas profissionais',
+          'Agenda e operação da equipe em um só painel',
+          'Permissões individuais para cada profissional',
+          'Até 6 profissionais inclusas no plano',
+        ].map((benefit) => (
+          <div key={benefit} className="flex items-center gap-3 py-3 text-sm text-[#4A3F5C]">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-700" />
+            <span>{benefit}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-7 text-center">
+        <p className="text-sm text-[#6D6478]">Plano Studio</p>
+        <p className="mt-1 text-3xl font-bold tracking-tight text-[#4A3F5C]">
+          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(price)}
+          <span className="ml-1 text-sm font-medium text-[#6D6478]">/ mês</span>
+        </p>
+        <p className="mt-1 text-xs text-[#6D6478]">A cobrança é integral. O acesso e a troca de plano são liberados após a confirmação.</p>
+        <a
+          href={paymentRequestUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-5 inline-flex min-h-12 items-center justify-center rounded-full bg-[#4A3F5C] px-6 text-sm font-semibold text-white transition duration-200 ease-out hover:bg-[#392F49] active:scale-[0.98]"
+        >
+          Clique aqui para liberar acesso
+        </a>
+        <p className="mx-auto mt-3 max-w-md text-xs leading-5 text-[#81788B]">
+          Você falará com o suporte para receber as instruções oficiais. Não alteramos seu plano antes da confirmação do pagamento.
+        </p>
+      </div>
+    </section>
   )
 }
 
@@ -601,7 +664,7 @@ function OwnerStudioSection({
 }: {
   estudio: StudioData
   membros: StudioMember[]
-  convites: any[]
+  convites: StudioInvite[]
   ativoNoEstudio: boolean
   donaNaEquipe: boolean
 }) {

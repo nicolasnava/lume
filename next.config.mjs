@@ -24,6 +24,9 @@ const nextConfig = {
     '10.102.42.16',
     '10.102.42.16:3000',
     '10.102.42.16:3001',
+    '192.168.18.150',
+    '192.168.18.150:3000',
+    '192.168.18.150:3001',
     'localhost:3000',
     'localhost:3001',
   ],
@@ -31,6 +34,7 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
+    qualities: [75, 100],
     remotePatterns: [
       {
         protocol: 'https',

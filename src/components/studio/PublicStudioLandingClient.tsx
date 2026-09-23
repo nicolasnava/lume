@@ -5,23 +5,19 @@ import Link from 'next/link'
 import Image from 'next/image'
 import {
   Store,
-  Users,
   CheckCircle2,
   ArrowRight,
-  ShieldCheck,
-  Smartphone,
   ChevronDown,
-  Lock,
   Crown,
   HeartHandshake,
   Percent,
   Briefcase,
-  HelpCircle,
   ExternalLink,
   Building2,
 } from 'lucide-react'
 import LandingHeader from '@/components/landing/LandingHeader'
 import LandingFooter from '@/components/landing/LandingFooter'
+import CornerFillButton from '@/components/ui/CornerFillButton'
 
 export interface PublicFeaturedStudio {
   id: string
@@ -78,7 +74,7 @@ export default function PublicStudioLandingClient({
   ]
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#3D2E4D] font-sans selection:bg-[#8C5383]/20">
+    <div className="landing-motion-scope min-h-screen bg-[#FAF8F5] text-[#3D2E4D] font-sans selection:bg-[#8C5383]/20">
       <LandingHeader />
 
       {/* BANNER SE USUÁRIO JÁ ESTIVER LOGADO */}
@@ -454,20 +450,14 @@ export default function PublicStudioLandingClient({
             <p className="text-sm sm:text-base text-[#D5CBDD] max-w-md mx-auto leading-relaxed">
               Crie o link exclusivo do seu espaço e experimente por 30 dias gratuitos.
             </p>
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3.5">
-              <Link
+            <div className="pt-2 flex items-center justify-center">
+              <CornerFillButton
                 href="/cadastro"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-sm font-bold text-[#3D2E4D] shadow-lg hover:bg-[#F4EAE4] transition transform hover:-translate-y-0.5 cursor-pointer w-full sm:w-auto"
+                variant="light"
+                className="w-full px-8 py-4 text-sm font-bold shadow-lg sm:w-auto"
               >
                 <span>Criar meu Studio grátis</span>
-                <ArrowRight className="h-4 w-4 text-[#3D2E4D]" />
-              </Link>
-              <Link
-                href="/contato"
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 py-4 text-sm font-bold text-white hover:bg-white/20 transition cursor-pointer w-full sm:w-auto"
-              >
-                <span>Tirar dúvidas com o suporte</span>
-              </Link>
+              </CornerFillButton>
             </div>
           </div>
         </div>

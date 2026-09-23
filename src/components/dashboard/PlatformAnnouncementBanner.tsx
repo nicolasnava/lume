@@ -16,17 +16,14 @@ export default function PlatformAnnouncementBanner({ aviso }: PlatformAnnounceme
 
   useEffect(() => {
     if (aviso) {
-      const dismissedId = sessionStorage.getItem(`lume_dismissed_aviso_${aviso.id}`)
-      if (!dismissedId) {
-        setDismissed(false)
-      }
+      setDismissed(localStorage.getItem(`lume_dismissed_aviso_banner_${aviso.id}`) === 'true')
     }
   }, [aviso])
 
   if (!aviso || dismissed) return null
 
   const handleDismiss = () => {
-    sessionStorage.setItem(`lume_dismissed_aviso_${aviso.id}`, 'true')
+    localStorage.setItem(`lume_dismissed_aviso_banner_${aviso.id}`, 'true')
     setDismissed(true)
   }
 

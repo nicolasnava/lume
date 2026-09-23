@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Crop, Loader2, X } from 'lucide-react'
+import type { PointerEvent as ReactPointerEvent } from 'react'
+import { Crop, FlipHorizontal2, Loader2, RotateCw, X } from 'lucide-react'
 
 interface ImageCropperModalProps {
   file: File | null
@@ -24,7 +25,10 @@ export default function ImageCropperModal({
   const [zoom, setZoom] = useState(1)
   const [positionX, setPositionX] = useState(50)
   const [positionY, setPositionY] = useState(50)
+  const [rotation, setRotation] = useState(0)
+  const [flipped, setFlipped] = useState(false)
   const [processing, setProcessing] = useState(false)
+  const dragPosition = useRef<{ x: number; y: number } | null>(null)
   const objectUrl = useMemo(() => (file ? URL.createObjectURL(file) : ''), [file])
 
   useEffect(() => () => {
@@ -45,19 +49,45 @@ export default function ImageCropperModal({
       const context = canvas.getContext('2d')
       if (!context) throw new Error('Não foi possível preparar a imagem.')
 
-      const sourceRatio = image.naturalWidth / image.naturalHeight
-      let cropWidth = image.naturalWidth
-      let cropHeight = image.naturalHeight
+      const orientationCanvas = document.createElement('canvas')
+      const quarterTurn = rotation % 180 !== 0
+      const orientedWidth = quarterTurn ? image.naturalHeight : image.naturalWidth
+      const orientedHeight = quarterTurn ? image.naturalWidth : image.naturalHeight
+      orientationCanvas.width = orientedWidth
+      orientationCanvas.height = orientedHeight
+      const orientationContext = orientationCanvas.getContext('2d')
+      if (!orientationContext) throw new Error('Não foi possível preparar a imagem.')
+      orientationContext.save()
+      if (rotation === 90) {
+        orientationContext.translate(orientedWidth, 0)
+        orientationContext.rotate(Math.PI / 2)
+      } else if (rotation === 180) {
+        orientationContext.translate(orientedWidth, orientedHeight)
+        orientationContext.rotate(Math.PI)
+      } else if (rotation === 270) {
+        orientationContext.translate(0, orientedHeight)
+        orientationContext.rotate(-Math.PI / 2)
+      }
+      if (flipped) {
+        orientationContext.translate(orientedWidth, 0)
+        orientationContext.scale(-1, 1)
+      }
+      orientationContext.drawImage(image, 0, 0)
+      orientationContext.restore()
+
+      const sourceRatio = orientedWidth / orientedHeight
+      let cropWidth = orientedWidth
+      let cropHeight = orientedHeight
       if (sourceRatio > aspectRatio) cropWidth = cropHeight * aspectRatio
       else cropHeight = cropWidth / aspectRatio
 
       cropWidth /= zoom
       cropHeight /= zoom
-      const maxX = image.naturalWidth - cropWidth
-      const maxY = image.naturalHeight - cropHeight
+      const maxX = orientedWidth - cropWidth
+      const maxY = orientedHeight - cropHeight
       const sourceX = maxX * (positionX / 100)
       const sourceY = maxY * (positionY / 100)
-      context.drawImage(image, sourceX, sourceY, cropWidth, cropHeight, 0, 0, outputWidth, outputHeight)
+      context.drawImage(orientationCanvas, sourceX, sourceY, cropWidth, cropHeight, 0, 0, outputWidth, outputHeight)
 
       const blob = await new Promise<Blob>((resolve, reject) => {
         canvas.toBlob((result) => result ? resolve(result) : reject(new Error('Falha ao converter a imagem.')), 'image/webp', 0.88)
@@ -67,6 +97,16 @@ export default function ImageCropperModal({
     } finally {
       setProcessing(false)
     }
+  }
+
+  const moveCrop = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!dragPosition.current) return
+    const bounds = event.currentTarget.getBoundingClientRect()
+    const deltaX = event.clientX - dragPosition.current.x
+    const deltaY = event.clientY - dragPosition.current.y
+    dragPosition.current = { x: event.clientX, y: event.clientY }
+    setPositionX((current) => Math.max(0, Math.min(100, current - (deltaX / bounds.width) * 100)))
+    setPositionY((current) => Math.max(0, Math.min(100, current - (deltaY / bounds.height) * 100)))
   }
 
   return (
@@ -80,25 +120,40 @@ export default function ImageCropperModal({
           <button type="button" onClick={onCancel} className="rounded-full p-2 text-gray-400 transition-[transform,color,background-color] duration-150 ease-out hover:bg-gray-100 hover:text-[#4A3F5C] active:scale-[0.97]"><X className="h-5 w-5" /></button>
         </div>
 
-        <div className="mt-5 overflow-hidden rounded-2xl bg-[#241C2E]" style={{ aspectRatio }}>
+        <div
+          className="mt-5 touch-none cursor-grab overflow-hidden rounded-2xl bg-[#241C2E] active:cursor-grabbing"
+          style={{ aspectRatio }}
+          onPointerDown={(event) => {
+            dragPosition.current = { x: event.clientX, y: event.clientY }
+            event.currentTarget.setPointerCapture(event.pointerId)
+          }}
+          onPointerMove={moveCrop}
+          onPointerUp={() => { dragPosition.current = null }}
+          onPointerCancel={() => { dragPosition.current = null }}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img ref={imageRef} src={objectUrl} alt="Prévia para recorte" className="h-full w-full select-none object-cover transition-transform duration-200 ease-out" style={{ objectPosition: `${positionX}% ${positionY}%`, transform: `scale(${zoom})` }} />
+          <img ref={imageRef} src={objectUrl} alt="Prévia para recorte" className="pointer-events-none h-full w-full select-none object-cover transition-transform duration-200 ease-out" style={{ objectPosition: `${positionX}% ${positionY}%`, transform: `rotate(${rotation}deg) scale(${zoom}) scaleX(${flipped ? -1 : 1})` }} />
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          {[['Zoom', zoom, 1, 2, 0.01, setZoom], ['Horizontal', positionX, 0, 100, 1, setPositionX], ['Vertical', positionY, 0, 100, 1, setPositionY]].map(([label, value, min, max, step, setter]) => (
-            <label key={String(label)} className="space-y-1.5 text-[11px] font-bold text-[#4A3F5C]">
-              <span>{String(label)}</span>
-              <input type="range" min={Number(min)} max={Number(max)} step={Number(step)} value={Number(value)} onChange={(event) => (setter as (value: number) => void)(Number(event.target.value))} className="w-full accent-[#4A3F5C]" />
-            </label>
-          ))}
+        <div className="mt-4">
+          <label className="flex items-center gap-3 text-[11px] font-bold text-[#4A3F5C]">
+            <span className="shrink-0">Aproximar</span>
+            <input type="range" min={1} max={2} step={0.01} value={zoom} onChange={(event) => setZoom(Number(event.target.value))} className="w-full accent-[#4A3F5C]" />
+          </label>
+          <p className="mt-1 text-[10px] text-gray-500">Arraste a foto para ajustar o enquadramento.</p>
         </div>
 
-        <div className="mt-6 flex justify-end gap-2 border-t border-gray-100 pt-4">
-          <button type="button" onClick={onCancel} disabled={processing} className="rounded-xl border border-gray-200 px-4 py-2.5 text-xs font-bold text-gray-600 transition-transform duration-150 ease-out active:scale-[0.97] disabled:opacity-50">Cancelar</button>
-          <button type="button" onClick={createCroppedFile} disabled={processing} className="inline-flex items-center gap-2 rounded-xl bg-[#4A3F5C] px-5 py-2.5 text-xs font-bold text-white transition-[transform,background-color] duration-150 ease-out hover:bg-[#393047] active:scale-[0.97] disabled:opacity-50">
-            {processing && <Loader2 className="h-4 w-4 animate-spin" />} Usar imagem
-          </button>
+        <div className="mt-5 flex items-center justify-between gap-3 border-t border-gray-100 pt-4">
+          <div className="flex items-center gap-1.5">
+            <button type="button" onClick={() => setRotation((current) => (current + 90) % 360)} disabled={processing} aria-label="Girar foto 90 graus" title="Girar 90°" className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-[#4A3F5C] transition-[transform,background-color] duration-150 ease-out hover:bg-[#FAF7F5] active:scale-[0.97] disabled:opacity-50"><RotateCw className="h-4 w-4" /></button>
+            <button type="button" onClick={() => setFlipped((current) => !current)} disabled={processing} aria-label="Inverter foto" title="Inverter" className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border transition-[transform,background-color] duration-150 ease-out active:scale-[0.97] disabled:opacity-50 ${flipped ? 'border-[#B8A9D9] bg-[#B8A9D9]/15 text-[#4A3F5C]' : 'border-gray-200 text-[#4A3F5C] hover:bg-[#FAF7F5]'}`}><FlipHorizontal2 className="h-4 w-4" /></button>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button type="button" onClick={onCancel} disabled={processing} className="rounded-xl border border-gray-200 px-4 py-2.5 text-xs font-bold text-gray-600 transition-transform duration-150 ease-out active:scale-[0.97] disabled:opacity-50">Cancelar</button>
+            <button type="button" onClick={createCroppedFile} disabled={processing} className="inline-flex items-center gap-2 rounded-xl bg-[#4A3F5C] px-5 py-2.5 text-xs font-bold text-white transition-[transform,background-color] duration-150 ease-out hover:bg-[#393047] active:scale-[0.97] disabled:opacity-50">
+              {processing && <Loader2 className="h-4 w-4 animate-spin" />} Usar imagem
+            </button>
+          </div>
         </div>
       </div>
     </div>

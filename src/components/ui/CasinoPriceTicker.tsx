@@ -2,11 +2,6 @@
 
 import React, { useEffect, useState, useRef } from 'react'
 
-interface SmoothDigitProps {
-  char: string
-  columnIndex: number
-}
-
 interface CasinoReelDigitProps {
   char: string
   columnIndex: number
@@ -19,6 +14,7 @@ function CasinoReelDigit({ char, columnIndex }: CasinoReelDigitProps) {
   const [isSpinning, setIsSpinning] = useState(false)
   const isMountedRef = useRef(false)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const frame2Ref = useRef<number | null>(null)
 
   useEffect(() => {
     if (!isMountedRef.current) {
@@ -34,8 +30,6 @@ function CasinoReelDigit({ char, columnIndex }: CasinoReelDigitProps) {
     }
 
     const prevNum = parseInt(current, 10)
-    const targetNum = parseInt(char, 10)
-
     // Gera a sequência do carretel de cassino (reel de 6 a 8 números para criar o giro autêntico de caça-níqueis)
     const sequence: string[] = [current]
     const steps = 6 + (columnIndex % 3) // Variação sutil de giros entre colunas para realismo
@@ -50,10 +44,8 @@ function CasinoReelDigit({ char, columnIndex }: CasinoReelDigitProps) {
     setIsSpinning(false)
 
     // Frame duplo para garantir que o navegador registre a fita na posição inicial antes de deslizar
-    let frame1: number
-    let frame2: number
-    frame1 = requestAnimationFrame(() => {
-      frame2 = requestAnimationFrame(() => {
+    const frame1 = requestAnimationFrame(() => {
+      frame2Ref.current = requestAnimationFrame(() => {
         setIsSpinning(true)
       })
     })
@@ -71,7 +63,8 @@ function CasinoReelDigit({ char, columnIndex }: CasinoReelDigitProps) {
 
     return () => {
       cancelAnimationFrame(frame1)
-      cancelAnimationFrame(frame2)
+      if (frame2Ref.current !== null) cancelAnimationFrame(frame2Ref.current)
+      frame2Ref.current = null
       if (timerRef.current) clearTimeout(timerRef.current)
     }
   }, [char, current, columnIndex, isDigit])
@@ -130,7 +123,7 @@ export function CasinoPriceTicker({
   const chars = price.split('')
 
   return (
-    <div className={`inline-flex items-baseline font-black tracking-tight ${className}`}>
+    <span className={`inline-flex items-baseline font-black tracking-tight ${className}`}>
       {prefix && <span className={prefixClassName}>{prefix}</span>}
       <span className="inline-flex items-baseline overflow-hidden">
         {chars.map((char, i) => (
@@ -142,7 +135,7 @@ export function CasinoPriceTicker({
         ))}
       </span>
       {suffix && <span className={suffixClassName}>{suffix}</span>}
-    </div>
+    </span>
   )
 }
 

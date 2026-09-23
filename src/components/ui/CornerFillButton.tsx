@@ -7,6 +7,8 @@ export type CornerFillVariant = 'dark' | 'light' | 'pill'
 export interface CornerFillButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   href?: string
+  target?: React.HTMLAttributeAnchorTarget
+  rel?: string
   variant?: CornerFillVariant
   fillClassName?: string
   icon?: React.ReactNode
@@ -20,6 +22,8 @@ export const CornerFillButton = React.forwardRef<
   (
     {
       href,
+      target,
+      rel,
       variant = 'dark',
       className,
       fillClassName,
@@ -77,6 +81,8 @@ export const CornerFillButton = React.forwardRef<
       return (
         <Link
           href={href}
+          target={target}
+          rel={rel}
           className={baseClasses}
           ref={ref as React.Ref<HTMLAnchorElement>}
         >

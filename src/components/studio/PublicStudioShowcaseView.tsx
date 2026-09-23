@@ -5,7 +5,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Building2, Users, Scissors, ArrowRight, Instagram, MapPin } from 'lucide-react'
 import { parseCategorias, getCategoryLabel } from '@/lib/utils/categories'
-import StudioAnyMemberButton from './StudioAnyMemberButton'
 import PublicReviewsSection, { PublicReviewItem } from '@/components/reviews/PublicReviewsSection'
 
 // Exibir apenas o primeiro e segundo nome da profissional nos cards
@@ -291,24 +290,7 @@ export default function PublicStudioShowcaseView({
                           </div>
                         </div>
 
-                        {/* Badges de Especialidades */}
-                        {categorias.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {categorias.slice(0, 3).map((catKey) => (
-                              <span
-                                key={catKey}
-                                className="inline-block px-2.5 py-1 rounded-lg bg-gray-100 text-[10px] font-semibold text-gray-700"
-                              >
-                                {getCategoryLabel(catKey, true)}
-                              </span>
-                            ))}
-                            {categorias.length > 3 && (
-                              <span className="inline-block px-1.5 py-1 text-[10px] font-semibold text-gray-400">
-                                +{categorias.length - 3}
-                              </span>
-                            )}
-                          </div>
-                        )}
+                        <p className="truncate text-[11px] font-semibold text-gray-600">{categorias.map((catKey) => getCategoryLabel(catKey, true)).join(' · ') || 'Profissional de beleza'}</p>
 
                         {/* Bio (se houver) */}
                         {membro.bio && (
@@ -364,21 +346,7 @@ export default function PublicStudioShowcaseView({
                             {nomeExibicao}
                           </h3>
 
-                          {/* Especialidades em texto fluido sem fundo com separador suave */}
-                          {categorias.length > 0 ? (
-                            <div className="flex items-center gap-2 flex-wrap mt-1">
-                              {categorias.map((catKey, index) => (
-                                <span key={catKey} className="flex items-center gap-2 text-xs md:text-sm font-semibold text-gray-600">
-                                  {index > 0 && <span className="h-1 w-1 rounded-full bg-[#B8A9D9]" />}
-                                  <span>{getCategoryLabel(catKey, true)}</span>
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-xs md:text-sm text-gray-400 font-medium mt-1">
-                              Profissional de Beleza
-                            </p>
-                          )}
+                          <p className="mt-1 truncate text-xs font-semibold text-gray-600">{categorias.map((catKey) => getCategoryLabel(catKey, true)).join(' · ') || 'Profissional de Beleza'}</p>
 
                           {/* Bio curta integrada */}
                           {membro.bio && (
@@ -396,9 +364,8 @@ export default function PublicStudioShowcaseView({
 
                         {/* CTA destacado à direita ampliado */}
                         <div className="shrink-0">
-                          <span className="inline-flex items-center gap-2 px-5 md:px-6 py-3 md:py-3.5 rounded-2xl bg-[#B8A9D9] group-hover:bg-[#a695ca] text-[#4A3F5C] font-extrabold text-xs md:text-sm shadow-xs group-hover:shadow-md transition-all duration-300">
+                          <span className="inline-flex items-center justify-center rounded-full border border-[#4A3F5C]/10 bg-[#B8A9D9] px-5 py-3 font-extrabold text-xs text-[#4A3F5C] shadow-xs transition-[transform,background-color,color,box-shadow] duration-200 ease-out group-hover:-translate-y-0.5 group-hover:scale-[1.04] group-hover:border-[#4A3F5C] group-hover:bg-[#4A3F5C] group-hover:text-white group-hover:shadow-md md:px-6 md:py-3.5 md:text-sm">
                             <span>Agendar</span>
-                            <ArrowRight className="h-4 w-4 text-[#4A3F5C] group-hover:translate-x-1 transition-transform" />
                           </span>
                         </div>
                       </div>
@@ -407,21 +374,6 @@ export default function PublicStudioShowcaseView({
                 })}
               </div>
 
-              {/* BOTÃO: Qualquer profissional disponível */}
-              <div className="pt-8 text-center space-y-3">
-                <div className="relative flex py-2 items-center max-w-md mx-auto">
-                  <div className="grow border-t border-gray-200/80"></div>
-                  <span className="shrink mx-4 text-xs font-bold uppercase tracking-wider text-gray-400">
-                    Ou se preferir
-                  </span>
-                  <div className="grow border-t border-gray-200/80"></div>
-                </div>
-
-                <StudioAnyMemberButton studioSlug={studio.slug} corPrimaria={corPrimaria} />
-                <p className="text-[11px] text-gray-500 font-medium">
-                  Não tem preferência? Nós indicamos uma profissional disponível da equipe para você.
-                </p>
-              </div>
             </>
           )}
         </section>

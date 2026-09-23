@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import LandingHeader from './LandingHeader'
 import LandingFooter from './LandingFooter'
+import CornerFillButton from '@/components/ui/CornerFillButton'
 
 export default function SobrePage() {
   const principios = [
@@ -48,7 +49,7 @@ export default function SobrePage() {
   ]
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#3D2E4D] font-sans selection:bg-[#8C5383]/20">
+    <div className="landing-motion-scope min-h-screen bg-[#FAF8F5] text-[#3D2E4D] font-sans selection:bg-[#8C5383]/20">
       <LandingHeader />
 
       {/* ===================================================================== */}
@@ -182,20 +183,10 @@ export default function SobrePage() {
             <p className="text-sm sm:text-base text-[#D5CBDD] max-w-md mx-auto leading-relaxed">
               Crie sua conta em 1 minuto e experimente por 30 dias gratuitos. Sem necessidade de cartão.
             </p>
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3.5">
-              <Link
-                href="/cadastro"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-sm font-bold text-[#3D2E4D] shadow-lg hover:bg-[#F4EAE4] transition transform hover:-translate-y-0.5 cursor-pointer w-full sm:w-auto"
-              >
+            <div className="pt-2 flex items-center justify-center">
+              <CornerFillButton href="/cadastro" variant="light" className="w-full px-8 py-4 text-sm font-bold shadow-lg sm:w-auto">
                 <span>Começar meu teste grátis</span>
-                <ArrowRight className="h-4 w-4 text-[#3D2E4D]" />
-              </Link>
-              <Link
-                href="/contato"
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 py-4 text-sm font-bold text-white hover:bg-white/20 transition cursor-pointer w-full sm:w-auto"
-              >
-                <span>Falar com o time</span>
-              </Link>
+              </CornerFillButton>
             </div>
           </div>
         </div>

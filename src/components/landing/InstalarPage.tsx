@@ -1,8 +1,6 @@
 'use client'
 
-import Link from 'next/link'
 import {
-  ArrowRight,
   Smartphone,
   Share,
   PlusSquare,
@@ -15,17 +13,23 @@ import {
 } from 'lucide-react'
 import LandingHeader from './LandingHeader'
 import LandingFooter from './LandingFooter'
+import CornerFillButton from '@/components/ui/CornerFillButton'
 
 import { useState, useEffect } from 'react'
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>
+}
+
 export default function InstalarPage() {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
-    const handler = (e: any) => {
+    const handler = (e: Event) => {
       e.preventDefault()
-      setDeferredPrompt(e)
+      setDeferredPrompt(e as BeforeInstallPromptEvent)
     }
     window.addEventListener('beforeinstallprompt', handler)
 
@@ -47,7 +51,7 @@ export default function InstalarPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#3D2E4D] font-sans selection:bg-[#8C5383]/20">
+    <div className="landing-motion-scope min-h-screen bg-[#FAF8F5] text-[#3D2E4D] font-sans selection:bg-[#8C5383]/20">
       <LandingHeader />
 
       {/* Hero da Página de Instalação */}
@@ -74,13 +78,6 @@ export default function InstalarPage() {
               </button>
             ) : null}
 
-            <Link
-              href="/login"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-[#3D2E4D] px-8 py-4 text-sm font-bold text-white shadow-xl hover:bg-[#2E223B] transition transform hover:-translate-y-0.5 cursor-pointer"
-            >
-              <span>Abrir o Lumê no Celular</span>
-              <ArrowRight className="h-4 w-4" />
-            </Link>
           </div>
         </div>
       </section>
@@ -350,13 +347,13 @@ export default function InstalarPage() {
               Acesse sua conta ou crie seu teste grátis agora mesmo pelo celular.
             </p>
             <div className="pt-2">
-              <Link
+              <CornerFillButton
                 href="/login"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-sm font-bold text-[#3D2E4D] shadow-lg hover:bg-[#F4EAE4] transition transform hover:-translate-y-0.5 cursor-pointer"
+                variant="light"
+                className="px-8 py-4 text-sm font-bold shadow-lg"
               >
                 <span>Abrir o Lumê</span>
-                <ArrowRight className="h-4 w-4 text-[#3D2E4D]" />
-              </Link>
+              </CornerFillButton>
             </div>
           </div>
         </div>

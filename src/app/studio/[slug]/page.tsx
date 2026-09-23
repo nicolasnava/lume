@@ -92,6 +92,7 @@ export default async function StudioPublicPage({ params }: StudioPageProps) {
       .from('avaliacoes')
       .select('id, nota, comentario, created_at, agendamentos(clientes(nome), servicos(nome))')
       .in('profissional_id', memberIds)
+      .eq('oculta', false)
       .order('created_at', { ascending: false })
       .limit(30)
 

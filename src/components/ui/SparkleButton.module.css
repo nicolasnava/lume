@@ -1,0 +1,59 @@
+.button {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 999px;
+  padding: 10px 20px;
+  font-size: 12px;
+  font-weight: 700;
+  transform: translateZ(0);
+  transition: transform 280ms cubic-bezier(.23, 1, .32, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+.compact { padding: 4px 10px; font-size: 10px; }
+.label { position: relative; z-index: 2; }
+.light {
+  position: absolute;
+  inset: -100% -30%;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, #ffffff45, #b8a9d918 40%, transparent 65%);
+  opacity: 0;
+  transition: transform 280ms cubic-bezier(.23,1,.32,1), opacity 250ms ease-out;
+}
+.sheen {
+  position: absolute;
+  inset: -60% -25%;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 35%, #ffffff30 49%, #ffffff08 57%, transparent 70%);
+  transform: translate3d(-90%,0,0);
+  opacity: 0;
+  transition: transform 280ms cubic-bezier(.23,1,.32,1), opacity 240ms ease-out;
+}
+.rim {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 1px 0 #ffffff55, inset 0 -1px 0 #ffffff12;
+  pointer-events: none;
+  opacity: .5;
+  transition: opacity 250ms ease-out;
+}
+.button:focus-visible { outline: 2px solid #b8a9d9; outline-offset: 4px; }
+.button:focus-visible .sheen { transform: translate3d(25%,0,0); opacity: 1; }
+@media (hover: hover) {
+  .button:hover { transform: translate3d(0,-1px,0) scale(1.025); }
+  .button.compact:hover { transform: none; }
+  .button:hover .light, .button:hover .rim { opacity: 1; }
+  .button:hover .sheen { transform: translate3d(25%,0,0); opacity: 1; }
+}
+.button:active { transform: scale(.97); transition-duration: 150ms; }
+.button:active .light { opacity: 1; }
+@media (min-width: 640px) { .compact { font-size: 11px; } }
+@media (prefers-reduced-motion: reduce) {
+  .button, .light, .sheen, .rim { transition: none; }
+  .button:hover, .button:active { transform: none; }
+  .light, .sheen { display: none; }
+}

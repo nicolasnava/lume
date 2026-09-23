@@ -16,7 +16,7 @@ import CornerFillButton from '@/components/ui/CornerFillButton'
 
 export default function FuncionalidadesPage() {
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#3D2E4D] font-sans selection:bg-[#8C5383]/20">
+    <div className="landing-motion-scope min-h-screen bg-[#FAF8F5] text-[#3D2E4D] font-sans selection:bg-[#8C5383]/20">
       <LandingHeader />
 
       {/* Hero da Página de Funcionalidades */}

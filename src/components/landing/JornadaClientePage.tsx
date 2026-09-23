@@ -1,6 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import gsap from 'gsap'
 import {
   ArrowRight,
   CheckCircle2,
@@ -11,11 +14,20 @@ import {
   Scissors,
   MessageCircle,
   XCircle,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
 } from 'lucide-react'
 import LandingHeader from './LandingHeader'
 import LandingFooter from './LandingFooter'
+import CornerFillButton from '@/components/ui/CornerFillButton'
 
 export default function JornadaClientePage() {
+  const [activeStep, setActiveStep] = useState(0)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const progressLineRef = useRef<HTMLDivElement>(null)
+  const shouldReduceMotion = useReducedMotion()
+
   const journeyMoments = [
     {
       number: '01',
@@ -75,8 +87,24 @@ export default function JornadaClientePage() {
     },
   ]
 
+  useLayoutEffect(() => {
+    const line = progressLineRef.current
+    if (!line) return
+
+    gsap.to(line, {
+      scaleY: activeStep / (journeyMoments.length - 1),
+      duration: shouldReduceMotion ? 0 : 0.3,
+      ease: 'power2.out',
+      overwrite: true,
+    })
+
+    return () => {
+      gsap.killTweensOf(line)
+    }
+  }, [activeStep, shouldReduceMotion, journeyMoments.length])
+
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#3D2E4D] font-sans selection:bg-[#8C5383]/20">
+    <div className="landing-motion-scope min-h-screen bg-[#FAF8F5] text-[#3D2E4D] font-sans selection:bg-[#8C5383]/20">
       <LandingHeader />
 
       {/* ===================================================================== */}
@@ -117,52 +145,153 @@ export default function JornadaClientePage() {
             </p>
           </div>
 
-          {/* Timeline Vertical */}
-          <div className="relative">
-            {/* Linha vertical conectora */}
-            <div className="absolute left-[19px] top-0 bottom-0 w-px bg-gradient-to-b from-[#B8A9D9] via-[#B8A9D9]/50 to-transparent pointer-events-none" aria-hidden="true" />
+          <div className="grid items-start gap-6 sm:gap-8 md:grid-cols-[minmax(180px,0.7fr)_minmax(0,1.3fr)]">
+            <nav aria-label="Etapas da jornada da cliente" className="relative">
+              <div className="absolute left-[19px] top-5 bottom-5 w-px bg-[#E8DFD8]" aria-hidden="true" />
+              <div
+                ref={progressLineRef}
+                className="absolute left-[19px] top-5 bottom-5 w-px origin-top bg-[#8C5383]"
+                style={{ transform: 'scaleY(0)' }}
+                aria-hidden="true"
+              />
 
-            <div className="space-y-10">
-              {journeyMoments.map((moment, idx) => {
-                const isLast = idx === journeyMoments.length - 1
-                return (
-                  <div key={moment.number} className="relative flex gap-6 sm:gap-8">
-                    {/* Ponto da timeline */}
-                    <div className="relative flex flex-col items-center shrink-0">
-                      <div className="h-10 w-10 rounded-full bg-white border-2 border-[#B8A9D9] flex items-center justify-center z-10 shadow-sm">
-                        <span className="text-xs font-black text-[#8C5383] tracking-tight">{moment.number}</span>
-                      </div>
-                    </div>
-
-                    {/* Conteúdo */}
-                    <div className={`pb-2 flex-1 space-y-2 ${isLast ? '' : 'pb-4'}`}>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[11px] font-bold text-[#8C5383] uppercase tracking-widest">{moment.badge}</span>
-                        <span className="text-[11px] text-[#6B5E7A] font-medium">
-                          {moment.time}
+              <ol className="relative space-y-2">
+                {journeyMoments.map((moment, idx) => {
+                  const Icon = moment.icon
+                  const isActive = activeStep === idx
+                  return (
+                    <li key={moment.number}>
+                      <motion.button
+                        type="button"
+                        aria-current={isActive ? 'step' : undefined}
+                        aria-label={`Etapa ${moment.number}: ${moment.title}`}
+                        onClick={() => {
+                          setActiveStep(idx)
+                          setDetailsOpen(false)
+                        }}
+                        whileTap={{ scale: 0.98 }}
+                        transition={{ duration: shouldReduceMotion ? 0 : 0.16, ease: 'easeOut' }}
+                        className={`relative flex min-h-16 w-full items-center gap-3 rounded-2xl px-2.5 py-2 text-left transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8C5383] ${
+                          isActive ? 'bg-[#FAF7F5]' : 'hover:bg-[#FAF8F5]'
+                        }`}
+                      >
+                        <span className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold transition-colors duration-150 ${
+                          isActive
+                            ? 'border-[#8C5383] bg-[#8C5383] text-white'
+                            : idx < activeStep
+                              ? 'border-[#B8A9D9] bg-[#B8A9D9] text-[#3D2E4D]'
+                              : 'border-[#D9D0E8] bg-white text-[#8C5383]'
+                        }`}>
+                          {idx < activeStep ? <CheckCircle2 className="h-4 w-4" /> : moment.number}
                         </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[10px] font-bold uppercase tracking-wider text-[#8C5383]">{moment.badge}</span>
+                          <span className={`mt-0.5 block truncate text-xs font-semibold ${isActive ? 'text-[#3D2E4D]' : 'text-[#6B5E7A]'}`}>
+                            {moment.title}
+                          </span>
+                        </span>
+                        <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-[#8C5383]' : 'text-[#A99BB8]'}`} aria-hidden="true" />
+                      </motion.button>
+                    </li>
+                  )
+                })}
+              </ol>
+            </nav>
+
+            <div className="min-w-0">
+              <AnimatePresence mode="wait" initial={false}>
+                {journeyMoments.map((moment, idx) => idx === activeStep && (
+                  <motion.article
+                    key={moment.number}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: shouldReduceMotion ? 0 : 0.18, ease: 'easeOut' }}
+                    whileHover={shouldReduceMotion ? undefined : { y: -2 }}
+                    className="rounded-3xl border border-[#E8DFD8] bg-white p-5 shadow-sm sm:p-7"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <span className="text-[11px] font-bold uppercase tracking-widest text-[#8C5383]">
+                          Etapa {moment.number} <span className="px-1 text-[#C7BDD4]">/</span> {moment.time}
+                        </span>
+                        <h3 className="mt-2 text-lg font-bold leading-snug text-[#3D2E4D] sm:text-xl">
+                          {moment.title}
+                        </h3>
                       </div>
-
-                      <h3 className="text-base sm:text-lg font-bold text-[#3D2E4D] leading-snug">
-                        {moment.title}
-                      </h3>
-
-                      <p className="text-sm text-[#6B5E7A] leading-relaxed">
-                        {moment.desc}
-                      </p>
-
-                      <ul className="pt-1 space-y-1">
-                        {moment.details.map((detail, i) => (
-                          <li key={i} className="flex items-start gap-2 text-xs text-[#6B5E7A]">
-                            <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-[#B8A9D9] shrink-0" />
-                            {detail}
-                          </li>
-                        ))}
-                      </ul>
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#FAF7F5] text-[#8C5383]">
+                        <moment.icon className="h-5 w-5" aria-hidden="true" />
+                      </span>
                     </div>
-                  </div>
-                )
-              })}
+
+                    <p className="mt-3 text-sm leading-relaxed text-[#6B5E7A]">
+                      {moment.desc}
+                    </p>
+
+                    <p className="mt-4 border-l-2 border-[#B8A9D9] pl-3 text-sm font-semibold text-[#4A3F5C]">
+                      {moment.highlight}
+                    </p>
+
+                    <div className="mt-5 border-t border-[#EEE8F1] pt-4">
+                      <button
+                        type="button"
+                        aria-expanded={detailsOpen}
+                        onClick={() => setDetailsOpen((open) => !open)}
+                        className="inline-flex items-center gap-2 text-xs font-semibold text-[#6B5E7A] transition-colors hover:text-[#8C5383] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8C5383]"
+                      >
+                        {detailsOpen ? 'Ocultar detalhes' : 'Ver detalhes'}
+                        <motion.span animate={{ rotate: detailsOpen ? 180 : 0 }} transition={{ duration: shouldReduceMotion ? 0 : 0.18, ease: 'easeOut' }}>
+                          <ChevronDown className="h-4 w-4" />
+                        </motion.span>
+                      </button>
+                      <AnimatePresence initial={false}>
+                        {detailsOpen && (
+                          <motion.ul
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: shouldReduceMotion ? 0 : 0.18, ease: 'easeOut' }}
+                            className="mt-3 space-y-2 overflow-hidden"
+                          >
+                            {moment.details.map((detail) => (
+                              <li key={detail} className="flex items-start gap-2 text-xs leading-relaxed text-[#6B5E7A]">
+                                <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#8C5383]" />
+                                <span>{detail}</span>
+                              </li>
+                            ))}
+                          </motion.ul>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    <div className="mt-5 flex items-center justify-between">
+                      <button
+                        type="button"
+                        disabled={activeStep === 0}
+                        onClick={() => {
+                          setActiveStep((step) => Math.max(0, step - 1))
+                          setDetailsOpen(false)
+                        }}
+                        className="inline-flex min-h-10 items-center gap-1 rounded-xl pr-3 text-xs font-semibold text-[#6B5E7A] transition-colors hover:text-[#8C5383] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8C5383]"
+                      >
+                        <ChevronLeft className="h-4 w-4" /> Anterior
+                      </button>
+                      <span className="text-[11px] font-medium text-[#8C5383]">{idx + 1} de {journeyMoments.length}</span>
+                      <button
+                        type="button"
+                        disabled={activeStep === journeyMoments.length - 1}
+                        onClick={() => {
+                          setActiveStep((step) => Math.min(journeyMoments.length - 1, step + 1))
+                          setDetailsOpen(false)
+                        }}
+                        className="inline-flex min-h-10 items-center gap-1 rounded-xl pl-3 text-xs font-semibold text-[#6B5E7A] transition-colors hover:text-[#8C5383] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8C5383]"
+                      >
+                        Próxima <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </motion.article>
+                ))}
+              </AnimatePresence>
             </div>
           </div>
 
@@ -179,13 +308,9 @@ export default function JornadaClientePage() {
                 Sem mensagens perdidas, sem áudios de confirmação e sem estresse durante os atendimentos.
               </p>
             </div>
-            <Link
-              href="/cadastro"
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#3D2E4D] hover:bg-[#2E223B] px-8 py-4 text-xs sm:text-sm font-bold text-white shadow-md transition shrink-0 cursor-pointer w-full sm:w-auto"
-            >
+            <CornerFillButton href="/cadastro" variant="dark" className="w-full shrink-0 px-8 py-4 text-xs font-bold shadow-md sm:w-auto">
               <span>Experimentar 30 dias grátis</span>
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            </CornerFillButton>
           </div>
 
         </div>

@@ -17,7 +17,7 @@ import LandingFooter from './LandingFooter'
 
 export default function TermosPage() {
   return (
-    <div className="min-h-screen bg-[#FAF7F5] text-[#4A3F5C] font-sans selection:bg-[#B8A9D9]/30">
+    <div className="landing-motion-scope min-h-screen bg-[#FAF7F5] text-[#4A3F5C] font-sans selection:bg-[#B8A9D9]/30">
       <LandingHeader />
 
       <main className="py-12 sm:py-20">

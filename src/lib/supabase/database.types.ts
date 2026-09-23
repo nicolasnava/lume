@@ -526,6 +526,7 @@ export type Database = {
           profissional_id: string
           nota: number
           comentario: string | null
+          oculta: boolean
           created_at: string
         }
         Insert: {
@@ -534,6 +535,7 @@ export type Database = {
           profissional_id: string
           nota: number
           comentario?: string | null
+          oculta?: boolean
           created_at?: string
         }
         Update: {
@@ -542,6 +544,7 @@ export type Database = {
           profissional_id?: string
           nota?: number
           comentario?: string | null
+          oculta?: boolean
           created_at?: string
         }
         Relationships: []

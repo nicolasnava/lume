@@ -7,6 +7,7 @@ import { recordLoginLog, getActiveAvisoPlataforma } from '@/app/actions/adminPro
 import DashboardNav from '@/components/dashboard/DashboardNav'
 import PlatformAnnouncementBanner from '@/components/dashboard/PlatformAnnouncementBanner'
 import MobileNotificationBell from '@/components/dashboard/MobileNotificationBell'
+import PaymentReminderBanner from '@/components/dashboard/PaymentReminderBanner'
 import NpsSurveyModal from '@/components/dashboard/NpsSurveyModal'
 import { getContrastingTextColor, getLightTint } from '@/lib/utils/contrast'
 import { ExternalLink, User as UserIcon, AlertTriangle, ShieldAlert, LogOut } from 'lucide-react'
@@ -43,10 +44,24 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
   }
 
   // Executar buscas de layout em paralelo para carregamento instantâneo
-  const [profissional, ativoAviso] = await Promise.all([
+  const [profissional, ativoAviso, faturaPendente] = await Promise.all([
     getOrCreateProfissional(user.id, user.user_metadata?.nome),
     getActiveAvisoPlataforma(),
+    adminSupabase
+      .from('saas_faturas')
+      .select('id, data_vencimento, valor, link_pagamento, status')
+      .eq('profissional_id', user.id)
+      .in('status', ['pendente', 'vencido'])
+      .order('data_vencimento', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
   ])
+  const paymentReminder = faturaPendente.data ? {
+    id: faturaPendente.data.id,
+    dataVencimento: faturaPendente.data.data_vencimento,
+    valor: Number(faturaPendente.data.valor),
+    linkPagamento: faturaPendente.data.link_pagamento,
+  } : null
 
   // Fire-and-forget não-bloqueante para registro de log
   recordLoginLog(user.id).catch(() => {})
@@ -170,7 +185,7 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
 
           <div className="flex items-center gap-2">
             {/* Ícone Sino de Principais Avisos no Mobile */}
-            <MobileNotificationBell aviso={ativoAviso} statusConta={profissional?.status_conta} />
+            <MobileNotificationBell aviso={ativoAviso} statusConta={profissional?.status_conta} payment={paymentReminder} />
 
             {profissional && (
               <Link
@@ -212,6 +227,7 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
 
       {/* Aviso flutuante: não altera o fluxo nem cria espaçamento na página */}
       <PlatformAnnouncementBanner aviso={ativoAviso} />
+      <PaymentReminderBanner payment={paymentReminder} />
 
       {/* Modal de Pesquisa NPS (Exibido no máximo 1x a cada 30 dias) */}
       <NpsSurveyModal />

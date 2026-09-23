@@ -71,6 +71,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
       .from('avaliacoes')
       .select('id, nota, comentario, created_at, agendamentos(clientes(nome), servicos(nome))')
       .eq('profissional_id', prof.id)
+      .eq('oculta', false)
       .order('created_at', { ascending: false }),
     getCombosProfissionalAction(prof.id),
     getComandaProdutosAction(prof.id, true),

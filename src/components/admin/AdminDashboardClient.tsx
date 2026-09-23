@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useTransition, useRef, useEffect } from 'react'
+import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import gsap from 'gsap'
+import { AnimatePresence, motion } from 'motion/react'
 import {
   TrendingUp,
   Loader2,
@@ -111,30 +111,6 @@ export default function AdminDashboardClient({
   const [newPriorityDesc, setNewPriorityDesc] = useState('')
   const [alertFilter, setAlertFilter] = useState<'todos' | 'pagamento' | 'trial' | 'atividade' | 'cobranca'>('todos')
   const [showProjection, setShowProjection] = useState(false)
-
-  const alertsListRef = useRef<HTMLDivElement>(null)
-  const performersListRef = useRef<HTMLDivElement>(null)
-
-  // GSAP: Animação suave ao trocar filtros de Alertas e Profissionais
-  useEffect(() => {
-    if (alertsListRef.current && alertsListRef.current.children.length > 0) {
-      gsap.fromTo(
-        alertsListRef.current.children,
-        { opacity: 0, y: 8, scale: 0.99 },
-        { opacity: 1, y: 0, scale: 1, duration: 0.22, stagger: 0.03, ease: 'power2.out' }
-      )
-    }
-  }, [alertFilter])
-
-  useEffect(() => {
-    if (performersListRef.current && performersListRef.current.children.length > 0) {
-      gsap.fromTo(
-        performersListRef.current.children,
-        { opacity: 0, y: 8, scale: 0.99 },
-        { opacity: 1, y: 0, scale: 1, duration: 0.22, stagger: 0.03, ease: 'power2.out' }
-      )
-    }
-  }, [performerFilter])
 
   const toggleShowAiCard = () => {
     setShowAiCard((prev) => !prev)
@@ -643,38 +619,51 @@ export default function AdminDashboardClient({
 
       {/* 2. CARDS DE KPIS ESTRATÉGICOS (CLICÁVEIS PARA EXPANDIR HISTÓRICO) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div
+        <motion.div
           onClick={() => setExpandedCard(expandedCard === 'mrr' ? null : 'mrr')}
-          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer active:scale-[0.98] ${
+          role="button"
+          tabIndex={0}
+          aria-expanded={expandedCard === 'mrr'}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              setExpandedCard(expandedCard === 'mrr' ? null : 'mrr')
+            }
+          }}
+          whileHover={{ y: -3, scale: 1.005 }}
+          whileTap={{ scale: 0.985 }}
+          transition={{ type: 'spring', stiffness: 380, damping: 30, mass: 0.55 }}
+          className={`min-w-0 bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer transition-[border-color,box-shadow] duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B8A9D9] ${
             expandedCard === 'mrr'
               ? 'border-2 border-[#B8A9D9] ring-2 ring-[#B8A9D9]/30'
               : 'border border-[#B8A9D9]/30 hover:border-[#B8A9D9]/70'
           }`}
-          style={{ transition: 'transform 160ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out' }}
         >
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#B8A9D9]/10 rounded-full blur-2xl pointer-events-none" />
-          <div>
-            <span className="text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider block">
+          <div className="min-w-0">
+            <span className="block min-w-0 max-w-full truncate whitespace-nowrap text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider">
               {period === 'hoje'
                 ? 'Receita de hoje'
                 : period === 'ano'
                 ? 'Receita anual acumulada (ARR)'
                 : 'Receita recorrente mensal (MRR)'}
             </span>
-            <div className="mt-2.5 flex items-baseline gap-1">
-              <span className="text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
-                {periodMetrics.mrr >= 1000000
-                  ? `R$ ${(periodMetrics.mrr / 1000000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}M`
-                  : `R$ ${periodMetrics.mrr.toLocaleString('pt-BR')},00`}
-              </span>
+            <div className="mt-2.5 flex min-w-0 items-baseline gap-1">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span key={periodMetrics.mrr} initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="block min-w-0 max-w-full truncate whitespace-nowrap text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
+                  {periodMetrics.mrr >= 1000000
+                    ? `R$ ${(periodMetrics.mrr / 1000000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}M`
+                    : `R$ ${periodMetrics.mrr.toLocaleString('pt-BR')},00`}
+                </motion.span>
+              </AnimatePresence>
             </div>
-            <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-[#34D399]">
+            <div className="mt-1 flex min-w-0 items-center gap-1.5 whitespace-nowrap text-xs font-bold text-[#34D399]">
               <TrendingUp className="h-3.5 w-3.5" />
               <span>{periodMetrics.mrrPct}</span>
             </div>
           </div>
           <div className="flex items-end justify-between pt-3 border-t border-white/[0.08] mt-3">
-            <span className="text-[11px] text-[#A9A1B5] font-normal">
+              <span className="min-w-0 flex-1 truncate whitespace-nowrap text-[11px] text-[#A9A1B5] font-normal">
               {period === 'hoje' ? (
                 <>Projeção do dia: <strong className="text-[#F8F5FA] font-semibold">R$ 5.200,00</strong></>
               ) : period === 'ano' ? (
@@ -687,126 +676,175 @@ export default function AdminDashboardClient({
               <path d="M2 19 C 12 17, 20 12, 30 11 C 40 10, 48 13, 56 6 L 64 3" stroke="#B8A9D9" strokeWidth="2.5" strokeLinecap="round" />
             </svg>
           </div>
-        </div>
+        </motion.div>
 
-        <div
+        <motion.div
           onClick={() => setExpandedCard(expandedCard === 'profissionais' ? null : 'profissionais')}
-          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer active:scale-[0.98] ${
+          role="button"
+          tabIndex={0}
+          aria-expanded={expandedCard === 'profissionais'}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              setExpandedCard(expandedCard === 'profissionais' ? null : 'profissionais')
+            }
+          }}
+          whileHover={{ y: -3, scale: 1.005 }}
+          whileTap={{ scale: 0.985 }}
+          transition={{ type: 'spring', stiffness: 380, damping: 30, mass: 0.55 }}
+          className={`min-w-0 bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer transition-[border-color,box-shadow] duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B8A9D9] ${
             expandedCard === 'profissionais'
               ? 'border-2 border-[#38BDF8] ring-2 ring-[#38BDF8]/30'
               : 'border border-[#38BDF8]/30 hover:border-[#38BDF8]/70'
           }`}
-          style={{ transition: 'transform 160ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out' }}
         >
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#38BDF8]/10 rounded-full blur-2xl pointer-events-none" />
-          <div>
-            <span className="text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider block">
+          <div className="min-w-0">
+            <span className="block min-w-0 max-w-full truncate whitespace-nowrap text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider">
               Profissionais ativas
             </span>
-            <div className="mt-2.5 flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
-                {periodMetrics.ativas.toLocaleString('pt-BR')}
-              </span>
-              <span className="text-xs text-[#A9A1B5] font-semibold">assinantes</span>
+            <div className="mt-2.5 flex min-w-0 items-baseline gap-2 whitespace-nowrap">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span key={periodMetrics.ativas} initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="block min-w-0 max-w-full truncate whitespace-nowrap text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
+                  {periodMetrics.ativas.toLocaleString('pt-BR')}
+                </motion.span>
+              </AnimatePresence>
+              <span className="shrink-0 whitespace-nowrap text-xs text-[#A9A1B5] font-semibold">assinantes</span>
             </div>
-            <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-[#38BDF8]">
+            <div className="mt-1 flex min-w-0 items-center gap-1.5 whitespace-nowrap text-xs font-bold text-[#38BDF8]">
               <TrendingUp className="h-3.5 w-3.5" />
               <span>{periodMetrics.novosLabel}</span>
             </div>
           </div>
           <div className="flex items-end justify-between pt-3 border-t border-white/[0.08] mt-3">
-            <span className="text-[11px] text-[#A9A1B5] font-normal">
+              <span className="min-w-0 flex-1 truncate whitespace-nowrap text-[11px] text-[#A9A1B5] font-normal">
               Mix: <strong className="text-[#F8F5FA] font-semibold">1.180 Solo · 248 Studio</strong>
             </span>
             <svg className="w-16 h-6 overflow-visible shrink-0" viewBox="0 0 64 24" fill="none">
               <path d="M2 18 C 14 16, 24 13, 34 9 C 44 8, 54 5, 64 3" stroke="#38BDF8" strokeWidth="2.5" strokeLinecap="round" />
             </svg>
           </div>
-        </div>
+        </motion.div>
 
-        <div
+        <motion.div
           onClick={() => setExpandedCard(expandedCard === 'gmv' ? null : 'gmv')}
-          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer active:scale-[0.98] ${
+          role="button"
+          tabIndex={0}
+          aria-expanded={expandedCard === 'gmv'}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              setExpandedCard(expandedCard === 'gmv' ? null : 'gmv')
+            }
+          }}
+          whileHover={{ y: -3, scale: 1.005 }}
+          whileTap={{ scale: 0.985 }}
+          transition={{ type: 'spring', stiffness: 380, damping: 30, mass: 0.55 }}
+          className={`min-w-0 bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer transition-[border-color,box-shadow] duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B8A9D9] ${
             expandedCard === 'gmv'
               ? 'border-2 border-[#F5B84B] ring-2 ring-[#F5B84B]/30'
               : 'border border-[#F5B84B]/30 hover:border-[#F5B84B]/70'
           }`}
-          style={{ transition: 'transform 160ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out' }}
         >
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#F5B84B]/10 rounded-full blur-2xl pointer-events-none" />
-          <div>
-            <span className="text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider block">
+          <div className="min-w-0">
+            <span className="block min-w-0 max-w-full truncate whitespace-nowrap text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider">
               Volume transacionado (GMV)
             </span>
-            <div className="mt-2.5 flex items-baseline gap-1">
-              <span className="text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
-                {periodMetrics.gmv >= 1000000
-                  ? `R$ ${(periodMetrics.gmv / 1000000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}M`
-                  : periodMetrics.gmv >= 1000
-                  ? `R$ ${(periodMetrics.gmv / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}k`
-                  : `R$ ${periodMetrics.gmv.toLocaleString('pt-BR')},00`}
-              </span>
+            <div className="mt-2.5 flex min-w-0 items-baseline gap-1">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span key={periodMetrics.gmv} initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="block min-w-0 max-w-full truncate whitespace-nowrap text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
+                  {periodMetrics.gmv >= 1000000
+                    ? `R$ ${(periodMetrics.gmv / 1000000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}M`
+                    : periodMetrics.gmv >= 1000
+                    ? `R$ ${(periodMetrics.gmv / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}k`
+                    : `R$ ${periodMetrics.gmv.toLocaleString('pt-BR')},00`}
+                </motion.span>
+              </AnimatePresence>
             </div>
-            <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-[#F5B84B]">
+            <div className="mt-1 flex min-w-0 items-center gap-1.5 whitespace-nowrap text-xs font-bold text-[#F5B84B]">
               <TrendingUp className="h-3.5 w-3.5" />
               <span>{periodMetrics.gmvPct}</span>
             </div>
           </div>
           <div className="flex items-end justify-between pt-3 border-t border-white/[0.08] mt-3">
-            <span className="text-[11px] text-[#A9A1B5] font-normal">
+              <span className="min-w-0 flex-1 truncate whitespace-nowrap text-[11px] text-[#A9A1B5] font-normal">
               Ticket médio: <strong className="text-[#F8F5FA] font-semibold">{periodMetrics.ticketMedio}</strong>
             </span>
             <svg className="w-16 h-6 overflow-visible shrink-0" viewBox="0 0 64 24" fill="none">
               <path d="M2 20 C 12 18, 22 14, 32 12 C 42 10, 52 7, 64 2" stroke="#F5B84B" strokeWidth="2.5" strokeLinecap="round" />
             </svg>
           </div>
-        </div>
+        </motion.div>
 
-        <div
+        <motion.div
           onClick={() => setExpandedCard(expandedCard === 'conversao' ? null : 'conversao')}
-          className={`bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer active:scale-[0.98] ${
+          role="button"
+          tabIndex={0}
+          aria-expanded={expandedCard === 'conversao'}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              setExpandedCard(expandedCard === 'conversao' ? null : 'conversao')
+            }
+          }}
+          whileHover={{ y: -3, scale: 1.005 }}
+          whileTap={{ scale: 0.985 }}
+          transition={{ type: 'spring', stiffness: 380, damping: 30, mass: 0.55 }}
+          className={`min-w-0 bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer transition-[border-color,box-shadow] duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B8A9D9] ${
             expandedCard === 'conversao'
               ? 'border-2 border-[#34D399] ring-2 ring-[#34D399]/30'
               : 'border border-[#34D399]/30 hover:border-[#34D399]/70'
           }`}
-          style={{ transition: 'transform 160ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out' }}
         >
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#34D399]/10 rounded-full blur-2xl pointer-events-none" />
-          <div>
-            <span className="text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider block">
+          <div className="min-w-0">
+            <span className="block min-w-0 max-w-full truncate whitespace-nowrap text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider">
               Conversão de teste
             </span>
-            <div className="mt-2.5 flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
-                {periodMetrics.conversao}
-              </span>
-              <span className="text-xs text-[#A9A1B5] font-semibold">Saudável</span>
+            <div className="mt-2.5 flex min-w-0 items-baseline gap-2 whitespace-nowrap">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span key={periodMetrics.conversao} initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="block min-w-0 max-w-full truncate whitespace-nowrap text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
+                  {periodMetrics.conversao}
+                </motion.span>
+              </AnimatePresence>
+              <span className="shrink-0 whitespace-nowrap text-xs text-[#A9A1B5] font-semibold">Saudável</span>
             </div>
-            <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-[#34D399]">
+            <div className="mt-1 flex min-w-0 items-center gap-1.5 whitespace-nowrap text-xs font-bold text-[#34D399]">
               <TrendingUp className="h-3.5 w-3.5" />
               <span>Retenção 98,2% da base</span>
             </div>
           </div>
           <div className="flex items-end justify-between pt-3 border-t border-white/[0.08] mt-3">
-            <span className="text-[11px] text-[#A9A1B5] font-normal">
+              <span className="min-w-0 flex-1 truncate whitespace-nowrap text-[11px] text-[#A9A1B5] font-normal">
               Churn líquido: <strong className="text-[#F8F5FA] font-semibold">{periodMetrics.churn}</strong>
             </span>
             <svg className="w-16 h-6 overflow-visible shrink-0" viewBox="0 0 64 24" fill="none">
               <path d="M2 17 C 14 15, 24 13, 34 11 C 44 9, 54 6, 64 4" stroke="#34D399" strokeWidth="2.5" strokeLinecap="round" />
             </svg>
           </div>
-        </div>
+        </motion.div>
       </div>
 
-      {expandedCard && (
-        <AdminKpiHistoryPanel
-          title={dashboardKpiHistory[expandedCard].title}
-          subtitle={dashboardKpiHistory[expandedCard].subtitle}
-          color={dashboardKpiHistory[expandedCard].color}
-          history={dashboardKpiHistory[expandedCard].history}
-          onClose={() => setExpandedCard(null)}
-        />
-      )}
+      <AnimatePresence initial={false}>
+        {expandedCard && (
+          <motion.div
+            key={expandedCard}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+          >
+            <AdminKpiHistoryPanel
+              title={dashboardKpiHistory[expandedCard].title}
+              subtitle={dashboardKpiHistory[expandedCard].subtitle}
+              color={dashboardKpiHistory[expandedCard].color}
+              history={dashboardKpiHistory[expandedCard].history}
+              onClose={() => setExpandedCard(null)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 3. SEÇÃO DE GRÁFICOS: EVOLUÇÃO E DISTRIBUIÇÃO DA BASE ATIVA */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1161,94 +1199,94 @@ export default function AdminDashboardClient({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {/* Indicador 1: Vencimentos 48h */}
-          <div className="bg-[#18141F] p-5 rounded-2xl border border-[#B8A9D9]/30 shadow-xs flex flex-col justify-between h-full min-h-[150px] relative overflow-hidden">
+          <div className="min-w-0 bg-[#18141F] p-5 rounded-2xl border border-[#B8A9D9]/30 shadow-xs flex flex-col justify-between h-full min-h-[150px] relative overflow-hidden">
             <div className="absolute -top-10 -right-10 w-24 h-24 bg-[#B8A9D9]/10 rounded-full blur-xl pointer-events-none" />
-            <div>
-              <span className="text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider block">
+            <div className="min-w-0">
+              <span className="block min-w-0 truncate whitespace-nowrap text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider">
                 Renovações próximas
               </span>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
+              <div className="mt-2 flex min-w-0 items-baseline gap-2 overflow-hidden whitespace-nowrap">
+                <span className="shrink-0 whitespace-nowrap text-2xl sm:text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
                   42
                 </span>
-                <span className="text-xs text-[#F5B84B] font-semibold">em 48h</span>
+                <span className="min-w-0 truncate whitespace-nowrap text-xs text-[#F5B84B] font-semibold">em 48h</span>
               </div>
-              <p className="text-xs text-[#A9A1B5] mt-1">
+              <p className="mt-1 min-w-0 truncate whitespace-nowrap text-xs text-[#A9A1B5]">
                 Processamento automático Asaas
               </p>
             </div>
-            <div className="pt-2.5 border-t border-white/[0.08] mt-2 flex items-center justify-between text-[11px] text-[#A9A1B5]">
-              <span>Volume estimado</span>
-              <strong className="text-[#E9D5FF] font-semibold">R$ 2.935,00</strong>
+            <div className="mt-2 flex min-w-0 items-center justify-between gap-2 border-t border-white/[0.08] pt-2.5 text-[11px] text-[#A9A1B5]">
+              <span className="min-w-0 flex-1 truncate whitespace-nowrap">Volume estimado</span>
+              <strong className="max-w-[50%] shrink-0 truncate whitespace-nowrap font-semibold text-[#E9D5FF]">R$ 2.935,00</strong>
             </div>
           </div>
 
           {/* Indicador 2: Ticket Médio */}
-          <div className="bg-[#18141F] p-5 rounded-2xl border border-[#B8A9D9]/30 shadow-xs flex flex-col justify-between h-full min-h-[150px] relative overflow-hidden">
+          <div className="min-w-0 bg-[#18141F] p-5 rounded-2xl border border-[#B8A9D9]/30 shadow-xs flex flex-col justify-between h-full min-h-[150px] relative overflow-hidden">
             <div className="absolute -top-10 -right-10 w-24 h-24 bg-[#B8A9D9]/10 rounded-full blur-xl pointer-events-none" />
-            <div>
-              <span className="text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider block">
+            <div className="min-w-0">
+              <span className="block min-w-0 truncate whitespace-nowrap text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider">
                 Ticket médio da base
               </span>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
+              <div className="mt-2 flex min-w-0 items-baseline gap-2 overflow-hidden whitespace-nowrap">
+                <span className="shrink-0 whitespace-nowrap text-2xl sm:text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
                   R$ 99,90
                 </span>
-                <span className="text-xs text-[#34D399] font-semibold">+3,2% MoM</span>
+                <span className="min-w-0 truncate whitespace-nowrap text-xs text-[#34D399] font-semibold">+3,2% MoM</span>
               </div>
-              <p className="text-xs text-[#A9A1B5] mt-1">
+              <p className="mt-1 min-w-0 truncate whitespace-nowrap text-xs text-[#A9A1B5]">
                 Média ponderada Solo + Studio
               </p>
             </div>
-            <div className="pt-2.5 border-t border-white/[0.08] mt-2 flex items-center justify-between text-[11px] text-[#A9A1B5]">
-              <span>Base do ecossistema</span>
-              <strong className="text-[#E9D5FF] font-semibold">Solo + Studio</strong>
+            <div className="mt-2 flex min-w-0 items-center justify-between gap-2 border-t border-white/[0.08] pt-2.5 text-[11px] text-[#A9A1B5]">
+              <span className="min-w-0 flex-1 truncate whitespace-nowrap">Base do ecossistema</span>
+              <strong className="max-w-[50%] shrink-0 truncate whitespace-nowrap font-semibold text-[#E9D5FF]">Solo + Studio</strong>
             </div>
           </div>
 
           {/* Indicador 3: NPS */}
-          <div className="bg-[#18141F] p-5 rounded-2xl border border-[#B8A9D9]/30 shadow-xs flex flex-col justify-between h-full min-h-[150px] relative overflow-hidden">
+          <div className="min-w-0 bg-[#18141F] p-5 rounded-2xl border border-[#B8A9D9]/30 shadow-xs flex flex-col justify-between h-full min-h-[150px] relative overflow-hidden">
             <div className="absolute -top-10 -right-10 w-24 h-24 bg-[#B8A9D9]/10 rounded-full blur-xl pointer-events-none" />
-            <div>
-              <span className="text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider block">
+            <div className="min-w-0">
+              <span className="block min-w-0 truncate whitespace-nowrap text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider">
                 Satisfação NPS
               </span>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
+              <div className="mt-2 flex min-w-0 items-baseline gap-2 overflow-hidden whitespace-nowrap">
+                <span className="shrink-0 whitespace-nowrap text-2xl sm:text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
                   78
                 </span>
-                <span className="text-xs text-[#B8A9D9] font-semibold">Zona de Excelência</span>
+                <span className="min-w-0 truncate whitespace-nowrap text-xs text-[#B8A9D9] font-semibold">Zona de Excelência</span>
               </div>
-              <p className="text-xs text-[#A9A1B5] mt-1">
+              <p className="mt-1 min-w-0 truncate whitespace-nowrap text-xs text-[#A9A1B5]">
                 Avaliadoras ativas no mês
               </p>
             </div>
-            <div className="pt-2.5 border-t border-white/[0.08] mt-2 flex items-center justify-between text-[11px] text-[#A9A1B5]">
-              <span>Meta do trimestre</span>
-              <strong className="text-[#E9D5FF] font-semibold">&gt; 75 pts</strong>
+            <div className="mt-2 flex min-w-0 items-center justify-between gap-2 border-t border-white/[0.08] pt-2.5 text-[11px] text-[#A9A1B5]">
+              <span className="min-w-0 flex-1 truncate whitespace-nowrap">Meta do trimestre</span>
+              <strong className="max-w-[50%] shrink-0 truncate whitespace-nowrap font-semibold text-[#E9D5FF]">&gt; 75 pts</strong>
             </div>
           </div>
 
           {/* Indicador 4: Vitrines Ativas */}
-          <div className="bg-[#18141F] p-5 rounded-2xl border border-[#B8A9D9]/30 shadow-xs flex flex-col justify-between h-full min-h-[150px] relative overflow-hidden">
+          <div className="min-w-0 bg-[#18141F] p-5 rounded-2xl border border-[#B8A9D9]/30 shadow-xs flex flex-col justify-between h-full min-h-[150px] relative overflow-hidden">
             <div className="absolute -top-10 -right-10 w-24 h-24 bg-[#B8A9D9]/10 rounded-full blur-xl pointer-events-none" />
-            <div>
-              <span className="text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider block">
+            <div className="min-w-0">
+              <span className="block min-w-0 truncate whitespace-nowrap text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider">
                 Vitrines online
               </span>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
+              <div className="mt-2 flex min-w-0 items-baseline gap-2 overflow-hidden whitespace-nowrap">
+                <span className="shrink-0 whitespace-nowrap text-2xl sm:text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
                   1.390
                 </span>
-                <span className="text-xs text-[#38BDF8] font-semibold">97,4% no ar</span>
+                <span className="min-w-0 truncate whitespace-nowrap text-xs text-[#38BDF8] font-semibold">97,4% no ar</span>
               </div>
-              <p className="text-xs text-[#A9A1B5] mt-1">
+              <p className="mt-1 min-w-0 truncate whitespace-nowrap text-xs text-[#A9A1B5]">
                 Páginas públicas recebendo visitas
               </p>
             </div>
-            <div className="pt-2.5 border-t border-white/[0.08] mt-2 flex items-center justify-between text-[11px] text-[#A9A1B5]">
-              <span>Disponibilidade</span>
-              <strong className="text-[#E9D5FF] font-semibold">99,9% uptime</strong>
+            <div className="mt-2 flex min-w-0 items-center justify-between gap-2 border-t border-white/[0.08] pt-2.5 text-[11px] text-[#A9A1B5]">
+              <span className="min-w-0 flex-1 truncate whitespace-nowrap">Disponibilidade</span>
+              <strong className="max-w-[50%] shrink-0 truncate whitespace-nowrap font-semibold text-[#E9D5FF]">99,9% uptime</strong>
             </div>
           </div>
         </div>
@@ -1328,7 +1366,8 @@ export default function AdminDashboardClient({
             <span className="text-xs font-semibold text-[#A9A1B5]">4 ações prioritárias</span>
           </div>
 
-          <div ref={alertsListRef} className="divide-y divide-white/[0.06] flex-1">
+          <div className="divide-y divide-white/[0.06] flex-1">
+            <AnimatePresence initial={false}>
             {[
               { id: 'alert1', category: 'pagamento', icon: AlertCircle, nome: 'Studio Glow & Co', tipo: 'Falha de pagamento', tipoColor: 'text-[#F87171]', iconColor: 'text-[#F87171]', desc: 'Cartão final 4821 recusado · Tentativa 2 de 3', btnLabel: 'Reenviar link', btnColor: 'bg-[#F87171]/15 hover:bg-[#F87171]/25 text-[#F87171] border-[#F87171]/30', phone: '5511999990001', msg: 'Olá, equipe Studio Glow & Co! Identificamos uma falha no processamento da assinatura Lumê (cartão final 4821). Para manter seu link e agendamentos ativos, atualize sua forma de pagamento.' },
               { id: 'alert2', category: 'trial', icon: Clock, nome: 'Beatriz Mendes', tipo: 'Período de teste', tipoColor: 'text-[#F5B84B]', iconColor: 'text-[#F5B84B]', desc: 'Trial termina em 24h · 38 agendamentos gerados', btnLabel: 'Estender trial', btnColor: 'bg-[#B8A9D9]/15 hover:bg-[#B8A9D9]/25 text-[#B8A9D9] border-[#B8A9D9]/30', phone: '5511988880002', msg: 'Olá, Beatriz! Seu período de teste de 30 dias no Lumê encerra em 24h. Você já registrou 38 agendamentos! Ative seu plano Solo com valor promocional e continue sem interrupções.' },
@@ -1339,7 +1378,15 @@ export default function AdminDashboardClient({
               .map((alert) => {
                 const AlertIcon = alert.icon
                 return (
-                  <div key={alert.id} className="py-3.5">
+                  <motion.div
+                    key={`${alertFilter}-${alert.id}`}
+                    layout
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.18, ease: 'easeOut' }}
+                    className="py-3.5"
+                  >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         {/* Ícone sem fundo — só o ícone colorido */}
@@ -1400,9 +1447,10 @@ export default function AdminDashboardClient({
                         </a>
                       </div>
                     )}
-                  </div>
+                  </motion.div>
                 )
               })}
+            </AnimatePresence>
           </div>
 
           {/* Filtros no rodapé com animação suave e transição de preenchimento */}
@@ -1446,9 +1494,18 @@ export default function AdminDashboardClient({
           </div>
 
           {/* Lista de Performers */}
-          <div ref={performersListRef} className="divide-y divide-white/[0.06] flex-1">
+          <div className="divide-y divide-white/[0.06] flex-1">
+            <AnimatePresence initial={false}>
             {performersData[performerFilter].map((perf) => (
-              <div key={perf.id} className="py-3.5 flex items-center justify-between gap-3">
+              <motion.div
+                key={`${performerFilter}-${perf.id}`}
+                layout
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.18, ease: 'easeOut' }}
+                className="py-3.5 flex items-center justify-between gap-3"
+              >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   {/* Ícone de posição sem fundo */}
                   <div className="h-8 w-8 flex items-center justify-center shrink-0">
@@ -1479,8 +1536,9 @@ export default function AdminDashboardClient({
                     <Globe className="h-4 w-4" />
                   </a>
                 </div>
-              </div>
+              </motion.div>
             ))}
+            </AnimatePresence>
           </div>
 
           {/* Filtros no rodapé com animação suave e transição de preenchimento */}

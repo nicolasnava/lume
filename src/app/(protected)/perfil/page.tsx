@@ -58,6 +58,7 @@ export default async function PerfilPage() {
         <ProfileTabsWrapper
           profissional={profissional}
           subscriptionData={subscriptionData}
+          email={user.email || ''}
         />
       ) : (
         <div className="rounded-2xl bg-red-50 p-6 border border-red-200 flex items-start gap-4">

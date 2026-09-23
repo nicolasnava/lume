@@ -22,7 +22,7 @@ export default async function FinanceiroPage() {
   // Buscar todos os agendamentos da profissional com dados de cliente, serviço e pagamento
   const { data: agendamentos } = await adminSupabase
     .from('agendamentos')
-    .select('*, clientes(nome, telefone), servicos(nome, preco), agendamento_servicos(id, preco_no_momento, duracao_no_momento_minutos, servicos(id, nome, preco))')
+    .select('*, clientes(nome, telefone), servicos(nome, preco), combos(nome, preco_combo, duracao_minutos, foto_url), agendamento_servicos(id, preco_no_momento, duracao_no_momento_minutos, servicos(id, nome, preco, foto_url, duracao_minutos)), agendamento_comanda_produtos(id, produto_id, nome_no_momento, preco_no_momento, comanda_produtos(nome, foto_url))')
     .eq('profissional_id', user.id)
     .order('data_hora_inicio', { ascending: false })
 

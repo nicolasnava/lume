@@ -7,7 +7,7 @@ import {
   markNoShowBookingAction,
   updateBookingStatusAction,
   getProfissionalServicesAndClientsAction,
-  updateBookingServicesAction,
+  updateBookingItemsAction,
 } from '@/app/actions/booking'
 import Toast from '@/components/ui/Toast'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
@@ -38,6 +38,9 @@ import {
   Trash2,
 } from 'lucide-react'
 import { PixIcon } from '@/components/common/PaymentIcon'
+import Image from 'next/image'
+import { getCombosProfissionalAction } from '@/app/actions/combos'
+import { getComandaProdutosAction } from '@/app/actions/comanda'
 
 export interface BookingDetail {
   id: string
@@ -48,6 +51,8 @@ export interface BookingDetail {
   data_hora_fim: string
   status: 'confirmado' | 'cancelado' | 'concluido' | 'no_show'
   google_event_id: string | null
+  combo_id?: string | null
+  combos?: { nome?: string; preco_combo?: number; duracao_minutos?: number | null; foto_url?: string | null } | null
   forma_pagamento?: 'dinheiro' | 'pix' | 'cartao' | 'cartao_credito' | 'cartao_debito' | 'outro' | null
   forma_pagamento_preferida?: string | null
   valor_cobrado?: number | null
@@ -57,11 +62,13 @@ export interface BookingDetail {
     nome: string
     telefone: string
   } | null
-  servicos?: {
-    nome: string
-    duracao_minutos: number
-    preco: number
-    ativo?: boolean | null
+      servicos?: {
+      id?: string
+      nome: string
+      duracao_minutos: number
+      preco: number
+      foto_url?: string | null
+      ativo?: boolean | null
   } | null
   agendamento_servicos?: {
     id: string
@@ -72,9 +79,11 @@ export interface BookingDetail {
       nome: string
       duracao_minutos: number
       preco: number
+      foto_url?: string | null
       ativo?: boolean | null
     } | null
   }[] | null
+  agendamento_comanda_produtos?: { id: string; produto_id: string | null; nome_no_momento: string; preco_no_momento: number; comanda_produtos?: { nome?: string; foto_url?: string | null } | null }[] | null
 }
 
 interface BookingDetailModalProps {
@@ -104,8 +113,12 @@ export default function BookingDetailModal({
   const [editingServices, setEditingServices] = useState(false)
   const [savingServices, setSavingServices] = useState(false)
   const [availableServices, setAvailableServices] = useState<Array<{ id: string; nome: string; preco: number; duracao_minutos: number; foto_url: string | null }>>([])
+  const [availablePackages, setAvailablePackages] = useState<Array<{ id: string; nome: string; preco_combo: number; duracaoTotalMinutos: number; foto_url: string | null; servicos: Array<{ id: string }> }>>([])
+  const [availableProducts, setAvailableProducts] = useState<Array<{ id: string; nome: string; preco: number; foto_url: string | null }>>([])
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([])
-  const [pendingServiceChange, setPendingServiceChange] = useState<{ type: 'add' | 'remove'; id: string; nome: string } | null>(null)
+  const [selectedComboId, setSelectedComboId] = useState('')
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([])
+  const [pendingServiceChange, setPendingServiceChange] = useState<{ type: 'add' | 'remove'; kind: 'service' | 'package' | 'product'; id: string; nome: string } | null>(null)
 
   const [showCompleteForm, setShowCompleteForm] = useState(false)
   const [isServicesExpanded, setIsServicesExpanded] = useState(false)
@@ -160,12 +173,19 @@ export default function BookingDetailModal({
     const ids = booking.agendamento_servicos?.map((item) => item.servicos?.id).filter((id): id is string => !!id)
       || []
     setSelectedServiceIds(ids.length > 0 ? ids : booking.servico_id ? [booking.servico_id] : [])
+    setSelectedComboId(booking.combo_id || '')
+    setSelectedProductIds((booking.agendamento_comanda_produtos || []).map((item) => item.produto_id).filter((id): id is string => !!id))
     setEditingServices(false)
     setPendingServiceChange(null)
 
     if (booking.status === 'confirmado') {
-      getProfissionalServicesAndClientsAction().then((result) => {
+      Promise.all([getProfissionalServicesAndClientsAction(), getCombosProfissionalAction(), getComandaProdutosAction(undefined, true)]).then(([result, packages, products]) => {
         if (result.success) setAvailableServices(result.services)
+        const activePackages = packages.filter((item) => item.ativo).map(({ id, nome, preco_combo, foto_url, duracaoTotalMinutos, servicos }) => ({ id, nome, preco_combo, foto_url, duracaoTotalMinutos, servicos }))
+        setAvailablePackages(activePackages)
+        const includedByCurrentPackage = new Set(activePackages.find((item) => item.id === booking.combo_id)?.servicos.map((service) => service.id) || [])
+        if (includedByCurrentPackage.size > 0) setSelectedServiceIds((ids) => ids.filter((id) => !includedByCurrentPackage.has(id)))
+        setAvailableProducts(products.filter((item) => item.ativo).map(({ id, nome, preco, foto_url }) => ({ id, nome, preco, foto_url })))
       })
     }
   }, [booking])
@@ -422,18 +442,26 @@ export default function BookingDetailModal({
 
   const confirmServiceChange = async () => {
     if (!booking || !pendingServiceChange) return
-    const nextIds = pendingServiceChange.type === 'add'
-      ? [...new Set([...selectedServiceIds, pendingServiceChange.id])]
-      : selectedServiceIds.filter((id) => id !== pendingServiceChange.id)
-
-    if (nextIds.length === 0) {
-      setToast({ show: true, message: 'O atendimento precisa manter ao menos um procedimento.', type: 'error' })
+    const change = pendingServiceChange
+    let nextIds = selectedServiceIds
+    let nextComboId = selectedComboId
+    let nextProductIds = selectedProductIds
+    if (change.kind === 'service') {
+      nextIds = change.type === 'add' ? [...new Set([...selectedServiceIds, change.id])] : selectedServiceIds.filter((id) => id !== change.id)
+    } else if (change.kind === 'package') {
+      nextComboId = change.type === 'add' ? change.id : ''
+    } else {
+      nextProductIds = change.type === 'add' ? [...new Set([...selectedProductIds, change.id])] : selectedProductIds.filter((id) => id !== change.id)
+    }
+    const hasItems = nextIds.length > 0 || !!nextComboId || nextProductIds.length > 0
+    if (!hasItems) {
+      setToast({ show: true, message: 'Mantenha ao menos um serviço, pacote ou item da comanda.', type: 'error' })
       setPendingServiceChange(null)
       return
     }
 
     setSavingServices(true)
-    const result = await updateBookingServicesAction(booking.id, nextIds)
+    const result = await updateBookingItemsAction(booking.id, nextIds, nextComboId || null, nextProductIds)
     setSavingServices(false)
     if (!result.success) {
       setToast({ show: true, message: result.message || 'Não foi possível editar os procedimentos.', type: 'error' })
@@ -441,6 +469,8 @@ export default function BookingDetailModal({
     }
 
     setSelectedServiceIds(nextIds)
+    setSelectedComboId(nextComboId)
+    setSelectedProductIds(nextProductIds)
     setPendingServiceChange(null)
     setToast({ show: true, message: result.message || 'Procedimentos atualizados.', type: 'success' })
     onRefresh()
@@ -457,7 +487,7 @@ export default function BookingDetailModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-3 sm:p-6 shadow-2xl space-y-5 sm:space-y-6 relative max-h-[92dvh] overflow-y-auto">
         {/* Cabeçalho */}
         <div className="flex items-center justify-between border-b border-gray-100 pb-4">
           <div>
@@ -706,40 +736,34 @@ export default function BookingDetailModal({
         </div>
 
         {/* 4. Card de Serviços Selecionados e Valor Total (Itens 2, 3 e 4) */}
-        {booking.agendamento_servicos && booking.agendamento_servicos.length > 0 ? (
+        {((booking.agendamento_servicos?.length || 0) > 0 || !!booking.combos || !!booking.combo_id || (booking.agendamento_comanda_produtos?.length || 0) > 0) ? (
           <div className="rounded-2xl bg-[#FAF7F5] p-4 border border-purple-200/70 space-y-3">
             <div className="flex items-center justify-between gap-2 border-b border-purple-100/80 pb-2.5">
-              <button
-                type="button"
-                onClick={() => setIsServicesExpanded((prev) => !prev)}
-                className="flex items-center gap-1.5 text-xs font-bold text-[#4A3F5C] hover:text-[#3d334c] transition cursor-pointer group whitespace-nowrap shrink-0"
-              >
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                 <Scissors className="h-4 w-4 text-[#B8A9D9] shrink-0" />
-                <span className="whitespace-nowrap">Serviços Selecionados ({booking.agendamento_servicos.length})</span>
-                <ChevronDown
-                  className={`h-4 w-4 text-[#4A3F5C] shrink-0 transition-transform duration-200 ${
-                    isServicesExpanded ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-gray-400 whitespace-nowrap shrink-0">
-                  {totalDuracaoMinutos} min total
-                </span>
+                <button type="button" onClick={() => setIsServicesExpanded((prev) => !prev)} className="flex min-w-0 items-center gap-1.5 text-xs font-bold text-[#4A3F5C] transition-transform duration-150 ease-out active:scale-[.98]">
+                  <span className="truncate">Serviços selecionados ({booking.agendamento_servicos?.length || selectedServiceIds.length})</span>
+                  <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isServicesExpanded ? 'rotate-180' : ''}`} />
+                </button>
+                {currentStatus === 'confirmado' && <button type="button" aria-label={editingServices ? 'Fechar edição de serviços' : 'Editar serviços'} onClick={() => { setEditingServices((value) => !value); setIsServicesExpanded(true) }} className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold text-[#4A3F5C] transition-transform duration-150 ease-out hover:bg-white active:scale-[.97]"><Pencil className="h-3 w-3" /><span>{editingServices ? 'Fechar' : 'Editar'}</span></button>}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="text-xs font-semibold text-gray-400 whitespace-nowrap shrink-0">{totalDuracaoMinutos} min total</span>
               </div>
             </div>
 
             {isServicesExpanded && (
               <div className="space-y-2.5 py-0.5 animate-in fade-in duration-200">
-                {booking.agendamento_servicos.map((as, idx) => (
+                {booking.combo_id && (booking.combos?.nome || availablePackages.find((item) => item.id === booking.combo_id)?.nome) && <div className="flex items-center gap-3 rounded-xl bg-white px-2.5 py-2"><div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-[#FAF7F5]">{(booking.combos?.foto_url || availablePackages.find((item) => item.id === booking.combo_id)?.foto_url) && <Image src={(booking.combos?.foto_url || availablePackages.find((item) => item.id === booking.combo_id)?.foto_url) || ''} alt="" fill className="object-cover" unoptimized />}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-[#4A3F5C]">{booking.combos?.nome || availablePackages.find((item) => item.id === booking.combo_id)?.nome}</p><p className="text-[10px] text-[#6B5E7A]">Pacote · R$ {Number(booking.combos?.preco_combo || availablePackages.find((item) => item.id === booking.combo_id)?.preco_combo || 0).toFixed(2)}</p></div></div>}
+                {(booking.agendamento_servicos || []).map((as, idx) => (
                   <div
                     key={as.id || idx}
                     className="flex items-start justify-between gap-3 pt-2.5 first:pt-0 border-t first:border-0 border-purple-100/60"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm font-semibold text-[#4A3F5C] leading-snug">
+                      <div className="flex items-center gap-2"><div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white">{as.servicos?.foto_url && <Image src={as.servicos.foto_url} alt="" fill className="object-cover" unoptimized />}</div><p className="text-xs sm:text-sm font-semibold text-[#4A3F5C] leading-snug">
                         {as.servicos?.nome || 'Serviço'}
-                      </p>
+                      </p></div>
                       <span className="inline-block text-[11px] text-gray-400 font-medium mt-0.5 whitespace-nowrap">
                         {as.duracao_no_momento_minutos || as.servicos?.duracao_minutos || 0} min
                       </span>
@@ -789,6 +813,7 @@ export default function BookingDetailModal({
                     </div>
                   </div>
                 ))}
+                {(booking.agendamento_comanda_produtos || []).map((item) => <div key={item.id} className="flex items-center gap-2 border-t border-purple-100/60 pt-2"><div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white">{item.comanda_produtos?.foto_url && <Image src={item.comanda_produtos.foto_url} alt="" fill className="object-cover" unoptimized />}</div><p className="min-w-0 flex-1 truncate text-xs font-semibold text-[#4A3F5C]">{item.nome_no_momento}</p><span className="text-xs font-bold text-emerald-700">R$ {Number(item.preco_no_momento).toFixed(2)}</span></div>)}
               </div>
             )}
 
@@ -870,28 +895,33 @@ export default function BookingDetailModal({
           </div>
         )}
 
-        {currentStatus === 'confirmado' && (
-          <div className="border-t border-gray-100 pt-3">
-            <button
-              type="button"
-              onClick={() => setEditingServices((value) => !value)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[#B8A9D9]/50 bg-white px-3 py-2 text-xs font-bold text-[#4A3F5C] transition-[transform,background-color] duration-150 ease-out hover:bg-[#FAF7F5] active:scale-[0.97]"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              Editar procedimentos
-            </button>
-
-            {editingServices && (
+        {currentStatus === 'confirmado' && editingServices && (
               <div className="mt-3 space-y-3 rounded-2xl border border-[#B8A9D9]/35 bg-[#FAF7F5] p-4 animate-in fade-in duration-150">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#8675A9]">No atendimento</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#8675A9]">Serviços do atendimento</p>
                   <div className="mt-2 space-y-1.5">
                     {availableServices.filter((service) => selectedServiceIds.includes(service.id)).map((service) => (
-                      <div key={service.id} className="flex items-center justify-between border-b border-[#B8A9D9]/20 py-2 last:border-0">
-                        <div><p className="text-xs font-bold text-[#4A3F5C]">{service.nome}</p><p className="text-[10px] text-gray-500">{service.duracao_minutos} min · R$ {Number(service.preco).toFixed(2)}</p></div>
-                        <button type="button" onClick={() => setPendingServiceChange({ type: 'remove', id: service.id, nome: service.nome })} className="rounded-lg p-2 text-rose-600 transition-transform duration-150 ease-out active:scale-[0.97]" aria-label={`Remover ${service.nome}`}><Trash2 className="h-4 w-4" /></button>
+                      <div key={service.id} className="flex items-center gap-2 border-b border-[#B8A9D9]/20 py-2 last:border-0">
+                        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white">{service.foto_url && <Image src={service.foto_url} alt="" fill className="object-cover" unoptimized />}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-[#4A3F5C]">{service.nome}</p><p className="text-[10px] text-gray-500">{service.duracao_minutos} min · R$ {Number(service.preco).toFixed(2)}</p></div>
+                        <button type="button" onClick={() => setPendingServiceChange({ type: 'remove', kind: 'service', id: service.id, nome: service.nome })} className="rounded-lg p-2 text-rose-600 transition-transform duration-150 ease-out active:scale-[.97]" aria-label={`Remover ${service.nome}`}><Trash2 className="h-4 w-4" /></button>
                       </div>
                     ))}
+                  </div>
+                </div>
+                <div className="border-t border-[#B8A9D9]/25 pt-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#8675A9]">Pacotes</p>
+                  <div className="mt-2 space-y-1.5">
+                    {availablePackages.map((item) => { const selected = selectedComboId === item.id; return <button key={item.id} type="button" onClick={() => setPendingServiceChange({ type: selected ? 'remove' : 'add', kind: 'package', id: item.id, nome: item.nome })} className="flex w-full items-center gap-2 border-b border-[#B8A9D9]/20 py-2 text-left last:border-0 active:scale-[.99]">
+                      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white">{item.foto_url && <Image src={item.foto_url} alt="" fill className="object-cover" unoptimized />}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-[#4A3F5C]">{item.nome}</p><p className="text-[10px] text-gray-500">Pacote · {item.duracaoTotalMinutos} min · R$ {Number(item.preco_combo).toFixed(2)}</p></div>{selected ? <Trash2 className="h-4 w-4 text-rose-600" /> : <Plus className="h-4 w-4 text-[#8675A9]" />}
+                    </button>})}
+                  </div>
+                </div>
+                <div className="border-t border-[#B8A9D9]/25 pt-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#8675A9]">Itens da comanda</p>
+                  <div className="mt-2 space-y-1.5">
+                    {availableProducts.map((item) => { const selected = selectedProductIds.includes(item.id); return <button key={item.id} type="button" onClick={() => setPendingServiceChange({ type: selected ? 'remove' : 'add', kind: 'product', id: item.id, nome: item.nome })} className="flex w-full items-center gap-2 border-b border-[#B8A9D9]/20 py-2 text-left last:border-0 active:scale-[.99]">
+                      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white">{item.foto_url && <Image src={item.foto_url} alt="" fill className="object-cover" unoptimized />}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-[#4A3F5C]">{item.nome}</p><p className="text-[10px] text-gray-500">R$ {Number(item.preco).toFixed(2)}</p></div>{selected ? <Trash2 className="h-4 w-4 text-rose-600" /> : <Plus className="h-4 w-4 text-[#8675A9]" />}
+                    </button>})}
                   </div>
                 </div>
                 {availableServices.some((service) => !selectedServiceIds.includes(service.id)) && (
@@ -899,8 +929,8 @@ export default function BookingDetailModal({
                     <p className="text-[10px] font-bold uppercase tracking-wider text-[#8675A9]">Adicionar agora</p>
                     <div className="mt-2 space-y-1.5">
                       {availableServices.filter((service) => !selectedServiceIds.includes(service.id)).map((service) => (
-                        <button key={service.id} type="button" onClick={() => setPendingServiceChange({ type: 'add', id: service.id, nome: service.nome })} className="flex w-full items-center justify-between border-b border-[#B8A9D9]/20 py-2 text-left transition-transform duration-150 ease-out last:border-0 active:scale-[0.98]">
-                          <div><p className="text-xs font-bold text-[#4A3F5C]">{service.nome}</p><p className="text-[10px] text-gray-500">{service.duracao_minutos} min · R$ {Number(service.preco).toFixed(2)}</p></div>
+                        <button key={service.id} type="button" onClick={() => setPendingServiceChange({ type: 'add', kind: 'service', id: service.id, nome: service.nome })} className="flex w-full items-center gap-2 border-b border-[#B8A9D9]/20 py-2 text-left transition-transform duration-150 ease-out last:border-0 active:scale-[0.98]">
+                          <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white">{service.foto_url && <Image src={service.foto_url} alt="" fill className="object-cover" unoptimized />}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-[#4A3F5C]">{service.nome}</p><p className="text-[10px] text-gray-500">{service.duracao_minutos} min · R$ {Number(service.preco).toFixed(2)}</p></div>
                           <Plus className="h-4 w-4 text-[#8675A9]" />
                         </button>
                       ))}
@@ -908,8 +938,6 @@ export default function BookingDetailModal({
                   </div>
                 )}
               </div>
-            )}
-          </div>
         )}
 
         {/* Formulário de Conclusão e Registro de Pagamento */}
@@ -1132,8 +1160,9 @@ export default function BookingDetailModal({
       />
       <ConfirmDialog
         open={!!pendingServiceChange}
-        title={pendingServiceChange?.type === 'add' ? 'Adicionar procedimento?' : 'Remover procedimento?'}
-        description={pendingServiceChange ? `${pendingServiceChange.type === 'add' ? 'Deseja adicionar' : 'Deseja remover'} ${pendingServiceChange.nome} deste atendimento? A duração e o valor serão recalculados.` : ''}
+        title={pendingServiceChange?.type === 'add' ? `Adicionar ${pendingServiceChange.kind === 'package' ? 'pacote' : pendingServiceChange.kind === 'product' ? 'item' : 'serviço'}?` : `Remover ${pendingServiceChange?.kind === 'package' ? 'pacote' : pendingServiceChange?.kind === 'product' ? 'item' : 'serviço'}?`}
+        inlineIcon={pendingServiceChange?.type === 'add' && ((pendingServiceChange.kind === 'package' && availablePackages.find((item) => item.id === pendingServiceChange.id)?.servicos.some((service) => selectedServiceIds.includes(service.id))) || (pendingServiceChange.kind === 'service' && availablePackages.find((item) => item.id === selectedComboId)?.servicos.some((service) => service.id === pendingServiceChange.id))) ? <AlertTriangle className="h-5 w-5" /> : undefined}
+        description={pendingServiceChange ? pendingServiceChange.type === 'add' && ((pendingServiceChange.kind === 'package' && availablePackages.find((item) => item.id === pendingServiceChange.id)?.servicos.some((service) => selectedServiceIds.includes(service.id))) || (pendingServiceChange.kind === 'service' && availablePackages.find((item) => item.id === selectedComboId)?.servicos.some((service) => service.id === pendingServiceChange.id))) ? `Este atendimento já contém um serviço incluído no pacote. Ele continuará visível junto aos demais itens, sem cobrança duplicada. Deseja adicionar ${pendingServiceChange.nome}?` : `Deseja ${pendingServiceChange.type === 'add' ? 'adicionar' : 'remover'} ${pendingServiceChange.nome} deste atendimento? A duração e o valor serão recalculados.` : ''}
         confirmLabel={pendingServiceChange?.type === 'add' ? 'Adicionar' : 'Remover'}
         destructive={pendingServiceChange?.type === 'remove'}
         loading={savingServices}

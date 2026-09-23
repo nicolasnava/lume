@@ -45,6 +45,9 @@ next-env.d.ts
 /scratch/
 *.log
 
+# Local development tools are cloned separately and must not be committed here
+/tools/external/
+
 
 
 .vercel

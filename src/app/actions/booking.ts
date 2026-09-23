@@ -149,7 +149,7 @@ export async function createBookingAction(formData: {
     ? formData.servico_ids
     : servico_id ? [servico_id] : []
 
-  if (servicoIdsList.length === 0 && !formData.combo_id) {
+  if (servicoIdsList.length === 0 && !formData.combo_id && !(formData.produto_ids?.length)) {
     return {
       success: false,
       errorType: 'VALIDATION_ERROR',
@@ -199,21 +199,27 @@ export async function createBookingAction(formData: {
         .from('combos')
         .select('id, nome, preco_combo, duracao_minutos')
         .eq('id', formData.combo_id)
+        .eq('profissional_id', profissional_id)
+        .eq('ativo', true)
         .maybeSingle()
 
-      if (comboData) {
-        if (comboData.preco_combo !== null && comboData.preco_combo !== undefined) {
-          totalPreco = Number(comboData.preco_combo)
-        }
-        if (comboData.nome) {
-          nomesCombo = nomesCombo ? `${comboData.nome} (${nomesCombo})` : comboData.nome
-        }
-        if (servicosList.length === 0 && comboData.duracao_minutos) {
-          totalDuracaoMinutos = comboData.duracao_minutos
-        }
-      }
+      if (!comboData) return { success: false, errorType: 'VALIDATION_ERROR', message: 'O pacote escolhido não está mais disponível.' }
+      const { data: packageLinks } = await supabase.from('combo_servicos')
+        .select('servicos(id, duracao_minutos, nome, preco, ativo)')
+        .eq('combo_id', formData.combo_id)
+      const packageServices = ((packageLinks || []) as unknown as Array<{ servicos: { id: string; duracao_minutos: number; nome: string; preco: number; ativo?: boolean | null } | null }>)
+        .flatMap((row) => row.servicos ? [row.servicos] : [])
+      const packageIds = new Set(packageServices.map((service) => service.id))
+      const extraServices = servicosList.filter((service) => !packageIds.has(service.id))
+      const inactivePackageService = packageServices.find((service) => service.ativo === false)
+      if (inactivePackageService) return { success: false, errorType: 'VALIDATION_ERROR', message: `O serviço "${inactivePackageService.nome}" incluído no pacote foi desativado.` }
+      servicosList = [...packageServices, ...extraServices]
+      totalDuracaoMinutos = (Number(comboData.duracao_minutos) || packageServices.reduce((sum, service) => sum + service.duracao_minutos, 0)) + extraServices.reduce((sum, service) => sum + service.duracao_minutos, 0)
+      totalPreco = Number(comboData.preco_combo) + extraServices.reduce((sum, service) => sum + Number(service.preco), 0)
+      nomesCombo = [comboData.nome, ...extraServices.map((service) => service.nome)].filter(Boolean).join(' + ')
     }
 
+    if (totalDuracaoMinutos <= 0 && (formData.produto_ids || []).length > 0) totalDuracaoMinutos = 30
     if (totalDuracaoMinutos <= 0) {
       return {
         success: false,
@@ -316,7 +322,7 @@ export async function createBookingAction(formData: {
     const basePayload: Record<string, unknown> = {
       profissional_id,
       cliente_id: clienteId,
-      servico_id: servicoIdsList[0] || null,
+      servico_id: servicosList[0]?.id || null,
       combo_id: formData.combo_id || null,
       data_hora_inicio: data_hora_inicio_iso,
       data_hora_fim: data_hora_fim_iso,
@@ -340,7 +346,7 @@ export async function createBookingAction(formData: {
       const fallbackPayload: Record<string, unknown> = {
         profissional_id,
         cliente_id: clienteId,
-        servico_id: servicoIdsList[0] || null,
+        servico_id: servicosList[0]?.id || null,
         data_hora_inicio: data_hora_inicio_iso,
         data_hora_fim: data_hora_fim_iso,
         valor_cobrado: totalPreco,
@@ -479,9 +485,11 @@ export async function createBookingAction(formData: {
   }
 }
 
-export async function updateBookingServicesAction(
+export async function updateBookingItemsAction(
   bookingId: string,
-  serviceIds: string[]
+  serviceIds: string[],
+  comboId: string | null,
+  productIds: string[]
 ): Promise<{ success: boolean; message?: string }> {
   try {
     const { createClient } = await import('@/lib/supabase/server')
@@ -490,8 +498,9 @@ export async function updateBookingServicesAction(
     if (!user) return { success: false, message: 'Sessão expirada. Entre novamente.' }
 
     const uniqueServiceIds = [...new Set(serviceIds)]
-    if (uniqueServiceIds.length === 0) {
-      return { success: false, message: 'O atendimento precisa manter ao menos um serviço.' }
+    const uniqueProductIds = [...new Set(productIds)]
+    if (uniqueServiceIds.length === 0 && !comboId && uniqueProductIds.length === 0) {
+      return { success: false, message: 'Mantenha ao menos um serviço, pacote ou item da comanda.' }
     }
 
     const admin = createAdminClient()
@@ -507,30 +516,54 @@ export async function updateBookingServicesAction(
       return { success: false, message: 'Só é possível editar procedimentos de atendimentos confirmados.' }
     }
 
-    const { data: services, error: servicesError } = await admin
+    const { data: selectedServices, error: servicesError } = uniqueServiceIds.length > 0 ? await admin
       .from('servicos')
-      .select('id, nome, preco, duracao_minutos, ativo')
+      .select('id, nome, preco, duracao_minutos, foto_url, ativo')
       .eq('profissional_id', user.id)
       .eq('ativo', true)
-      .in('id', uniqueServiceIds)
+      .in('id', uniqueServiceIds) : { data: [], error: null }
 
-    if (servicesError || !services || services.length !== uniqueServiceIds.length) {
+    if (servicesError || !selectedServices || selectedServices.length !== uniqueServiceIds.length) {
       return { success: false, message: 'Um dos serviços escolhidos não está mais disponível.' }
     }
 
-    const duration = services.reduce((sum, service) => sum + service.duracao_minutos, 0)
-    const servicesTotal = services.reduce((sum, service) => sum + Number(service.preco), 0)
-    const { data: productRows } = await admin.from('agendamento_comanda_produtos')
-      .select('preco_no_momento')
-      .eq('agendamento_id', bookingId)
-    const productsTotal = (productRows || []).reduce((sum: number, row: { preco_no_momento: number }) => sum + Number(row.preco_no_momento), 0)
+    let combo: { id: string; nome: string; preco_combo: number; duracao_minutos: number | null; foto_url: string | null } | null = null
+    let comboServices: Array<{ id: string; nome: string; preco: number; duracao_minutos: number; foto_url: string | null }> = []
+    if (comboId) {
+      const { data: comboRow } = await admin.from('combos')
+        .select('id, nome, preco_combo, duracao_minutos, foto_url')
+        .eq('id', comboId).eq('profissional_id', user.id).eq('ativo', true).maybeSingle()
+      if (!comboRow) return { success: false, message: 'O pacote escolhido não está mais disponível.' }
+      combo = { ...comboRow, preco_combo: Number(comboRow.preco_combo), duracao_minutos: comboRow.duracao_minutos ? Number(comboRow.duracao_minutos) : null }
+      const { data: comboLinks } = await admin.from('combo_servicos')
+        .select('servicos(id, nome, preco, duracao_minutos, foto_url)')
+        .eq('combo_id', comboId)
+      comboServices = ((comboLinks || []) as unknown as Array<{ servicos: { id: string; nome: string; preco: number; duracao_minutos: number; foto_url: string | null } | null }>)
+        .flatMap((row) => row.servicos ? [{ ...row.servicos, preco: Number(row.servicos.preco), duracao_minutos: Number(row.servicos.duracao_minutos) }] : [])
+    }
+
+    const includedIds = new Set(comboServices.map((service) => service.id))
+    const extraServices = (selectedServices || []).filter((service) => !includedIds.has(service.id))
+    const allServices = [...comboServices, ...extraServices]
+
+    const { data: products, error: productsError } = uniqueProductIds.length > 0 ? await admin.from('comanda_produtos')
+      .select('id, nome, preco, foto_url')
+      .eq('profissional_id', user.id).eq('ativo', true).in('id', uniqueProductIds) : { data: [], error: null }
+    if (productsError || !products || products.length !== uniqueProductIds.length) {
+      return { success: false, message: 'Um dos itens da comanda não está mais disponível.' }
+    }
+
+    const duration = (combo?.duracao_minutos || comboServices.reduce((sum, service) => sum + service.duracao_minutos, 0)) + extraServices.reduce((sum, service) => sum + service.duracao_minutos, 0) || (products?.length ? 30 : 0)
+    const servicesTotal = (combo ? combo.preco_combo : comboServices.reduce((sum, service) => sum + Number(service.preco), 0)) + extraServices.reduce((sum, service) => sum + Number(service.preco), 0)
+    const productsTotal = (products || []).reduce((sum, product) => sum + Number(product.preco), 0)
+    if (duration <= 0) return { success: false, message: 'O pacote ou serviço precisa ter uma duração válida.' }
     const end = new Date(new Date(booking.data_hora_inicio).getTime() + duration * 60 * 1000).toISOString()
 
     const { error: updateError } = await admin
       .from('agendamentos')
       .update({
-        servico_id: uniqueServiceIds[0],
-        combo_id: null,
+        servico_id: allServices[0]?.id || null,
+        combo_id: combo?.id || null,
         data_hora_fim: end,
         valor_cobrado: servicesTotal + productsTotal,
       })
@@ -543,15 +576,28 @@ export async function updateBookingServicesAction(
     }
 
     await admin.from('agendamento_servicos').delete().eq('agendamento_id', bookingId)
-    const { error: detailError } = await admin.from('agendamento_servicos').insert(
-      services.map((service) => ({
+    if (allServices.length > 0) {
+      const { error: detailError } = await admin.from('agendamento_servicos').insert(
+      allServices.map((service) => ({
         agendamento_id: bookingId,
         servico_id: service.id,
         preco_no_momento: Number(service.preco),
         duracao_no_momento_minutos: service.duracao_minutos,
       }))
     )
-    if (detailError) return { success: false, message: 'O atendimento foi atualizado, mas os detalhes dos serviços não puderam ser salvos.' }
+      if (detailError) return { success: false, message: 'O atendimento foi atualizado, mas os detalhes dos serviços não puderam ser salvos.' }
+    }
+
+    await admin.from('agendamento_comanda_produtos').delete().eq('agendamento_id', bookingId)
+    if (products && products.length > 0) {
+      const { error: productInsertError } = await admin.from('agendamento_comanda_produtos').insert(products.map((product) => ({
+        agendamento_id: bookingId,
+        produto_id: product.id,
+        nome_no_momento: product.nome,
+        preco_no_momento: Number(product.preco),
+      })))
+      if (productInsertError) return { success: false, message: 'O atendimento foi atualizado, mas os itens da comanda não puderam ser salvos.' }
+    }
 
     if (booking.google_event_id) {
       try {
@@ -561,7 +607,7 @@ export async function updateBookingServicesAction(
           googleEventId: booking.google_event_id,
           clienteNome: client?.nome || 'Cliente',
           clienteTelefone: client?.telefone || '',
-          servicoNome: services.map((service) => service.nome).join(' + '),
+          servicoNome: [combo?.nome, ...extraServices.map((service) => service.nome)].filter(Boolean).join(' + ') || allServices.map((service) => service.nome).join(' + '),
           dataHoraInicio: booking.data_hora_inicio,
           dataHoraFim: end,
         })
@@ -571,11 +617,15 @@ export async function updateBookingServicesAction(
     }
 
     revalidatePath('/dashboard/agenda')
-    return { success: true, message: 'Procedimentos atualizados.' }
+    return { success: true, message: 'Itens do atendimento atualizados.' }
   } catch (error) {
     console.error('[updateBookingServicesAction] Erro:', error)
     return { success: false, message: 'Não foi possível atualizar os procedimentos.' }
   }
+}
+
+export async function updateBookingServicesAction(bookingId: string, serviceIds: string[]) {
+  return updateBookingItemsAction(bookingId, serviceIds, null, [])
 }
 
 /**

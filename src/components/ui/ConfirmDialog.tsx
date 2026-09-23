@@ -1,6 +1,7 @@
 'use client'
 
 import { AlertTriangle, X } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -10,6 +11,7 @@ interface ConfirmDialogProps {
   cancelLabel?: string
   destructive?: boolean
   loading?: boolean
+  inlineIcon?: ReactNode
   onConfirm: () => void
   onClose: () => void
 }
@@ -22,6 +24,7 @@ export default function ConfirmDialog({
   cancelLabel = 'Cancelar',
   destructive = false,
   loading = false,
+  inlineIcon,
   onConfirm,
   onClose,
 }: ConfirmDialogProps) {
@@ -34,10 +37,19 @@ export default function ConfirmDialog({
         <button type="button" onClick={onClose} className="absolute right-4 top-4 rounded-full p-1.5 text-gray-400 transition-[transform,color,background-color] duration-150 ease-out hover:bg-gray-100 hover:text-[#4A3F5C] active:scale-[0.97]">
           <X className="h-4 w-4" />
         </button>
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#B8A9D9]/18 text-[#4A3F5C]">
-          <AlertTriangle className="h-5 w-5" />
-        </div>
-        <h3 className="mt-4 text-base font-extrabold text-[#4A3F5C]">{title}</h3>
+        {inlineIcon ? (
+          <h3 className="flex items-center gap-2.5 pr-6 text-base font-extrabold text-[#4A3F5C]">
+            <span className="shrink-0 text-[#8675A9]">{inlineIcon}</span>
+            <span>{title}</span>
+          </h3>
+        ) : (
+          <>
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#B8A9D9]/18 text-[#4A3F5C]">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <h3 className="mt-4 text-base font-extrabold text-[#4A3F5C]">{title}</h3>
+          </>
+        )}
         <p className="mt-1.5 text-xs leading-relaxed text-gray-600">{description}</p>
         <div className="mt-6 flex justify-end gap-2">
           <button type="button" onClick={onClose} disabled={loading} className="rounded-xl border border-gray-200 px-4 py-2.5 text-xs font-bold text-gray-600 transition-[transform,background-color] duration-150 ease-out hover:bg-gray-50 active:scale-[0.97] disabled:opacity-50">

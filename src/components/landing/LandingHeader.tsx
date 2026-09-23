@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import gsap from 'gsap'
 import {
   LayoutGrid,
   CreditCard,
@@ -35,6 +36,66 @@ export default function LandingHeader() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  useEffect(() => {
+    const interactive = 'button:not(:disabled), a[href]'
+
+    const getTarget = (event: Event) => event.target instanceof Element
+      ? event.target.closest<HTMLElement>(interactive)
+      : null
+
+    const animate = (target: HTMLElement | null, state: 'hover' | 'press' | 'rest') => {
+      if (!target || !target.closest('.landing-motion-scope') || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+      target.dataset.gsapMotion = 'true'
+      if (state !== 'rest') target.style.willChange = 'transform'
+      gsap.to(target, {
+        y: state === 'hover' ? -3 : 0,
+        scale: state === 'hover' ? 1.025 : state === 'press' ? 0.975 : 1,
+        duration: state === 'press' ? 0.1 : state === 'hover' ? 0.22 : 0.2,
+        ease: 'power3.out',
+        overwrite: 'auto',
+        onComplete: () => {
+          if (state === 'rest') target.style.willChange = 'auto'
+        },
+      })
+    }
+    const onPointerOver = (event: Event) => {
+      const target = getTarget(event)
+      if (event instanceof PointerEvent && event.relatedTarget instanceof Node && target?.contains(event.relatedTarget)) return
+      animate(target, 'hover')
+    }
+    const onPointerOut = (event: Event) => {
+      const target = getTarget(event)
+      if (event instanceof PointerEvent && event.relatedTarget instanceof Node && target?.contains(event.relatedTarget)) return
+      animate(target, 'rest')
+    }
+    const onFocusIn = (event: Event) => animate(getTarget(event), 'hover')
+    const onFocusOut = (event: Event) => {
+      const target = getTarget(event)
+      if (event instanceof FocusEvent && event.relatedTarget instanceof Node && target?.contains(event.relatedTarget)) return
+      animate(target, 'rest')
+    }
+    const onPointerDown = (event: Event) => animate(getTarget(event), 'press')
+    const onPointerUp = (event: Event) => {
+      const target = getTarget(event)
+      animate(target, target && (target.matches(':hover') || target.matches(':focus-visible')) ? 'hover' : 'rest')
+    }
+
+    document.addEventListener('pointerover', onPointerOver)
+    document.addEventListener('pointerout', onPointerOut)
+    document.addEventListener('focusin', onFocusIn)
+    document.addEventListener('focusout', onFocusOut)
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('pointerup', onPointerUp)
+    return () => {
+      document.removeEventListener('pointerover', onPointerOver)
+      document.removeEventListener('pointerout', onPointerOut)
+      document.removeEventListener('focusin', onFocusIn)
+      document.removeEventListener('focusout', onFocusOut)
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('pointerup', onPointerUp)
+    }
+  }, [])
+
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b border-[#E8DFD8] bg-[#FAF8F5]/90 backdrop-blur-md transition-all">
@@ -44,7 +105,7 @@ export default function LandingHeader() {
             <span className="text-white/95 font-medium truncate whitespace-nowrap">
               Teste grátis por 30 dias. Sem pagamento nenhum
             </span>
-            <SparkleButton href="/cadastro" compact className="shrink-0 bg-[#B8A9D9] text-[#2E223B] shadow-xs hover:bg-white">
+            <SparkleButton href="/cadastro" compact className="shrink-0 bg-[#B8A9D9] text-[#2E223B] shadow-xs">
               Clique aqui
             </SparkleButton>
           </div>
@@ -204,7 +265,7 @@ export default function LandingHeader() {
             >
               Entrar
             </Link>
-            <SparkleButton href="/cadastro" className="bg-[#3D2E4D] text-white shadow-xs hover:bg-[#2E223B] hover:shadow-sm">
+            <SparkleButton href="/cadastro" className="bg-[#3D2E4D] text-white shadow-xs">
               Testar agenda grátis
             </SparkleButton>
           </div>

@@ -170,15 +170,15 @@ export default function PublicShowcaseView({
             {/* Tagline / Frase de efeito */}
             {profissional.tagline && (
               <p className="mt-1 text-xs text-[#4A3F5C]/75 italic font-medium max-w-sm mx-auto">
-                &ldquo;{profissional.tagline}&rdquo;
+                {profissional.tagline}
               </p>
             )}
 
             {/* Status Aberto/Fechado (Item 9: textos curtos "Aberto" / "Fechado") */}
             <div className="mt-3 flex items-center justify-center gap-2">
-              <span className={`inline-flex items-center gap-2 text-xs font-bold ${isOpenNow ? 'text-emerald-700' : 'text-[#4A3F5C]/65'}`}>
-                <span className={`h-2 w-2 rounded-full ${isOpenNow ? 'bg-emerald-600 shadow-[0_0_0_3px_rgba(5,150,105,.12)]' : 'bg-[#4A3F5C]/35'}`} />
-                {isOpenNow ? 'Aberto agora' : 'Fechado agora'}
+              <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold ${isOpenNow ? 'border-emerald-600/35 text-emerald-700' : 'border-rose-600/30 text-rose-700'}`}>
+                <span className={`h-2 w-2 rounded-full ${isOpenNow ? 'bg-emerald-600' : 'bg-rose-600'}`} />
+                {isOpenNow ? 'Aberto' : 'Fechado'}
               </span>
 
               <button
@@ -289,27 +289,26 @@ export default function PublicShowcaseView({
                       <span>{combo.servicos.length} {combo.servicos.length === 1 ? 'serviço incluso' : 'serviços inclusos'}</span>
                       <ChevronDown className={`h-4 w-4 transition-transform duration-200 ease-out ${expandedComboId === combo.id ? 'rotate-180' : ''}`} />
                     </button>
-                    {expandedComboId === combo.id && <div className="mt-3 space-y-0 animate-in fade-in duration-150">{combo.servicos.map((s, index) => <div key={s.id} className="relative flex gap-2.5 pb-3 last:pb-0"><div className="flex w-4 justify-center"><span className="relative z-10 mt-1.5 h-2 w-2 rounded-full bg-[#8675A9]" />{index < combo.servicos.length - 1 && <span className="absolute bottom-0 top-3 w-px bg-[#B8A9D9]/45" />}</div><div className="flex min-w-0 flex-1 items-center gap-2"><div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-[#FAF7F5]">{s.foto_url ? <Image src={s.foto_url} alt={s.nome} fill className="object-cover" unoptimized /> : <Scissors className="m-2 h-5 w-5 text-[#B8A9D9]" />}</div><div className="min-w-0"><p className="truncate text-[11px] font-bold text-[#4A3F5C]">{s.nome}</p><p className="text-[10px] text-gray-500">{s.duracao_minutos} min</p></div></div></div>)}</div>}
+                    {expandedComboId === combo.id && <div className="mt-3 space-y-2.5 animate-in fade-in duration-150">{combo.servicos.map((s) => <div key={s.id} className="flex items-center gap-2.5"><div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-[#FAF7F5]">{s.foto_url ? <Image src={s.foto_url} alt={s.nome} fill className="object-cover" unoptimized /> : <Scissors className="m-2 h-5 w-5 text-[#B8A9D9]" />}</div><div className="min-w-0"><p className="truncate text-[11px] font-bold text-[#4A3F5C]">{s.nome}</p><p className="text-[10px] text-gray-500">{s.duracao_minutos} min</p></div></div>)}</div>}
                   </div>}
 
-                  <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
-                    <div>
+                  <div className="flex items-end justify-between gap-2 border-t border-gray-100 pt-2">
+                    <div className="min-w-0">
                       <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-bold">
                         Valor do Pacote
                       </span>
-                      <strong className="text-base font-black text-emerald-700">
+                      <strong className="block whitespace-nowrap text-base font-black text-emerald-700">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(combo.preco_combo)}
                       </strong>
-                      <span className="ml-2 text-[11px] font-semibold text-gray-500">{combo.duracaoTotalMinutos} min</span>
+                      <span className="mt-0.5 block whitespace-nowrap text-[11px] font-semibold text-gray-500">{combo.duracaoTotalMinutos} min</span>
                     </div>
 
                     <Link
                       href={`${studioContext ? `/studio/${studioContext.slug}/${profissional.slug}` : `/p/${profissional.slug}`}/agendar?combo=${combo.id}`}
-                      className="px-4 py-2 rounded-xl text-xs font-bold shadow-2xs transition hover:scale-102 flex items-center gap-1.5 cursor-pointer"
+                      className="shrink-0 rounded-xl px-4 py-2 text-xs font-bold shadow-2xs transition-transform duration-150 ease-out active:scale-[0.97] cursor-pointer"
                       style={{ backgroundColor: corPrimaria, color: textColorOnPrimary }}
                     >
-                      <span>Agendar Pacote</span>
-                      <span>&rarr;</span>
+                      <span>Agendar</span>
                     </Link>
                   </div>
                 </div>

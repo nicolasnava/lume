@@ -1,24 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import {
-  Heart,
-  ArrowRight,
   MessageCircle,
-  Headphones,
-  CheckCircle2,
-  HelpCircle,
   Phone,
-  Clock,
-  ShieldCheck,
   Mail,
   Settings2,
-  Zap,
   ChevronDown,
 } from 'lucide-react'
 import LandingHeader from './LandingHeader'
 import LandingFooter from './LandingFooter'
+import CornerFillButton from '@/components/ui/CornerFillButton'
 
 export default function ContatoPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null)
@@ -47,7 +39,7 @@ export default function ContatoPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-[#3D2E4D] font-sans selection:bg-[#8C5383]/20">
+    <div className="landing-motion-scope min-h-screen bg-[#FAF8F5] text-[#3D2E4D] font-sans selection:bg-[#8C5383]/20">
       <LandingHeader />
 
       {/* ===================================================================== */}
@@ -109,15 +101,16 @@ export default function ContatoPage() {
                 </div>
 
                 <div className="space-y-2 pt-2">
-                  <a
+                  <CornerFillButton
                     href="https://wa.me/5511965758459?text=Olá!%20Sou%20usuária%20do%20Lumê%20e%20gostaria%20de%20ajuda%20para%20configurar%20minha%20agenda."
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-3 px-4 rounded-2xl bg-[#FAF8F5] hover:bg-[#FAF0F5] border border-[#E8DFD8] text-[#3D2E4D] text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                    variant="pill"
+                    className="w-full px-4 py-3 text-xs"
+                    icon={<MessageCircle className="h-4 w-4 text-emerald-600" />}
                   >
-                    <MessageCircle className="h-4 w-4 text-emerald-600" />
                     <span>Iniciar no WhatsApp</span>
-                  </a>
+                  </CornerFillButton>
                   <span className="text-[11px] text-gray-400 text-center block font-medium">
                     (11) 96575-8459
                   </span>
@@ -204,15 +197,15 @@ export default function ContatoPage() {
                 </p>
               </div>
 
-              <a
+              <CornerFillButton
                 href="https://wa.me/5511965758459?text=Olá!%20Gostaria%20de%20um%20orçamento%20para%20a%20equipe%20cadastrar%20meus%20serviços%20e%20configurar%20minha%20conta%20no%20Lumê."
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#3D2E4D] hover:bg-[#2E223B] px-6 py-3.5 text-xs font-bold text-white shadow-md transition shrink-0 cursor-pointer w-full sm:w-auto whitespace-nowrap"
+                variant="dark"
+                className="shrink-0 px-6 py-3.5 text-xs w-full sm:w-auto whitespace-nowrap"
               >
                 <span>Orçar configuração e cadastro</span>
-                <ArrowRight className="h-3.5 w-3.5" />
-              </a>
+              </CornerFillButton>
             </div>
 
           </div>
@@ -285,13 +278,13 @@ export default function ContatoPage() {
               Crie sua conta em 1 minuto e veja como o Lumê cuida da sua agenda para você focar na sua arte.
             </p>
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3.5">
-              <Link
+              <CornerFillButton
                 href="/cadastro"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-sm font-bold text-[#3D2E4D] shadow-lg hover:bg-[#F4EAE4] transition transform hover:-translate-y-0.5 cursor-pointer w-full sm:w-auto"
+                variant="light"
+                className="w-full px-8 py-4 text-sm font-bold shadow-lg sm:w-auto"
               >
                 <span>Criar minha agenda grátis</span>
-                <ArrowRight className="h-4 w-4 text-[#3D2E4D]" />
-              </Link>
+              </CornerFillButton>
             </div>
           </div>
         </div>

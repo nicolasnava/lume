@@ -3,27 +3,30 @@
 import { useState } from 'react'
 import ProfileForm from '@/components/profile/ProfileForm'
 import SubscriptionSection from '@/components/profile/SubscriptionSection'
+import AccountSecuritySection from '@/components/profile/AccountSecuritySection'
 import { Database } from '@/lib/supabase/database.types'
 import { SubscriptionData } from '@/app/actions/subscription'
-import { User, CreditCard, Clock, Store } from 'lucide-react'
+import { User, CreditCard, Clock, Store, ShieldCheck } from 'lucide-react'
 
 type ProfissionalRow = Database['public']['Tables']['profissionais']['Row']
 
 interface ProfileTabsWrapperProps {
   profissional: ProfissionalRow
   subscriptionData: SubscriptionData
+  email: string
 }
 
 export default function ProfileTabsWrapper({
   profissional,
   subscriptionData,
+  email,
 }: ProfileTabsWrapperProps) {
-  const [activeTab, setActiveTab] = useState<'perfil' | 'vitrine' | 'assinatura'>('perfil')
+  const [activeTab, setActiveTab] = useState<'perfil' | 'vitrine' | 'assinatura' | 'seguranca'>('perfil')
 
   return (
     <div className="space-y-6">
       {/* Abas de Navegação (Igualmente distribuídas preenchendo o espaço) */}
-      <div className="grid grid-cols-3 border-b border-gray-200/80 pb-px w-full">
+      <div className="grid grid-cols-2 sm:grid-cols-4 border-b border-gray-200/80 pb-px w-full">
         <button
           type="button"
           onClick={() => setActiveTab('perfil')}
@@ -35,6 +38,19 @@ export default function ProfileTabsWrapper({
         >
           <User className={`h-4 w-4 shrink-0 ${activeTab === 'perfil' ? 'text-purple-600' : 'text-gray-400'}`} />
           <span className="truncate">Perfil</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('seguranca')}
+          className={`flex items-center justify-center gap-1.5 sm:gap-2 py-3 px-1 text-xs sm:text-sm font-bold border-b-2 transition cursor-pointer text-center w-full ${
+            activeTab === 'seguranca'
+              ? 'border-purple-600 text-[#4A3F5C]'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          }`}
+        >
+          <ShieldCheck className={`h-4 w-4 shrink-0 ${activeTab === 'seguranca' ? 'text-purple-600' : 'text-gray-400'}`} />
+          <span className="truncate">Segurança</span>
         </button>
 
         <button
@@ -80,6 +96,8 @@ export default function ProfileTabsWrapper({
       {/* Conteúdo da Aba Ativa */}
       {activeTab === 'assinatura' ? (
         <SubscriptionSection initialData={subscriptionData} />
+      ) : activeTab === 'seguranca' ? (
+        <AccountSecuritySection email={email} />
       ) : (
         <ProfileForm initialData={profissional} activeTab={activeTab} />
       )}

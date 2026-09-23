@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { X, Calendar, Clock, User, Phone, Scissors, Loader2, AlertTriangle, ChevronDown, Check } from 'lucide-react'
+import { X, Calendar, Clock, User, Phone, Scissors, Loader2, AlertTriangle, ChevronDown, Check, CreditCard } from 'lucide-react'
 import { createBookingAction } from '@/app/actions/booking'
 import PaymentIcon from '@/components/common/PaymentIcon'
 import CustomSelect from '@/components/ui/CustomSelect'
 import CustomDatePicker from '@/components/ui/CustomDatePicker'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 interface NewBookingModalProps {
   isOpen: boolean
@@ -21,6 +22,17 @@ interface ServicoOption {
   duracao_minutos: number
   foto_url?: string | null
 }
+
+interface PackageOption {
+  id: string
+  nome: string
+  preco_combo: number
+  foto_url: string | null
+  duracaoTotalMinutos: number
+  servicos: ServicoOption[]
+}
+
+interface ProductOption { id: string; nome: string; preco: number; foto_url: string | null }
 
 interface ClientOption {
   id: string
@@ -57,6 +69,8 @@ const TIME_OPTIONS = (() => {
 
 export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBookingModalProps) {
   const [servicos, setServicos] = useState<ServicoOption[]>([])
+  const [pacotes, setPacotes] = useState<PackageOption[]>([])
+  const [produtos, setProdutos] = useState<ProductOption[]>([])
   const [clientes, setClientes] = useState<ClientOption[]>([])
   const [loadingData, setLoadingData] = useState(false)
   const [profissionalId, setProfissionalId] = useState<string | null>(null)
@@ -66,7 +80,10 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
   const [clienteTelefone, setClienteTelefone] = useState('')
   const [selectedServicoId, setSelectedServicoId] = useState('')
   const [selectedServicoIds, setSelectedServicoIds] = useState<string[]>([])
-  const [isMultiSelect, setIsMultiSelect] = useState(false)
+  const [isMultiSelect, setIsMultiSelect] = useState(true)
+  const [selectedComboId, setSelectedComboId] = useState('')
+  const [pendingCombo, setPendingCombo] = useState<PackageOption | null>(null)
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([])
   const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false)
   const serviceDropdownRef = useRef<HTMLDivElement>(null)
 
@@ -118,24 +135,30 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
       setShowClientSuggestions(false)
       setErrorMsg(null)
       setAllowCustomSlot(false)
-      setIsMultiSelect(false)
+      setIsMultiSelect(true)
       setSelectedServicoIds([])
+      setSelectedServicoId('')
+      setSelectedComboId('')
+      setPendingCombo(null)
+      setSelectedProductIds([])
       setIsServiceDropdownOpen(false)
 
       // Fetch user profile, services and registered clients via server action
       const loadInitialData = async () => {
         setLoadingData(true)
-        const { getProfissionalServicesAndClientsAction } = await import('@/app/actions/booking')
-        const res = await getProfissionalServicesAndClientsAction()
+        const [{ getProfissionalServicesAndClientsAction }, { getCombosProfissionalAction }, { getComandaProdutosAction }] = await Promise.all([
+          import('@/app/actions/booking'), import('@/app/actions/combos'), import('@/app/actions/comanda'),
+        ])
+        const [res, combos, items] = await Promise.all([
+          getProfissionalServicesAndClientsAction(), getCombosProfissionalAction(), getComandaProdutosAction(undefined, true),
+        ])
 
         if (res.success && res.profissionalId) {
           setProfissionalId(res.profissionalId)
           setServicos(res.services)
           setClientes(res.clients || [])
-          if (res.services.length > 0) {
-            setSelectedServicoId(res.services[0].id)
-            setSelectedServicoIds([res.services[0].id])
-          }
+          setPacotes(combos.filter((combo) => combo.ativo).map((combo) => ({ ...combo, duracaoTotalMinutos: combo.duracaoTotalMinutos || 0 })))
+          setProdutos(items.filter((item) => item.ativo).map(({ id, nome, preco, foto_url }) => ({ id, nome, preco, foto_url })))
         }
         setLoadingData(false)
       }
@@ -145,18 +168,22 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
   }, [isOpen])
 
   // Serviços selecionados e cálculos dinâmicos de tempo e valor total
-  const activeServices = isMultiSelect
+  const explicitlySelectedServices = isMultiSelect
     ? servicos.filter((s) => selectedServicoIds.includes(s.id))
     : servicos.filter((s) => s.id === selectedServicoId)
 
-  const totalDuracaoMinutos = activeServices.reduce((acc, s) => acc + s.duracao_minutos, 0) || 30
-  const totalPreco = activeServices.reduce((acc, s) => acc + Number(s.preco), 0) || 0
+  const selectedCombo = pacotes.find((combo) => combo.id === selectedComboId)
+  const packageServiceIds = new Set(selectedCombo?.servicos.map((service) => service.id) || [])
+  const activeServices = [...(selectedCombo?.servicos || []), ...explicitlySelectedServices.filter((service) => !packageServiceIds.has(service.id))]
+  const selectedServicesDuration = (selectedCombo?.duracaoTotalMinutos || 0) + explicitlySelectedServices.filter((service) => !packageServiceIds.has(service.id)).reduce((acc, s) => acc + s.duracao_minutos, 0)
+  const totalDuracaoMinutos = selectedServicesDuration || (selectedProductIds.length > 0 ? 30 : 0)
+  const totalPreco = (selectedCombo?.preco_combo || 0) + explicitlySelectedServices.filter((service) => !packageServiceIds.has(service.id)).reduce((acc, s) => acc + Number(s.preco), 0) + produtos.filter((item) => selectedProductIds.includes(item.id)).reduce((sum, item) => sum + Number(item.preco), 0)
+  const hasSelectedItems = activeServices.length > 0 || Boolean(selectedCombo) || selectedProductIds.length > 0
 
   // Calcular horários disponíveis reais com base na agenda cadastrada
   useEffect(() => {
     if (!isOpen || !profissionalId || !dataStr) return
-    const durationOrId = isMultiSelect ? (totalDuracaoMinutos || 30) : (selectedServicoId || 30)
-    if (!durationOrId) return
+    const durationOrId = totalDuracaoMinutos || 30
 
     let isMounted = true
     const loadSlots = async () => {
@@ -200,11 +227,13 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const primaryServicoId = isMultiSelect ? (selectedServicoIds[0] || '') : selectedServicoId
-    const allServicoIds = isMultiSelect ? selectedServicoIds : [selectedServicoId]
+    const allServicoIds = isMultiSelect ? selectedServicoIds : selectedServicoId ? [selectedServicoId] : []
+    const packageIds = new Set(selectedCombo?.servicos.map((service) => service.id) || [])
+    const extraServiceIds = allServicoIds.filter((id) => !packageIds.has(id))
+    const primaryServicoId = extraServiceIds[0] || null
 
-    if (!profissionalId || !primaryServicoId || allServicoIds.length === 0 || !dataStr || !horaStr) {
-      setErrorMsg('Por favor, preencha todos os campos obrigatórios e selecione pelo menos um serviço.')
+    if (!profissionalId || !hasSelectedItems || !dataStr || !horaStr) {
+      setErrorMsg('Preencha os campos obrigatórios e selecione ao menos um serviço, pacote ou item da comanda.')
       return
     }
 
@@ -217,7 +246,9 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
     const res = await createBookingAction({
       profissional_id: profissionalId,
       servico_id: primaryServicoId,
-      servico_ids: allServicoIds,
+      servico_ids: extraServiceIds,
+      combo_id: selectedCombo?.id || null,
+      produto_ids: selectedProductIds,
       data_hora_inicio: dataHoraInicioStr,
       cliente_nome: clienteNome,
       cliente_telefone: clienteTelefone,
@@ -477,9 +508,7 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
                             onClick={() => {
                               if (isMultiSelect) {
                                 if (selectedServicoIds.includes(s.id)) {
-                                  if (selectedServicoIds.length > 1) {
-                                    setSelectedServicoIds(selectedServicoIds.filter((id) => id !== s.id))
-                                  }
+                                  setSelectedServicoIds(selectedServicoIds.filter((id) => id !== s.id))
                                 } else {
                                   setSelectedServicoIds([...selectedServicoIds, s.id])
                                 }
@@ -564,6 +593,46 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
               </div>
             )}
           </div>
+
+          {pacotes.length > 0 && (
+            <section className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-700">Pacote <span className="font-normal text-gray-400">(opcional)</span></label>
+              <div className="space-y-1.5">
+                <button type="button" onClick={() => setSelectedComboId('')} className={`flex min-h-12 w-full items-center justify-between rounded-2xl border px-3 py-2 text-left text-xs transition-transform duration-150 ease-out active:scale-[.99] ${!selectedComboId ? 'border-[#B8A9D9] bg-[#B8A9D9]/10' : 'border-gray-200 bg-white'}`}>
+                  <span>Sem pacote</span>{!selectedComboId && <Check className="h-4 w-4 text-[#4A3F5C]" />}
+                </button>
+                {pacotes.map((combo) => {
+                  const chosen = selectedComboId === combo.id
+                  return <button key={combo.id} type="button" onClick={() => {
+                    if (chosen) { setSelectedComboId(''); return }
+                    const overlapping = combo.servicos.some((service) => selectedServicoIds.includes(service.id))
+                    if (overlapping) setPendingCombo(combo)
+                    else setSelectedComboId(combo.id)
+                  }} className={`flex min-h-14 w-full items-center gap-3 rounded-2xl border p-2 text-left transition-transform duration-150 ease-out active:scale-[.99] ${chosen ? 'border-[#B8A9D9] bg-[#B8A9D9]/10' : 'border-gray-200 bg-white'}`}>
+                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-[#FAF7F5]">{combo.foto_url ? <Image src={combo.foto_url} alt="" fill className="object-cover" unoptimized /> : <Scissors className="m-3 h-4 w-4 text-[#8675A9]" />}</div>
+                    <div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-[#4A3F5C]">{combo.nome}</p><p className="mt-0.5 text-[10px] text-[#6B5E7A]">R$ {Number(combo.preco_combo).toFixed(2)} · {combo.duracaoTotalMinutos} min</p></div>
+                    {chosen && <Check className="h-4 w-4 shrink-0 text-[#4A3F5C]" />}
+                  </button>
+                })}
+              </div>
+            </section>
+          )}
+
+          {produtos.length > 0 && (
+            <section className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-700">Comanda <span className="font-normal text-gray-400">(opcional)</span></label>
+              <div className="space-y-1 border-t border-gray-100">
+                {produtos.map((item) => {
+                  const chosen = selectedProductIds.includes(item.id)
+                  return <button key={item.id} type="button" onClick={() => setSelectedProductIds((ids) => chosen ? ids.filter((id) => id !== item.id) : [...ids, item.id])} className="flex min-h-14 w-full items-center gap-3 border-b border-gray-100 py-2 text-left transition-transform duration-150 ease-out active:scale-[.99]">
+                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-[#FAF7F5]">{item.foto_url ? <Image src={item.foto_url} alt="" fill className="object-cover" unoptimized /> : <CreditCard className="m-3 h-4 w-4 text-[#8675A9]" />}</div>
+                    <div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-[#4A3F5C]">{item.nome}</p><p className="text-[10px] text-emerald-700">R$ {Number(item.preco).toFixed(2)}</p></div>
+                    <span className={`flex h-5 w-5 items-center justify-center rounded-md border ${chosen ? 'border-[#4A3F5C] bg-[#4A3F5C] text-white' : 'border-gray-300 text-transparent'}`}><Check className="h-3.5 w-3.5" /></span>
+                  </button>
+                })}
+              </div>
+            </section>
+          )}
 
           {/* Data e Horário (CustomDatePicker + CustomSelect) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -681,6 +750,15 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
           </div>
         </form>
       </div>
+      <ConfirmDialog
+        open={!!pendingCombo}
+        title="Este pacote inclui um serviço selecionado"
+        inlineIcon={<AlertTriangle className="h-5 w-5" />}
+        description={pendingCombo ? `${pendingCombo.nome} já inclui ${pendingCombo.servicos.filter((service) => selectedServicoIds.includes(service.id)).map((service) => service.nome).join(', ')}. O serviço permanecerá visível junto ao pacote sem cobrança duplicada.` : ''}
+        confirmLabel="Usar pacote"
+        onClose={() => setPendingCombo(null)}
+        onConfirm={() => { if (pendingCombo) setSelectedComboId(pendingCombo.id); setPendingCombo(null) }}
+      />
     </div>
   )
 }

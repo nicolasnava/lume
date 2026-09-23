@@ -188,18 +188,20 @@ html.dark * {
   position: absolute;
   bottom: 0;
   right: 0;
-  transform: translate(50%, 50%) scale(0);
+  transform: translate(50%, 50%) scale(0.12);
+  opacity: 0;
   transform-origin: center;
   width: 700px;
   height: 700px;
   border-radius: 9999px;
   pointer-events: none;
-  transition: transform 750ms cubic-bezier(0.25, 1, 0.5, 1);
+  transition: transform 260ms cubic-bezier(0.23, 1, 0.32, 1), opacity 180ms ease-out;
   will-change: transform;
 }
 
 .lume-corner-fill-btn:hover .corner-fill-circle {
   transform: translate(50%, 50%) scale(1);
+  opacity: 1;
 }
 
 .lume-corner-fill-btn .corner-fill-content {
@@ -208,18 +210,17 @@ html.dark * {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: color 750ms cubic-bezier(0.25, 1, 0.5, 1);
+  transition: color 200ms ease-out;
 }
 
 .lume-corner-fill-btn .corner-fill-text {
   display: inline-flex;
   align-items: center;
-  transition: transform 750ms cubic-bezier(0.25, 1, 0.5, 1), letter-spacing 750ms cubic-bezier(0.25, 1, 0.5, 1);
+  transition: transform 220ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .lume-corner-fill-btn:hover .corner-fill-text {
-  transform: translateX(-6px);
-  letter-spacing: 0.025em;
+  transform: translateX(-3px);
 }
 
 .lume-corner-fill-btn .corner-fill-arrow {
@@ -230,7 +231,7 @@ html.dark * {
   width: 0;
   opacity: 0;
   transform: translateX(-8px);
-  transition: width 650ms cubic-bezier(0.25, 1, 0.5, 1) 100ms, opacity 650ms cubic-bezier(0.25, 1, 0.5, 1) 100ms, transform 650ms cubic-bezier(0.25, 1, 0.5, 1) 100ms;
+  transition: width 240ms cubic-bezier(0.23, 1, 0.32, 1), opacity 180ms ease-out, transform 240ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .lume-corner-fill-btn:hover .corner-fill-arrow {
@@ -371,6 +372,132 @@ html.dark * {
   will-change: transform, opacity;
 }
 
+/* Movimento coeso e contido nas ações de todas as páginas públicas Lumê. */
+.landing-motion-scope :is(button, a[href]):not(.lume-billing-option):not([class*="SparkleButton"]):not([class*="lume-corner-fill-btn"]):not([data-gsap-motion]) {
+  transition-property: transform, box-shadow, color, background-color;
+  transition-duration: 220ms;
+  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .landing-motion-scope :is(button, a[href]):not(.lume-billing-option):not([class*="SparkleButton"]):not([class*="lume-corner-fill-btn"]):not([data-gsap-motion]):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(74, 63, 92, 0.12);
+  }
+
+  .landing-motion-scope :is(button, a[href]):not([aria-expanded]):hover > svg:last-child:not(.lucide-arrow-right) {
+    transform: translateX(2px) scale(1.05);
+  }
+
+}
+
+.landing-motion-scope :is(button, a[href]):not(.lume-billing-option):not([class*="SparkleButton"]):not([class*="lume-corner-fill-btn"]):not([data-gsap-motion]):active { transform: scale(0.98); }
+
+.landing-motion-scope .lucide-arrow-right {
+  transform: translateX(-3px);
+  opacity: 0;
+  transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1), opacity 160ms ease-out;
+}
+
+.landing-motion-scope :is(a[href], button):hover .lucide-arrow-right,
+.landing-motion-scope :is(a[href], button):focus-visible .lucide-arrow-right {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.simulator-primary-action {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgba(184, 169, 217, 0.58);
+  box-shadow: 0 8px 22px rgba(74, 63, 92, 0.17), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.simulator-primary-action::after {
+  position: absolute;
+  z-index: 0;
+  inset: 1px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: inherit;
+  content: "";
+  opacity: 0.32;
+  pointer-events: none;
+  animation: simulatorActionGlow 3.2s ease-in-out infinite;
+}
+
+@keyframes simulatorActionGlow {
+  0%, 100% { opacity: 0.18; }
+  50% { opacity: 0.52; }
+}
+
+.simulator-primary-action::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  transform: translateX(-125%) skewX(-18deg);
+  background: linear-gradient(105deg, transparent 28%, rgba(255, 255, 255, 0.22) 48%, rgba(216, 204, 234, 0.32) 52%, transparent 72%);
+  transition: transform 280ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.simulator-primary-action > * { position: relative; z-index: 1; }
+
+.simulator-primary-action:hover,
+.simulator-primary-action:focus-visible {
+  border-color: rgba(216, 204, 234, 0.92);
+  box-shadow: 0 12px 28px rgba(74, 63, 92, 0.28), 0 0 0 3px rgba(184, 169, 217, 0.16);
+}
+
+.simulator-primary-action:hover::before,
+.simulator-primary-action:focus-visible::before {
+  transform: translateX(125%) skewX(-18deg);
+}
+
+.simulator-secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  max-width: 100%;
+  padding-bottom: 8px;
+  text-decoration: none;
+  transition: color 180ms ease-out, transform 180ms ease-out;
+}
+
+.simulator-secondary-action::after {
+  position: absolute;
+  right: 0;
+  bottom: 2px;
+  left: 0;
+  height: 1px;
+  content: "";
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: #8C5383;
+  transition: transform 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.simulator-secondary-action:hover::after,
+.simulator-secondary-action:focus-visible::after { transform: scaleX(1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-motion-scope :is(button, a[href]):active { transform: none !important; }
+  .simulator-primary-action::before,
+  .simulator-primary-action::after,
+  .simulator-secondary-action::after { transition: none !important; animation: none !important; }
+  .simulator-primary-action::before { display: none; }
+  .simulator-primary-action::after { opacity: 0; }
+  .lume-corner-fill-btn .corner-fill-circle,
+  .lume-corner-fill-btn:hover .corner-fill-circle {
+    transform: translate(50%, 50%) scale(0.12);
+    opacity: 0;
+    transition: none !important;
+  }
+  .lume-corner-fill-btn .corner-fill-text,
+  .lume-corner-fill-btn .corner-fill-arrow { transition: none !important; }
+}
+
 /* ==========================================================================
    Acessibilidade e Redução de Movimento (Prefers-Reduced-Motion)
    ========================================================================== */
@@ -384,4 +511,3 @@ html.dark * {
     scroll-behavior: auto !important;
   }
 }
-

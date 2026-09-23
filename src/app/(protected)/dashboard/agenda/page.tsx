@@ -23,7 +23,7 @@ export default async function DashboardAgendaPage() {
   // Buscar todos os agendamentos da profissional com relacionamentos
   const { data: agendamentos } = await adminSupabase
     .from('agendamentos')
-    .select('*, clientes(nome, telefone), servicos(nome, duracao_minutos, preco, ativo), agendamento_servicos(id, preco_no_momento, duracao_no_momento_minutos, servicos(id, nome, preco, duracao_minutos, ativo))')
+    .select('*, clientes(nome, telefone), servicos(nome, duracao_minutos, preco, ativo), combos(nome, preco_combo, duracao_minutos, foto_url), agendamento_servicos(id, preco_no_momento, duracao_no_momento_minutos, servicos(id, nome, preco, duracao_minutos, foto_url, ativo)), agendamento_comanda_produtos(id, produto_id, nome_no_momento, preco_no_momento, comanda_produtos(nome, foto_url))')
     .eq('profissional_id', user.id)
     .order('data_hora_inicio', { ascending: true })
 

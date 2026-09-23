@@ -29,22 +29,23 @@ export default async function AvaliacoesDashboardPage() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const avaliacoes = (avaliacoesData || []) as any[]
+  const avaliacoesPublicas = avaliacoes.filter((avaliacao) => !avaliacao.oculta)
 
-  const total = avaliacoes.length
-  const soma = avaliacoes.reduce((acc, curr) => acc + Number(curr.nota), 0)
+  const total = avaliacoesPublicas.length
+  const soma = avaliacoesPublicas.reduce((acc, curr) => acc + Number(curr.nota), 0)
   const media = total > 0 ? (soma / total).toFixed(1) : '0.0'
 
   // Contagem por estrela (1 a 5)
   const distribution = [5, 4, 3, 2, 1].map((n) => ({
     nota: n,
-    count: avaliacoes.filter((a) => Number(a.nota) === n).length,
-    percentage: total > 0 ? (avaliacoes.filter((a) => Number(a.nota) === n).length / total) * 100 : 0,
+    count: avaliacoesPublicas.filter((a) => Number(a.nota) === n).length,
+    percentage: total > 0 ? (avaliacoesPublicas.filter((a) => Number(a.nota) === n).length / total) * 100 : 0,
   }))
 
   // Estatísticas avançadas
-  const positivasCount = avaliacoes.filter((a) => Number(a.nota) >= 4).length
+  const positivasCount = avaliacoesPublicas.filter((a) => Number(a.nota) >= 4).length
   const taxaAprovacao = total > 0 ? Math.round((positivasCount / total) * 100) : 100
-  const cincoEstrelasCount = avaliacoes.filter((a) => Number(a.nota) === 5).length
+  const cincoEstrelasCount = avaliacoesPublicas.filter((a) => Number(a.nota) === 5).length
   const cincoEstrelasPercent = total > 0 ? Math.round((cincoEstrelasCount / total) * 100) : 100
 
   return (
