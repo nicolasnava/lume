@@ -46,7 +46,7 @@ export default function MobileNotificationBell({ aviso, statusConta, payment }: 
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="relative inline-flex items-center justify-center rounded-lg bg-[#FAF7F5] p-2 text-[#4A3F5C] border border-[#B8A9D9]/40 hover:bg-[#B8A9D9]/15 transition cursor-pointer"
+        className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[#FAF7F5] text-[#4A3F5C] border border-[#B8A9D9]/40 hover:bg-[#B8A9D9]/15 transition cursor-pointer"
         title="Avisos e Notificações"
         aria-label="Avisos e Notificações"
       >

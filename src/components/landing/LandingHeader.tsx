@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import PwaInstallModal from './PwaInstallModal'
 import SparkleButton from '@/components/ui/SparkleButton'
+import { LANDING_BUTTON_TRANSITION_SECONDS } from '@/lib/landing-button-motion'
 
 export default function LandingHeader() {
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -44,13 +45,13 @@ export default function LandingHeader() {
       : null
 
     const animate = (target: HTMLElement | null, state: 'hover' | 'press' | 'rest') => {
-      if (!target || !target.closest('.landing-motion-scope') || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+      if (!target || target.dataset.gsapMotion === 'skip' || !target.closest('.landing-motion-scope') || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
       target.dataset.gsapMotion = 'true'
       if (state !== 'rest') target.style.willChange = 'transform'
       gsap.to(target, {
         y: state === 'hover' ? -3 : 0,
         scale: state === 'hover' ? 1.025 : state === 'press' ? 0.975 : 1,
-        duration: state === 'press' ? 0.1 : state === 'hover' ? 0.22 : 0.2,
+        duration: state === 'press' ? 0.14 : LANDING_BUTTON_TRANSITION_SECONDS,
         ease: 'power3.out',
         overwrite: 'auto',
         onComplete: () => {

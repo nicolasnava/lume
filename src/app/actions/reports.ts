@@ -180,7 +180,7 @@ export async function getRelatoriosEMetasAction(
         metaAnteriorSugerida = Number(metaAnteriorRaw.valor_meta)
       }
     } catch {
-      // Ignora erro
+      // A meta is optional; use the fallback stored in user_metadata below.
     }
 
     if (metaAnteriorSugerida === null) {
@@ -191,13 +191,18 @@ export async function getRelatoriosEMetasAction(
     }
 
     // 3. Buscar Agendamentos Concluídos do Mês Selecionado
-    const { data: agendamentosMesAtual } = await admin
+    const { data: agendamentosMesAtual, error: agendamentosAtualError } = await admin
       .from('agendamentos')
       .select('id, data_hora_inicio, valor_cobrado, servico_id, servicos(nome)')
       .eq('profissional_id', user.id)
       .eq('status', 'concluido')
       .gte('data_hora_inicio', mesAlvoInicioIso)
       .lte('data_hora_inicio', mesAlvoFimIso)
+
+    if (agendamentosAtualError) {
+      console.error('[getRelatoriosEMetasAction] Falha ao consultar agendamentos do período:', agendamentosAtualError)
+      throw new Error('Não foi possível consultar os agendamentos para calcular os relatórios.')
+    }
 
     const bookingsAtual = (agendamentosMesAtual || []) as any[]
     const faturamentoAtual = bookingsAtual.reduce((acc, b) => acc + Number(b.valor_cobrado || 0), 0)
@@ -221,13 +226,18 @@ export async function getRelatoriosEMetasAction(
     }
 
     // 4. Comparativo com o Mês Anterior (Até o mesmo dia proporcional se mês atual, ou mês completo se passado)
-    const { data: agendamentosMesAnteriorProp } = await admin
+    const { data: agendamentosMesAnteriorProp, error: agendamentosAnteriorError } = await admin
       .from('agendamentos')
       .select('valor_cobrado')
       .eq('profissional_id', user.id)
       .eq('status', 'concluido')
       .gte('data_hora_inicio', mesAnteriorInicioIso)
       .lte('data_hora_inicio', mesAnteriorLimiteIso)
+
+    if (agendamentosAnteriorError) {
+      console.error('[getRelatoriosEMetasAction] Falha ao consultar período comparativo:', agendamentosAnteriorError)
+      throw new Error('Não foi possível consultar o período comparativo dos relatórios.')
+    }
 
     const faturamentoMesAnteriorProp = ((agendamentosMesAnteriorProp as any[]) || []).reduce(
       (acc, b) => acc + Number(b.valor_cobrado || 0),
@@ -341,13 +351,18 @@ export async function getRelatoriosEMetasAction(
       const anoInicioIso = new Date(anoAlvo - 2, 0, 1, 0, 0, 0).toISOString()
       const anoFimIso = new Date(anoAlvo + 1, 11, 31, 23, 59, 59, 999).toISOString()
 
-      const { data: agendamentosGraficoRaw } = await admin
+      const { data: agendamentosGraficoRaw, error: agendamentosGraficoError } = await admin
         .from('agendamentos')
         .select('id, data_hora_inicio, valor_cobrado')
         .eq('profissional_id', user.id)
         .eq('status', 'concluido')
         .gte('data_hora_inicio', anoInicioIso)
         .lte('data_hora_inicio', anoFimIso)
+
+      if (agendamentosGraficoError) {
+        console.error('[getRelatoriosEMetasAction] Falha ao consultar gráfico financeiro:', agendamentosGraficoError)
+        throw new Error('Não foi possível consultar os dados do gráfico financeiro.')
+      }
 
       if (agendamentosGraficoRaw) {
         dadosGrafico = agendamentosGraficoRaw.map((b: any) => ({
@@ -356,8 +371,8 @@ export async function getRelatoriosEMetasAction(
           valor_cobrado: Number(b.valor_cobrado || 0),
         }))
       }
-    } catch {
-      // Ignora erro
+    } catch (error) {
+      throw error
     }
 
     return {

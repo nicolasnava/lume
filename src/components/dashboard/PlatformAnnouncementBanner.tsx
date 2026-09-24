@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { Megaphone, X } from 'lucide-react'
+import { platformAnnouncementDismissalKey, shouldShowPlatformAnnouncement, type PlatformAnnouncementFrequency } from '@/lib/platform-announcement-frequency'
 
 interface PlatformAnnouncementBannerProps {
   aviso: {
     id: string
     mensagem: string
     tipo: 'info' | 'alerta' | 'manutencao'
+    frequencia?: PlatformAnnouncementFrequency | null
   } | null
 }
 
@@ -16,14 +18,21 @@ export default function PlatformAnnouncementBanner({ aviso }: PlatformAnnounceme
 
   useEffect(() => {
     if (aviso) {
-      setDismissed(localStorage.getItem(`lume_dismissed_aviso_banner_${aviso.id}`) === 'true')
+      const key = platformAnnouncementDismissalKey(aviso.id, aviso.frequencia)
+      const storage = aviso.frequencia === 'cada_acesso' ? sessionStorage : localStorage
+      const isDismissed = key ? storage.getItem(key) === 'true' : true
+      setDismissed(!shouldShowPlatformAnnouncement(aviso.frequencia, isDismissed))
     }
   }, [aviso])
 
   if (!aviso || dismissed) return null
 
   const handleDismiss = () => {
-    localStorage.setItem(`lume_dismissed_aviso_banner_${aviso.id}`, 'true')
+    const key = platformAnnouncementDismissalKey(aviso.id, aviso.frequencia)
+    if (key) {
+      const storage = aviso.frequencia === 'cada_acesso' ? sessionStorage : localStorage
+      storage.setItem(key, 'true')
+    }
     setDismissed(true)
   }
 

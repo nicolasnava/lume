@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { useRef, type PointerEvent, type ReactNode } from 'react'
+import { useRef, type CSSProperties, type PointerEvent, type ReactNode } from 'react'
 import styles from './SparkleButton.module.css'
+import { LANDING_BUTTON_TRANSITION_MS } from '@/lib/landing-button-motion'
 
 interface SparkleButtonProps {
   href: string
@@ -13,6 +14,7 @@ interface SparkleButtonProps {
 
 export default function SparkleButton({ href, children, className = '', compact = false }: SparkleButtonProps) {
   const light = useRef<HTMLSpanElement>(null)
+  const motionStyle = { '--lume-button-duration': `${LANDING_BUTTON_TRANSITION_MS}ms` } as CSSProperties
   const moveLight = (event: PointerEvent<HTMLAnchorElement>) => {
     if (event.pointerType !== 'mouse' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     const bounds = event.currentTarget.getBoundingClientRect()
@@ -22,7 +24,9 @@ export default function SparkleButton({ href, children, className = '', compact 
     <Link
       href={href}
       onPointerMove={moveLight}
+      data-gsap-motion="skip"
       className={`${styles.button} ${compact ? styles.compact : ''} ${className}`}
+      style={motionStyle}
     >
       <span aria-hidden="true" ref={light} className={styles.light} />
       <span aria-hidden="true" className={styles.sheen} />

@@ -2,12 +2,15 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
-import { X, Calendar, Clock, User, Phone, Scissors, Loader2, AlertTriangle, ChevronDown, Check, CreditCard } from 'lucide-react'
+import { X, Calendar, Clock, User, Phone, Scissors, Loader2, AlertTriangle, ChevronDown, Check, CreditCard, ChevronRight } from 'lucide-react'
 import { createBookingAction } from '@/app/actions/booking'
 import PaymentIcon from '@/components/common/PaymentIcon'
 import CustomSelect from '@/components/ui/CustomSelect'
 import CustomDatePicker from '@/components/ui/CustomDatePicker'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { toggleSelectionPanel, type ManualBookingSelectionPanel } from '@/lib/manual-booking-selection'
+import { buildBookingReview } from '@/lib/booking-review'
+import { transitionBookingConfirmation, type BookingConfirmationStage } from '@/lib/manual-booking-confirmation'
 
 interface NewBookingModalProps {
   isOpen: boolean
@@ -84,8 +87,8 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
   const [selectedComboId, setSelectedComboId] = useState('')
   const [pendingCombo, setPendingCombo] = useState<PackageOption | null>(null)
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([])
-  const [isServiceDropdownOpen, setIsServiceDropdownOpen] = useState(false)
-  const serviceDropdownRef = useRef<HTMLDivElement>(null)
+  const [openSelectionPanel, setOpenSelectionPanel] = useState<ManualBookingSelectionPanel | null>(null)
+  const selectionDropdownRef = useRef<HTMLDivElement>(null)
 
   const [dataStr, setDataStr] = useState('')
   const [horaStr, setHoraStr] = useState('')
@@ -100,18 +103,20 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
   // Autocomplete states
   const [showClientSuggestions, setShowClientSuggestions] = useState(false)
 
-  const [submitting, setSubmitting] = useState(false)
+  const [confirmationStage, setConfirmationStage] = useState<BookingConfirmationStage>('editing')
+  const submitting = confirmationStage === 'saving'
+  const isReviewOpen = confirmationStage === 'reviewing' || submitting
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  // Fechar dropdown de serviços ao clicar fora
+  // Fecha o seletor ativo ao tocar fora do conjunto de seletores.
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {
-      if (serviceDropdownRef.current && !serviceDropdownRef.current.contains(event.target as Node)) {
-        setIsServiceDropdownOpen(false)
+      if (selectionDropdownRef.current && !selectionDropdownRef.current.contains(event.target as Node)) {
+        setOpenSelectionPanel(null)
       }
     }
 
-    if (isServiceDropdownOpen) {
+    if (openSelectionPanel) {
       document.addEventListener('mousedown', handleClickOutside)
       document.addEventListener('touchstart', handleClickOutside)
     }
@@ -120,7 +125,7 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('touchstart', handleClickOutside)
     }
-  }, [isServiceDropdownOpen])
+  }, [openSelectionPanel])
 
   useEffect(() => {
     if (isOpen) {
@@ -134,6 +139,7 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
       setClienteTelefone('')
       setShowClientSuggestions(false)
       setErrorMsg(null)
+      setConfirmationStage('editing')
       setAllowCustomSlot(false)
       setIsMultiSelect(true)
       setSelectedServicoIds([])
@@ -141,7 +147,7 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
       setSelectedComboId('')
       setPendingCombo(null)
       setSelectedProductIds([])
-      setIsServiceDropdownOpen(false)
+      setOpenSelectionPanel(null)
 
       // Fetch user profile, services and registered clients via server action
       const loadInitialData = async () => {
@@ -225,46 +231,73 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
 
   if (!isOpen) return null
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const allServicoIds = isMultiSelect ? selectedServicoIds : selectedServicoId ? [selectedServicoId] : []
-    const packageIds = new Set(selectedCombo?.servicos.map((service) => service.id) || [])
-    const extraServiceIds = allServicoIds.filter((id) => !packageIds.has(id))
-    const primaryServicoId = extraServiceIds[0] || null
+  const reviewServices = explicitlySelectedServices.filter((service) => !packageServiceIds.has(service.id))
+  const reviewSummary = buildBookingReview({
+    clientName: clienteNome,
+    clientPhone: clienteTelefone,
+    date: dataStr,
+    time: horaStr,
+    paymentMethod: PAYMENT_OPTIONS.find((option) => option.id === formaPagamento)?.label || formaPagamento,
+    package: selectedCombo ? {
+      id: selectedCombo.id,
+      name: selectedCombo.nome,
+      price: Number(selectedCombo.preco_combo),
+      durationMinutes: selectedCombo.duracaoTotalMinutos,
+      services: selectedCombo.servicos.map((service) => service.nome),
+      serviceDurations: selectedCombo.servicos.map((service) => service.duracao_minutos),
+    } : null,
+    services: reviewServices.map((service) => ({ id: service.id, name: service.nome, price: Number(service.preco), durationMinutes: service.duracao_minutos })),
+    products: produtos.filter((product) => selectedProductIds.includes(product.id)).map((product) => ({ id: product.id, name: product.nome, price: Number(product.preco) })),
+  })
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
     if (!profissionalId || !hasSelectedItems || !dataStr || !horaStr) {
       setErrorMsg('Preencha os campos obrigatórios e selecione ao menos um serviço, pacote ou item da comanda.')
       return
     }
 
-    setSubmitting(true)
     setErrorMsg(null)
+    setConfirmationStage((stage) => transitionBookingConfirmation(stage, 'submit'))
+  }
+
+  const handleConfirmBooking = async () => {
+    if (confirmationStage !== 'reviewing' || !profissionalId) return
+    const allServicoIds = isMultiSelect ? selectedServicoIds : selectedServicoId ? [selectedServicoId] : []
+    const extraServiceIds = allServicoIds.filter((id) => !packageServiceIds.has(id))
+    const primaryServicoId = extraServiceIds[0] || null
+    setErrorMsg(null)
+    setConfirmationStage((stage) => transitionBookingConfirmation(stage, 'confirm'))
 
     // Construir data_hora_inicio estritamente no fuso de Brasília (-03:00) para evitar desvios
     const dataHoraInicioStr = new Date(`${dataStr}T${horaStr}:00-03:00`).toISOString()
 
-    const res = await createBookingAction({
-      profissional_id: profissionalId,
-      servico_id: primaryServicoId,
-      servico_ids: extraServiceIds,
-      combo_id: selectedCombo?.id || null,
-      produto_ids: selectedProductIds,
-      data_hora_inicio: dataHoraInicioStr,
-      cliente_nome: clienteNome,
-      cliente_telefone: clienteTelefone,
-      forma_pagamento_preferida: formaPagamento,
-    })
+    try {
+      const res = await createBookingAction({
+        profissional_id: profissionalId,
+        servico_id: primaryServicoId,
+        servico_ids: extraServiceIds,
+        combo_id: selectedCombo?.id || null,
+        produto_ids: selectedProductIds,
+        data_hora_inicio: dataHoraInicioStr,
+        cliente_nome: clienteNome,
+        cliente_telefone: clienteTelefone,
+        forma_pagamento_preferida: formaPagamento,
+      })
 
-    setSubmitting(false)
-
-    if (res.success) {
-      // Reset form
-      setClienteNome('')
-      setClienteTelefone('')
-      onClose()
-      if (onSuccess) onSuccess()
-    } else {
-      setErrorMsg(res.message || 'Erro ao criar agendamento.')
+      if (res.success) {
+        setClienteNome('')
+        setClienteTelefone('')
+        setConfirmationStage((stage) => transitionBookingConfirmation(stage, 'success'))
+        onClose()
+        if (onSuccess) onSuccess()
+      } else {
+        setErrorMsg(res.message || 'Erro ao criar agendamento.')
+        setConfirmationStage((stage) => transitionBookingConfirmation(stage, 'failure'))
+      }
+    } catch {
+      setErrorMsg('Não foi possível salvar o agendamento. Confira sua conexão e tente novamente.')
+      setConfirmationStage((stage) => transitionBookingConfirmation(stage, 'failure'))
     }
   }
 
@@ -362,7 +395,8 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
           </div>
 
           {/* Seção de Serviço com Botão 'Selecionar vários' no mesmo horizonte e Dropdown Rico com Fotos */}
-          <div className="space-y-1.5" ref={serviceDropdownRef}>
+          <div ref={selectionDropdownRef} className="relative space-y-1.5 rounded-2xl border border-gray-200/80 bg-white p-2.5">
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
                 <Scissors className="h-3.5 w-3.5 text-[#B8A9D9]" />
@@ -413,9 +447,9 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
                 {/* Botão Trigger do Dropdown */}
                 <button
                   type="button"
-                  onClick={() => setIsServiceDropdownOpen(!isServiceDropdownOpen)}
+                  onClick={() => setOpenSelectionPanel((current) => toggleSelectionPanel(current, 'services'))}
                   className={`w-full rounded-2xl border bg-[#FAF7F5] p-2.5 sm:p-3 text-left transition flex items-center justify-between gap-3 cursor-pointer shadow-2xs ${
-                    isServiceDropdownOpen
+                    openSelectionPanel === 'services'
                       ? 'border-[#B8A9D9] ring-2 ring-[#B8A9D9]/20'
                       : 'border-gray-200/80 hover:border-[#B8A9D9] hover:bg-white'
                   }`}
@@ -479,13 +513,13 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
 
                   <ChevronDown
                     className={`h-4 w-4 text-gray-400 transition-transform duration-200 shrink-0 ${
-                      isServiceDropdownOpen ? 'rotate-180 text-[#8675A9]' : ''
+                    openSelectionPanel === 'services' ? 'rotate-180 text-[#8675A9]' : ''
                     }`}
                   />
                 </button>
 
                 {/* Dropdown com Foto na Esquerda, Nome à Direita, Valor e Tempo */}
-                {isServiceDropdownOpen && (
+                {openSelectionPanel === 'services' && (
                   <div className="lume-smooth-dropdown absolute left-0 right-0 top-full mt-2 z-40 max-h-72 overflow-y-auto rounded-3xl bg-white border border-gray-200 shadow-2xl p-2 space-y-1.5">
                     <div className="px-2 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center justify-between border-b border-gray-100 pb-1.5">
                       <span>{isMultiSelect ? 'Marque os serviços desejados' : 'Selecione o serviço'}</span>
@@ -514,7 +548,7 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
                                 }
                               } else {
                                 setSelectedServicoId(s.id)
-                                setIsServiceDropdownOpen(false)
+                                setOpenSelectionPanel(null)
                               }
                             }}
                             className={`flex items-center justify-between p-2.5 rounded-2xl transition cursor-pointer border ${
@@ -581,7 +615,7 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
                         </div>
                         <button
                           type="button"
-                          onClick={() => setIsServiceDropdownOpen(false)}
+                          onClick={() => setOpenSelectionPanel(null)}
                           className="px-4 py-1.5 rounded-xl bg-[#4A3F5C] text-white text-xs font-bold hover:bg-[#3d334d] transition cursor-pointer"
                         >
                           Concluir
@@ -595,9 +629,25 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
           </div>
 
           {pacotes.length > 0 && (
-            <section className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-700">Pacote <span className="font-normal text-gray-400">(opcional)</span></label>
-              <div className="space-y-1.5">
+            <section className="relative border-t border-gray-100 pt-1">
+              <button
+                type="button"
+                aria-expanded={openSelectionPanel === 'packages'}
+                onClick={() => setOpenSelectionPanel((current) => toggleSelectionPanel(current, 'packages'))}
+                className={`flex min-h-12 w-full items-center justify-between gap-3 rounded-2xl border px-2.5 py-2 text-left transition-[border-color,background-color,transform] duration-150 ease-out active:scale-[.99] ${openSelectionPanel === 'packages' ? 'border-[#B8A9D9] bg-white' : 'border-transparent bg-[#FAF7F5] hover:border-[#B8A9D9]/60'}`}
+              >
+                <span className="min-w-0">
+                  <span className="block text-xs font-semibold text-gray-700">Pacotes <span className="font-normal text-gray-400">(opcional)</span></span>
+                  <span className="mt-0.5 block truncate text-[10px] text-gray-500">
+                    {selectedCombo ? `${selectedCombo.nome} · R$ ${Number(selectedCombo.preco_combo).toFixed(2)} · ${selectedCombo.duracaoTotalMinutos} min` : 'Nenhum pacote selecionado'}
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2 text-[10px] font-medium text-[#6B5E7A]">
+                  {selectedCombo ? '1 selecionado' : `${pacotes.length} disponíveis`}
+                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${openSelectionPanel === 'packages' ? 'rotate-180' : ''}`} />
+                </span>
+              </button>
+              {openSelectionPanel === 'packages' && <div className="lume-smooth-dropdown absolute left-0 right-0 top-full z-40 mt-2 max-h-[min(42vh,20rem)] space-y-1.5 overflow-y-auto rounded-3xl border border-gray-200 bg-white p-2 shadow-2xl">
                 <button type="button" onClick={() => setSelectedComboId('')} className={`flex min-h-12 w-full items-center justify-between rounded-2xl border px-3 py-2 text-left text-xs transition-transform duration-150 ease-out active:scale-[.99] ${!selectedComboId ? 'border-[#B8A9D9] bg-[#B8A9D9]/10' : 'border-gray-200 bg-white'}`}>
                   <span>Sem pacote</span>{!selectedComboId && <Check className="h-4 w-4 text-[#4A3F5C]" />}
                 </button>
@@ -614,14 +664,32 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
                     {chosen && <Check className="h-4 w-4 shrink-0 text-[#4A3F5C]" />}
                   </button>
                 })}
-              </div>
+              </div>}
             </section>
           )}
 
           {produtos.length > 0 && (
-            <section className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-700">Comanda <span className="font-normal text-gray-400">(opcional)</span></label>
-              <div className="space-y-1 border-t border-gray-100">
+            <section className="relative border-t border-gray-100 pt-1">
+              <button
+                type="button"
+                aria-expanded={openSelectionPanel === 'products'}
+                onClick={() => setOpenSelectionPanel((current) => toggleSelectionPanel(current, 'products'))}
+                className={`flex min-h-12 w-full items-center justify-between gap-3 rounded-2xl border px-2.5 py-2 text-left transition-[border-color,background-color,transform] duration-150 ease-out active:scale-[.99] ${openSelectionPanel === 'products' ? 'border-[#B8A9D9] bg-white' : 'border-transparent bg-[#FAF7F5] hover:border-[#B8A9D9]/60'}`}
+              >
+                <span className="min-w-0">
+                  <span className="block text-xs font-semibold text-gray-700">Comanda <span className="font-normal text-gray-400">(opcional)</span></span>
+                  <span className="mt-0.5 block truncate text-[10px] text-gray-500">
+                    {selectedProductIds.length
+                      ? `${selectedProductIds.length} item(ns) · R$ ${produtos.filter((item) => selectedProductIds.includes(item.id)).reduce((sum, item) => sum + Number(item.preco), 0).toFixed(2)}`
+                      : 'Nenhum item selecionado'}
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2 text-[10px] font-medium text-[#6B5E7A]">
+                  {produtos.length} disponíveis
+                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${openSelectionPanel === 'products' ? 'rotate-180' : ''}`} />
+                </span>
+              </button>
+              {openSelectionPanel === 'products' && <div className="lume-smooth-dropdown absolute left-0 right-0 top-full z-40 mt-2 max-h-[min(42vh,20rem)] space-y-1 overflow-y-auto rounded-3xl border border-gray-200 bg-white px-3 shadow-2xl">
                 {produtos.map((item) => {
                   const chosen = selectedProductIds.includes(item.id)
                   return <button key={item.id} type="button" onClick={() => setSelectedProductIds((ids) => chosen ? ids.filter((id) => id !== item.id) : [...ids, item.id])} className="flex min-h-14 w-full items-center gap-3 border-b border-gray-100 py-2 text-left transition-transform duration-150 ease-out active:scale-[.99]">
@@ -630,9 +698,11 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
                     <span className={`flex h-5 w-5 items-center justify-center rounded-md border ${chosen ? 'border-[#4A3F5C] bg-[#4A3F5C] text-white' : 'border-gray-300 text-transparent'}`}><Check className="h-3.5 w-3.5" /></span>
                   </button>
                 })}
-              </div>
+              </div>}
             </section>
           )}
+
+          </div>
 
           {/* Data e Horário (CustomDatePicker + CustomSelect) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -744,12 +814,53 @@ export default function NewBookingModal({ isOpen, onClose, onSuccess }: NewBooki
                   <span>Salvando...</span>
                 </>
               ) : (
-                <span>Confirmar Agendamento</span>
+                <span>Revisar agendamento</span>
               )}
             </button>
           </div>
         </form>
       </div>
+      {isReviewOpen && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 p-0 backdrop-blur-[2px] sm:items-center sm:p-4" role="presentation">
+          <section role="dialog" aria-modal="true" aria-labelledby="booking-review-title" className="w-full max-w-lg overflow-hidden rounded-t-3xl border border-[#B8A9D9]/30 bg-[#FAF7F5] shadow-2xl sm:rounded-3xl">
+            <header className="flex items-center justify-between border-b border-[#4A3F5C]/10 bg-white px-5 py-4">
+              <div>
+                <h3 id="booking-review-title" className="text-base font-bold text-[#4A3F5C]">Revise o agendamento</h3>
+                <p className="mt-0.5 text-xs text-[#6D6478]">Confira os dados antes de salvar.</p>
+              </div>
+              <button type="button" aria-label="Voltar para edição" disabled={submitting} onClick={() => { setErrorMsg(null); setConfirmationStage((stage) => transitionBookingConfirmation(stage, 'back')) }} className="rounded-full p-2 text-[#6D6478] transition hover:bg-[#FAF7F5] disabled:opacity-50">
+                <X className="h-5 w-5" />
+              </button>
+            </header>
+            <div className="max-h-[65dvh] space-y-4 overflow-y-auto px-5 py-4 sm:max-h-[60dvh]">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                <div><p className="text-[11px] text-[#81788B]">Cliente</p><p className="font-semibold text-[#4A3F5C]">{reviewSummary.clientName}</p><p className="text-xs text-[#6D6478]">{reviewSummary.clientPhone}</p></div>
+                <div><p className="text-[11px] text-[#81788B]">Data e horário</p><p className="font-semibold text-[#4A3F5C]">{new Date(`${reviewSummary.date}T12:00:00`).toLocaleDateString('pt-BR')} às {reviewSummary.time}</p><p className="text-xs text-[#6D6478]">{reviewSummary.paymentMethod}</p></div>
+              </div>
+              <div className="divide-y divide-[#4A3F5C]/10 border-y border-[#4A3F5C]/10">
+                {reviewSummary.items.map((item) => (
+                  <div key={`${item.type}-${item.id}`} className="py-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0"><p className="text-sm font-semibold text-[#4A3F5C]">{item.name}</p><p className="text-xs text-[#81788B]">{item.type === 'package' ? 'Pacote' : item.type === 'product' ? 'Comanda digital' : 'Serviço'}{item.durationMinutes > 0 ? ` · ${item.durationMinutes} min` : ''}</p></div>
+                      <p className="shrink-0 text-sm font-semibold text-[#4A3F5C]">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.price)}</p>
+                    </div>
+                    {item.type === 'package' && reviewSummary.packageServices.length > 0 && <p className="mt-1 text-xs leading-5 text-[#6D6478]">Inclui: {reviewSummary.packageServices.join(', ')}</p>}
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-between text-sm"><span className="text-[#6D6478]">Duração prevista</span><span className="font-semibold text-[#4A3F5C]">{reviewSummary.totalDurationMinutes} min</span></div>
+              <div className="flex items-center justify-between border-t border-[#4A3F5C]/10 pt-3"><span className="text-sm font-semibold text-[#4A3F5C]">Total</span><span className="text-lg font-bold text-[#4A3F5C]">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(reviewSummary.totalPrice)}</span></div>
+              {errorMsg && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">{errorMsg}</p>}
+            </div>
+            <footer className="grid grid-cols-2 gap-2 border-t border-[#4A3F5C]/10 bg-white p-4">
+              <button type="button" disabled={submitting} onClick={() => { setErrorMsg(null); setConfirmationStage((stage) => transitionBookingConfirmation(stage, 'back')) }} className="min-h-11 rounded-xl border border-[#B8A9D9]/60 px-3 text-sm font-semibold text-[#4A3F5C] transition hover:bg-[#FAF7F5] disabled:opacity-50">Voltar e editar</button>
+              <button type="button" disabled={submitting} onClick={handleConfirmBooking} className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#4A3F5C] px-3 text-sm font-semibold text-white transition hover:bg-[#392F49] disabled:opacity-60">
+                {submitting ? <><Loader2 className="h-4 w-4 animate-spin" />Salvando...</> : <>Confirmar<ChevronRight className="h-4 w-4" /></>}
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
       <ConfirmDialog
         open={!!pendingCombo}
         title="Este pacote inclui um serviço selecionado"

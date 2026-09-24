@@ -7,13 +7,7 @@ import {
   Radio,
   Send,
   CheckCircle2,
-  Clock,
-  Eye,
-  AlertTriangle,
-  X,
   Sparkles,
-  ToggleLeft,
-  ToggleRight,
   Plus,
   Loader2,
   FileText,
@@ -22,6 +16,7 @@ import {
 import {
   createAvisoPlataforma,
   toggleAvisoPlataforma,
+  updateAvisoFrequencia,
   createNovidade,
 } from '@/app/actions/adminPrompt34'
 
@@ -30,6 +25,7 @@ interface AvisoItem {
   mensagem: string
   ativo: boolean
   tipo: 'info' | 'alerta' | 'manutencao'
+  frequencia: 'cada_acesso' | 'uma_vez_por_dia' | 'somente_sino'
   created_at: string
 }
 
@@ -70,6 +66,7 @@ export default function AdminAvisosClient({
   // Form de Banner
   const [bannerMensagem, setBannerMensagem] = useState('')
   const [bannerTipo, setBannerTipo] = useState<'info' | 'alerta' | 'manutencao'>('info')
+  const [bannerFrequencia, setBannerFrequencia] = useState<'cada_acesso' | 'uma_vez_por_dia' | 'somente_sino'>('uma_vez_por_dia')
   const [bannerAtivo, setBannerAtivo] = useState(true)
   const [isSubmittingBanner, setIsSubmittingBanner] = useState(false)
 
@@ -83,14 +80,8 @@ export default function AdminAvisosClient({
     if (!bannerMensagem.trim()) return
     setIsSubmittingBanner(true)
     try {
-      await createAvisoPlataforma(bannerMensagem, bannerTipo, bannerAtivo)
-      const novoAviso: AvisoItem = {
-        id: `aviso_${Date.now()}`,
-        mensagem: bannerMensagem.trim(),
-        tipo: bannerTipo,
-        ativo: bannerAtivo,
-        created_at: new Date().toISOString(),
-      }
+      const result = await createAvisoPlataforma(bannerMensagem, bannerTipo, bannerAtivo, bannerFrequencia)
+      const novoAviso: AvisoItem = result.aviso
       setAvisos((prev) => {
         const list = bannerAtivo ? prev.map((a) => ({ ...a, ativo: false })) : prev
         return [novoAviso, ...list]
@@ -123,6 +114,21 @@ export default function AdminAvisosClient({
         setTimeout(() => setSuccessMessage(null), 3500)
       } catch (err) {
         console.error('Erro ao alterar status do banner:', err)
+      }
+    })
+  }
+
+  const handleUpdateBannerFrequency = (id: string, frequencia: AvisoItem['frequencia']) => {
+    startTransition(async () => {
+      try {
+        await updateAvisoFrequencia(id, frequencia)
+        setAvisos((prev) => prev.map((aviso) => aviso.id === id ? { ...aviso, frequencia } : aviso))
+        setSuccessMessage('Frequência do aviso atualizada.')
+        setTimeout(() => setSuccessMessage(null), 3500)
+      } catch (err) {
+        console.error('Erro ao alterar frequência do aviso:', err)
+        setSuccessMessage('Erro ao atualizar a frequência do aviso.')
+        setTimeout(() => setSuccessMessage(null), 3500)
       }
     })
   }
@@ -316,7 +322,7 @@ export default function AdminAvisosClient({
             </div>
 
             <form onSubmit={handleCreateBanner} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div className="sm:col-span-2">
                   <label className="text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider block mb-1.5">
                     Mensagem do aviso
@@ -337,12 +343,26 @@ export default function AdminAvisosClient({
                   </label>
                   <select
                     value={bannerTipo}
-                    onChange={(e: any) => setBannerTipo(e.target.value)}
+                    onChange={(e) => setBannerTipo(e.target.value as typeof bannerTipo)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#15111F] border border-white/[0.08] text-xs text-[#F8F5FA] focus:outline-hidden focus:border-[#B8A9D9]"
                   >
                     <option value="info">Informativo (Lilás)</option>
                     <option value="alerta">Alerta importante (Âmbar)</option>
                     <option value="manutencao">Manutenção do sistema (Vermelho)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider block mb-1.5">
+                    Frequência de exibição
+                  </label>
+                  <select
+                    value={bannerFrequencia}
+                    onChange={(e) => setBannerFrequencia(e.target.value as typeof bannerFrequencia)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#15111F] border border-white/[0.08] text-xs text-[#F8F5FA] focus:outline-hidden focus:border-[#B8A9D9]"
+                  >
+                    <option value="cada_acesso">A cada acesso ao painel</option>
+                    <option value="uma_vez_por_dia">Uma vez por dia</option>
+                    <option value="somente_sino">Somente na central do sino</option>
                   </select>
                 </div>
               </div>
@@ -395,7 +415,7 @@ export default function AdminAvisosClient({
                 avisos.map((aviso) => (
                   <div
                     key={aviso.id}
-                    className="p-3.5 rounded-xl bg-[#15111F] border border-white/[0.05] hover:border-white/[0.12] transition flex items-center justify-between gap-3"
+                    className="p-3.5 rounded-xl bg-[#15111F] border border-white/[0.05] hover:border-white/[0.12] transition flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div
@@ -432,12 +452,23 @@ export default function AdminAvisosClient({
                           </span>
                         </div>
                         <p className="text-xs text-[#A9A1B5] mt-0.5">
-                          Criado em {new Date(aviso.created_at).toLocaleDateString('pt-BR')}
+                          Criado em {new Date(aviso.created_at).toLocaleDateString('pt-BR')} · {aviso.frequencia === 'cada_acesso' ? 'A cada acesso' : aviso.frequencia === 'somente_sino' ? 'Somente no sino' : 'Uma vez por dia'}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex w-full sm:w-auto items-center gap-2 shrink-0">
+                      <select
+                        value={aviso.frequencia}
+                        disabled={isPending}
+                        onChange={(event) => handleUpdateBannerFrequency(aviso.id, event.target.value as AvisoItem['frequencia'])}
+                        aria-label={`Frequência de exibição de ${aviso.mensagem}`}
+                        className="max-w-36 flex-1 sm:flex-none rounded-xl border border-white/[0.08] bg-[#15111F] px-2.5 py-1.5 text-[11px] font-semibold text-[#A9A1B5] focus:outline-hidden focus:border-[#B8A9D9] disabled:opacity-50"
+                      >
+                        <option value="cada_acesso">A cada acesso</option>
+                        <option value="uma_vez_por_dia">Uma vez por dia</option>
+                        <option value="somente_sino">Somente no sino</option>
+                      </select>
                       <button
                         type="button"
                         onClick={() => handleToggleBanner(aviso.id, aviso.ativo)}

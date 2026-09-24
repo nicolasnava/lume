@@ -512,8 +512,8 @@ export async function updateBookingItemsAction(
       .maybeSingle()
 
     if (!booking) return { success: false, message: 'Agendamento não encontrado.' }
-    if (booking.status !== 'confirmado') {
-      return { success: false, message: 'Só é possível editar procedimentos de atendimentos confirmados.' }
+    if (booking.status !== 'confirmado' && booking.status !== 'concluido') {
+      return { success: false, message: 'Só é possível editar procedimentos de atendimentos confirmados ou concluídos.' }
     }
 
     const { data: selectedServices, error: servicesError } = uniqueServiceIds.length > 0 ? await admin

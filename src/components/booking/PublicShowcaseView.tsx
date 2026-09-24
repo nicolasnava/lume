@@ -121,17 +121,16 @@ export default function PublicShowcaseView({
       <header className="w-full bg-white border-b border-gray-200/80">
         <div className="relative w-full">
           {hasCapa && (
-            <div className="relative h-44 sm:h-64 w-full bg-gray-900 overflow-hidden">
+            <div className="relative aspect-[3/1] w-full overflow-hidden bg-[#FAF7F5]">
               <Image
                 src={profissional.foto_capa_url!}
                 alt={`Capa de ${profissional.nome}`}
                 fill
-                className="object-cover"
-                style={{ objectPosition: `center ${profissional.banner_position_y ?? 50}%` }}
+                className="object-contain"
                 priority
                 unoptimized
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10 z-10" />
+              <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/35 via-black/5 to-transparent" />
             </div>
           )}
 

@@ -145,7 +145,6 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
   const [fotoUrl, setFotoUrl] = useState(initialData.foto_url || '')
   const [fotoCapaUrl, setFotoCapaUrl] = useState(initialData.foto_capa_url || '')
   const [portfolioUrls, setPortfolioUrls] = useState<string[]>(initialData.portfolio_urls || [])
-  const [bannerPositionY, setBannerPositionY] = useState(initialData.banner_position_y ?? 50)
   const [cropFile, setCropFile] = useState<File | null>(null)
   const [cropTarget, setCropTarget] = useState<'avatar' | 'cover' | 'portfolio' | null>(null)
 
@@ -217,7 +216,7 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
         foto_url: overrideData?.foto_url !== undefined ? overrideData.foto_url : fotoUrl || null,
         foto_capa_url: overrideData?.foto_capa_url !== undefined ? overrideData.foto_capa_url : fotoCapaUrl || null,
         portfolio_urls: overrideData?.portfolio_urls ?? portfolioUrls,
-        banner_position_y: overrideData?.banner_position_y ?? bannerPositionY,
+        banner_position_y: overrideData?.banner_position_y ?? 50,
         janela_agendamento_dias: overrideData?.janela_agendamento_dias ?? janelaAgendamentoDias,
         slug: overrideData?.slug !== undefined ? overrideData.slug : currentSlug || undefined,
       }
@@ -235,7 +234,7 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
         setErrorMsg(res.message || 'Erro ao salvar alterações.')
       }
     },
-    [nome, bio, tagline, localizacao, modalidadeAtendimento, whatsapp, instagram, categoria, formasPagamentoAceitas, corPrimaria, corSecundaria, fotoUrl, fotoCapaUrl, portfolioUrls, bannerPositionY, janelaAgendamentoDias, currentSlug]
+    [nome, bio, tagline, localizacao, modalidadeAtendimento, whatsapp, instagram, categoria, formasPagamentoAceitas, corPrimaria, corSecundaria, fotoUrl, fotoCapaUrl, portfolioUrls, janelaAgendamentoDias, currentSlug]
   )
 
   // Autosave com debounce de 600ms para campos de texto livres
@@ -1088,15 +1087,14 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
               </p>
             </div>
 
-            <div className="relative w-full aspect-[16/9] sm:aspect-[3/1] rounded-2xl overflow-hidden bg-gray-900 border border-gray-200 shadow-inner">
+            <div className="relative w-full aspect-[3/1] rounded-2xl overflow-hidden bg-[#FAF7F5] border border-gray-200 shadow-inner">
               {fotoCapaUrl && !capaError ? (
                 <>
                   <Image
                     src={fotoCapaUrl}
                     alt="Capa do studio"
                     fill
-                    className="object-cover"
-                    style={{ objectPosition: `center ${bannerPositionY}%` }}
+                    className="object-contain"
                     unoptimized
                     onError={() => setCapaError(true)}
                   />
@@ -1143,22 +1141,6 @@ export default function ProfileForm({ initialData, activeTab = 'perfil' }: Profi
               <p className="text-[11px] text-gray-500 font-medium">
                 Tamanho recomendado: mínimo 1200x400px (proporção 3:1). Formatos JPG, PNG ou WebP até 5MB.
               </p>
-            )}
-            {fotoCapaUrl && (
-              <label className="block space-y-2 text-[11px] font-bold text-[#4A3F5C]">
-                <span>Área visível do banner</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={bannerPositionY}
-                  onChange={(event) => setBannerPositionY(Number(event.target.value))}
-                  onMouseUp={() => executeSave({ banner_position_y: bannerPositionY })}
-                  onTouchEnd={() => executeSave({ banner_position_y: bannerPositionY })}
-                  className="w-full accent-[#4A3F5C]"
-                />
-                <span className="block font-medium text-gray-500">Mova para escolher qual faixa vertical ficará em destaque.</span>
-              </label>
             )}
           </div>
 

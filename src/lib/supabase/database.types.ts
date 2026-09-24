@@ -182,6 +182,7 @@ export type Database = {
           foto_url: string | null
           intervalo_manutencao_dias: number | null
           ativo?: boolean | null
+          deletado_em?: string | null
           created_at: string
         }
         Insert: {
@@ -194,6 +195,7 @@ export type Database = {
           foto_url?: string | null
           intervalo_manutencao_dias?: number | null
           ativo?: boolean | null
+          deletado_em?: string | null
           created_at?: string
         }
         Update: {
@@ -206,6 +208,7 @@ export type Database = {
           foto_url?: string | null
           intervalo_manutencao_dias?: number | null
           ativo?: boolean | null
+          deletado_em?: string | null
           created_at?: string
         }
         Relationships: []
@@ -848,6 +851,7 @@ export type Database = {
           mensagem: string
           ativo: boolean
           tipo: 'info' | 'alerta' | 'manutencao'
+          frequencia: 'cada_acesso' | 'uma_vez_por_dia' | 'somente_sino'
           created_at: string
         }
         Insert: {
@@ -855,6 +859,7 @@ export type Database = {
           mensagem: string
           ativo?: boolean
           tipo?: 'info' | 'alerta' | 'manutencao'
+          frequencia?: 'cada_acesso' | 'uma_vez_por_dia' | 'somente_sino'
           created_at?: string
         }
         Update: {
@@ -862,6 +867,7 @@ export type Database = {
           mensagem?: string
           ativo?: boolean
           tipo?: 'info' | 'alerta' | 'manutencao'
+          frequencia?: 'cada_acesso' | 'uma_vez_por_dia' | 'somente_sino'
           created_at?: string
         }
         Relationships: []

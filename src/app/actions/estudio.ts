@@ -1336,11 +1336,16 @@ export async function obterMetricasStudioAction(
   const adminSupabase = createAdminClient()
 
   // 1. Validar que o usuário é a dona do studio
-  const { data: estudio } = await adminSupabase
+  const { data: estudio, error: estudioError } = await adminSupabase
     .from('estudios')
     .select('id, criado_por, tipo_gestao, comissao_padrao_pct, aluguel_padrao_fixo')
     .eq('id', estudioId)
     .single()
+
+  if (estudioError) {
+    console.error('[obterMetricasStudioAction] Falha ao consultar studio:', estudioError)
+    throw new Error('Não foi possível consultar os dados do Studio. Verifique a conexão e o estado do banco de dados.')
+  }
 
   if (!estudio || estudio.criado_por !== user.id) {
     throw new Error('Apenas a administradora do studio pode acessar as métricas de gestão.')
@@ -1351,12 +1356,17 @@ export async function obterMetricasStudioAction(
   const aluguelPadrao = Number(estudio.aluguel_padrao_fixo ?? 0)
 
   // 2. Buscar membros do studio
-  const { data: membrosRaw } = await adminSupabase
+  const { data: membrosRaw, error: membrosError } = await adminSupabase
     .from('profissionais')
     .select('id, nome, foto_url, slug, categoria, ativo_no_estudio, compartilhar_faturamento, compartilhar_agendamentos, permitir_agendamento_dona, comissao_personalizada_pct, aluguel_personalizado_fixo')
     .eq('estudio_id', estudioId)
     .is('deletado_em', null)
     .order('nome', { ascending: true })
+
+  if (membrosError) {
+    console.error('[obterMetricasStudioAction] Falha ao consultar profissionais:', membrosError)
+    throw new Error('Não foi possível consultar a equipe do Studio. Verifique o estado do banco de dados.')
+  }
 
   const membros = membrosRaw || []
   const memberIds = membros.map((m) => m.id)
@@ -1405,12 +1415,17 @@ export async function obterMetricasStudioAction(
   }
 
   // 4. Buscar agendamentos de todos os membros no período
-  const { data: agendamentosRaw } = await adminSupabase
+  const { data: agendamentosRaw, error: agendamentosError } = await adminSupabase
     .from('agendamentos')
     .select('id, profissional_id, status, status_pagamento, valor_cobrado, data_hora_inicio')
     .in('profissional_id', memberIds)
     .gte('data_hora_inicio', startDate.toISOString())
     .lte('data_hora_inicio', endDate.toISOString())
+
+  if (agendamentosError) {
+    console.error('[obterMetricasStudioAction] Falha ao consultar agendamentos:', agendamentosError)
+    throw new Error('Não foi possível consultar os agendamentos do Studio. Verifique o estado do banco de dados.')
+  }
 
   const agendamentos = agendamentosRaw || []
 

@@ -232,7 +232,12 @@ export async function getAdminAvisos() {
   return avisos || []
 }
 
-export async function createAvisoPlataforma(mensagem: string, tipo: 'info' | 'alerta' | 'manutencao', ativo: boolean = false) {
+export async function createAvisoPlataforma(
+  mensagem: string,
+  tipo: 'info' | 'alerta' | 'manutencao',
+  ativo: boolean = false,
+  frequencia: 'cada_acesso' | 'uma_vez_por_dia' | 'somente_sino' = 'uma_vez_por_dia'
+) {
   const admin = await getAuthenticatedAdmin()
   if (!admin) throw new Error('Não autorizado.')
 
@@ -243,16 +248,17 @@ export async function createAvisoPlataforma(mensagem: string, tipo: 'info' | 'al
     await adminSupabase.from('avisos_plataforma').update({ ativo: false }).neq('id', '00000000-0000-0000-0000-000000000000')
   }
 
-  const { error } = await adminSupabase.from('avisos_plataforma').insert([
+  const { data, error } = await adminSupabase.from('avisos_plataforma').insert([
     {
       mensagem: mensagem.trim(),
       tipo,
       ativo,
+      frequencia,
     },
-  ])
+  ]).select('*').single()
 
   if (error) throw new Error('Erro ao criar aviso.')
-  return { success: true }
+  return { success: true, aviso: data }
 }
 
 export async function toggleAvisoPlataforma(id: string, ativo: boolean) {
@@ -272,6 +278,22 @@ export async function toggleAvisoPlataforma(id: string, ativo: boolean) {
     .eq('id', id)
 
   if (error) throw new Error('Erro ao alterar status do aviso.')
+  return { success: true }
+}
+
+export async function updateAvisoFrequencia(
+  id: string,
+  frequencia: 'cada_acesso' | 'uma_vez_por_dia' | 'somente_sino'
+) {
+  const admin = await getAuthenticatedAdmin()
+  if (!admin) throw new Error('Não autorizado.')
+
+  const { error } = await createAdminClient()
+    .from('avisos_plataforma')
+    .update({ frequencia })
+    .eq('id', id)
+
+  if (error) throw new Error('Erro ao atualizar a frequência do aviso.')
   return { success: true }
 }
 

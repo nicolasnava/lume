@@ -192,7 +192,7 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
                 id="tour-public-link-mobile"
                 href={`/p/${profissional.slug}`}
                 target="_blank"
-                className="inline-flex items-center gap-1 rounded-lg bg-[#FAF7F5] px-2.5 py-1.5 text-xs font-semibold text-[#4A3F5C] border border-[#B8A9D9]/40"
+                className="inline-flex h-9 items-center gap-1 rounded-lg bg-[#FAF7F5] px-2.5 text-xs font-semibold text-[#4A3F5C] border border-[#B8A9D9]/40"
               >
                 <span>Ver Página</span>
                 <ExternalLink className="h-3 w-3" />

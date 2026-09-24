@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, X } from 'lucide-react'
+import { AlertTriangle, Check, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 interface ConfirmDialogProps {
@@ -12,6 +12,7 @@ interface ConfirmDialogProps {
   destructive?: boolean
   loading?: boolean
   inlineIcon?: ReactNode
+  checkbox?: { label: string; checked: boolean; onChange: (checked: boolean) => void }
   onConfirm: () => void
   onClose: () => void
 }
@@ -25,6 +26,7 @@ export default function ConfirmDialog({
   destructive = false,
   loading = false,
   inlineIcon,
+  checkbox,
   onConfirm,
   onClose,
 }: ConfirmDialogProps) {
@@ -37,20 +39,17 @@ export default function ConfirmDialog({
         <button type="button" onClick={onClose} className="absolute right-4 top-4 rounded-full p-1.5 text-gray-400 transition-[transform,color,background-color] duration-150 ease-out hover:bg-gray-100 hover:text-[#4A3F5C] active:scale-[0.97]">
           <X className="h-4 w-4" />
         </button>
-        {inlineIcon ? (
-          <h3 className="flex items-center gap-2.5 pr-6 text-base font-extrabold text-[#4A3F5C]">
-            <span className="shrink-0 text-[#8675A9]">{inlineIcon}</span>
-            <span>{title}</span>
-          </h3>
-        ) : (
-          <>
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#B8A9D9]/18 text-[#4A3F5C]">
-              <AlertTriangle className="h-5 w-5" />
-            </div>
-            <h3 className="mt-4 text-base font-extrabold text-[#4A3F5C]">{title}</h3>
-          </>
-        )}
+        <h3 className="flex items-center gap-2.5 pr-6 text-base font-extrabold text-[#4A3F5C]">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#B8A9D9]/20 text-[#8675A9]">
+            {inlineIcon || <AlertTriangle className="h-5 w-5" />}
+          </span>
+          <span>{title}</span>
+        </h3>
         <p className="mt-1.5 text-xs leading-relaxed text-gray-600">{description}</p>
+        {checkbox && <button type="button" role="checkbox" aria-checked={checkbox.checked} onClick={() => checkbox.onChange(!checkbox.checked)} className="mt-4 flex w-full items-center gap-2.5 rounded-xl text-left text-xs font-medium text-[#4A3F5C]">
+          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors duration-150 ${checkbox.checked ? 'border-[#6D5C89] bg-[#6D5C89] text-white' : 'border-[#B8A9D9] bg-white text-transparent'}`}><Check className="h-3.5 w-3.5" /></span>
+          <span>{checkbox.label}</span>
+        </button>}
         <div className="mt-6 flex justify-end gap-2">
           <button type="button" onClick={onClose} disabled={loading} className="rounded-xl border border-gray-200 px-4 py-2.5 text-xs font-bold text-gray-600 transition-[transform,background-color] duration-150 ease-out hover:bg-gray-50 active:scale-[0.97] disabled:opacity-50">
             {cancelLabel}

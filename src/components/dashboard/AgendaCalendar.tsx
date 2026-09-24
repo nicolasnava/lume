@@ -96,7 +96,7 @@ export default function AgendaCalendar({ initialBookings, onRefresh }: AgendaCal
           b.valor_cobrado !== null && b.valor_cobrado !== undefined && Number(b.valor_cobrado) > 0
             ? Number(b.valor_cobrado)
             : hasMultiple
-            ? (b.agendamento_servicos?.reduce((acc: number, as: any) => acc + Number(as.preco_no_momento || as.servicos?.preco || 0), 0) ?? 0)
+            ? (b.agendamento_servicos?.reduce<number>((acc, as) => acc + Number(as.preco_no_momento || as.servicos?.preco || 0), 0) ?? 0)
             : Number(b.servicos?.preco || 0)
         return sum + val
       }, 0)
@@ -252,7 +252,7 @@ export default function AgendaCalendar({ initialBookings, onRefresh }: AgendaCal
                 Faturamento Previsto
               </p>
               <p className="text-3xl font-extrabold text-emerald-700">
-                R$ {faturamentoPrevistoVal.toFixed(2)}
+                R$ {new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(faturamentoPrevistoVal)}
               </p>
               <span className="text-xs text-gray-500 font-medium block pt-1">Agendamentos confirmados/concluídos</span>
             </div>

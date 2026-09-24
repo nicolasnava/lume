@@ -4,6 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import GeralViewClient from '@/components/dashboard/GeralViewClient'
 import StudioPendingInvitesBanner from '@/components/dashboard/StudioPendingInvitesBanner'
 import { obterConvitesPendentesUsuario } from '@/app/actions/estudio'
+import DashboardDataError from '@/components/dashboard/DashboardDataError'
+import { getDashboardQueryState } from '@/lib/dashboard-query-state'
 
 export const revalidate = 0
 export const dynamic = 'force-dynamic'
@@ -57,12 +59,17 @@ export default async function DashboardGeralPage() {
   endOfWeek.setHours(23, 59, 59, 999)
 
   // Buscar agendamentos do dia e semana com detalhes de cliente e serviço
-  const { data: agendamentosData } = await adminSupabase
+  const { data: agendamentosData, error: agendamentosError } = await adminSupabase
     .from('agendamentos')
     .select('id, profissional_id, cliente_id, servico_id, combo_id, data_hora_inicio, data_hora_fim, valor_cobrado, pago, forma_pagamento, forma_pagamento_preferida, observacao_pagamento, status, google_event_id, clientes(nome, telefone), servicos(nome, duracao_minutos, preco, ativo), combos(nome, preco_combo, duracao_minutos, foto_url), agendamento_servicos(id, preco_no_momento, duracao_no_momento_minutos, servicos(id, nome, preco, duracao_minutos, foto_url, ativo)), agendamento_comanda_produtos(id, produto_id, nome_no_momento, preco_no_momento, comanda_produtos(nome, foto_url))')
     .eq('profissional_id', user.id)
     .neq('status', 'cancelado')
     .order('data_hora_inicio', { ascending: true })
+
+  if (getDashboardQueryState(agendamentosError) === 'error') {
+    console.error('[DashboardGeral] Falha ao consultar agendamentos:', agendamentosError)
+    return <DashboardDataError />
+  }
 
   const agendamentos = agendamentosData || []
 

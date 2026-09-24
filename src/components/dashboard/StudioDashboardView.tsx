@@ -37,6 +37,7 @@ import {
   Scissors,
   Share2,
   X,
+  RefreshCw,
 } from 'lucide-react'
 import {
   StudioUserStatus,
@@ -67,6 +68,7 @@ import CustomColorPickerModal from '@/components/ui/CustomColorPickerModal'
 import CustomDatePicker from '@/components/ui/CustomDatePicker'
 import StudioNewBookingModal from './StudioNewBookingModal'
 import type { SubscriptionData } from '@/app/actions/subscription'
+import { getStudioDashboardView } from '@/lib/studio-dashboard-access'
 
 interface StudioDashboardViewProps {
   status: StudioUserStatus
@@ -75,17 +77,18 @@ interface StudioDashboardViewProps {
 }
 
 export default function StudioDashboardView({ status, planType, studioPrice }: StudioDashboardViewProps) {
+  const dashboardView = getStudioDashboardView(status.papel, planType)
   // --------------------------------------------------------------------------
   // ESTADO 1: SEM STUDIO
   // --------------------------------------------------------------------------
-  if (status.papel === 'nenhum') {
-    return <CreateStudioSection defaultSlug={status.userSlug} />
+  if (dashboardView === 'upgrade') {
+    return <StudioUpgradeSection price={studioPrice} />
   }
 
   // --------------------------------------------------------------------------
   // ESTADO 2: MEMBRO (PARCEIRA)
   // --------------------------------------------------------------------------
-  if (status.papel === 'membro') {
+  if (dashboardView === 'member' && status.papel === 'membro') {
     return (
       <MemberStudioSection
         estudio={status.estudio}
@@ -99,9 +102,11 @@ export default function StudioDashboardView({ status, planType, studioPrice }: S
     )
   }
 
-  if (planType !== 'studio' && planType !== 'cortesia') {
-    return <StudioUpgradeSection price={studioPrice} />
+  if (dashboardView === 'create' && status.papel === 'nenhum') {
+    return <CreateStudioSection defaultSlug={status.userSlug} />
   }
+
+  if (status.papel !== 'dona') return null
 
   // --------------------------------------------------------------------------
   // ESTADO 3: DONA / ADMINISTRADORA
@@ -686,6 +691,8 @@ function OwnerStudioSection({
   const [periodo, setPeriodo] = useState<'mes_atual' | 'mes_anterior' | 'hoje' | 'ultimos_30_dias'>('mes_atual')
   const [metrics, setMetrics] = useState<StudioMetricsData | null>(null)
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(true)
+  const [metricsError, setMetricsError] = useState(false)
+  const [metricsReloadKey, setMetricsReloadKey] = useState(0)
 
   // Estados da Aba 2: Agendamentos Consolidados
   const [bookings, setBookings] = useState<StudioBookingItem[]>([])
@@ -734,12 +741,19 @@ function OwnerStudioSection({
   useEffect(() => {
     let isMounted = true
     setIsLoadingMetrics(true)
+    setMetricsError(false)
     obterMetricasStudioAction(estudio.id, periodo)
       .then((data) => {
         if (!isMounted) return
         setMetrics(data)
       })
-      .catch((err) => console.error('Erro ao carregar métricas:', err))
+      .catch((err) => {
+        console.error('Erro ao carregar métricas:', err)
+        if (isMounted) {
+          setMetrics(null)
+          setMetricsError(true)
+        }
+      })
       .finally(() => {
         if (isMounted) setIsLoadingMetrics(false)
       })
@@ -747,7 +761,7 @@ function OwnerStudioSection({
     return () => {
       isMounted = false
     }
-  }, [estudio.id, periodo, activeTab])
+  }, [estudio.id, periodo, activeTab, metricsReloadKey])
 
   // 2. Carregar agendamentos quando tab agendamentos ou filtros mudarem
   useEffect(() => {
@@ -1158,6 +1172,13 @@ function OwnerStudioSection({
             <div className="py-12 text-center text-gray-400 space-y-2">
               <Loader2 className="h-6 w-6 animate-spin mx-auto text-[#B8A9D9]" />
               <p className="text-xs font-medium">Calculando métricas do studio...</p>
+            </div>
+          ) : metricsError ? (
+            <div className="flex flex-col items-center gap-3 p-6 text-center text-xs text-[#6D6478]">
+              <p>Não foi possível consultar as métricas do banco. Os zeros não serão tratados como dados válidos.</p>
+              <button type="button" onClick={() => setMetricsReloadKey((key) => key + 1)} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[#B8A9D9]/50 px-4 font-semibold text-[#4A3F5C] transition-colors hover:bg-[#B8A9D9]/10 active:scale-[.98]">
+                <RefreshCw className="h-3.5 w-3.5" /> Tentar novamente
+              </button>
             </div>
           ) : !metrics ? (
             <div className="p-6 text-center text-xs text-gray-500">

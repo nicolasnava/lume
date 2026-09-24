@@ -14,6 +14,8 @@ import { validateImageMagicBytes } from '@/lib/utils/imageValidation'
 import Toast from '@/components/ui/Toast'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import ImageCropperModal from '@/components/ui/ImageCropperModal'
+import CustomerCatalogPreview from '@/components/dashboard/CustomerCatalogPreview'
+import { getServiceCounts } from '@/lib/service-management'
 import {
   Scissors,
   Plus,
@@ -83,6 +85,8 @@ interface ServicesManagerProps {
   initialCombos?: ComboItem[]
   initialComanda?: ComandaProduto[]
   profissionalId?: string
+  professionalSlug?: string
+  primaryColor?: string
 }
 
 function getStoragePathFromPublicUrl(url: string, bucketName: string): string | null {
@@ -95,8 +99,9 @@ function getStoragePathFromPublicUrl(url: string, bucketName: string): string | 
   return null
 }
 
-export default function ServicesManager({ initialServices, initialCombos, initialComanda, profissionalId }: ServicesManagerProps) {
+export default function ServicesManager({ initialServices, initialCombos, initialComanda, profissionalId, professionalSlug, primaryColor = '#B8A9D9' }: ServicesManagerProps) {
   const [activeTab, setActiveTab] = useState<'servicos' | 'combos' | 'comanda'>('servicos')
+  const [isPreviewMode, setIsPreviewMode] = useState(false)
   const [services, setServices] = useState<ServiceRow[]>(initialServices)
   const [combos, setCombos] = useState<ComboItem[]>(initialCombos || [])
   const [comandaProdutos, setComandaProdutos] = useState<ComandaProduto[]>(initialComanda || [])
@@ -111,8 +116,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
       return a.nome.localeCompare(b.nome)
     })
   }, [services])
-  const activeServicesCount = services.filter((service) => service.ativo !== false).length
-  const inactiveServicesCount = services.length - activeServicesCount
+  const { total: totalServicesCount, active: activeServicesCount, inactive: inactiveServicesCount } = getServiceCounts(services)
 
   const [showModal, setShowModal] = useState(false)
   const [editingService, setEditingService] = useState<ServiceRow | null>(null)
@@ -987,6 +991,24 @@ export default function ServicesManager({ initialServices, initialCombos, initia
         </button>
       </div>
 
+      <div className="flex justify-end">
+        <button type="button" aria-pressed={isPreviewMode} onClick={() => setIsPreviewMode((current) => !current)} className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-3.5 text-xs font-semibold transition-[background-color,color,border-color,transform] duration-200 ease-out active:scale-[0.98] ${isPreviewMode ? 'border-[#4A3F5C] bg-[#4A3F5C] text-white' : 'border-[#B8A9D9]/50 bg-white text-[#4A3F5C] hover:bg-[#FAF7F5]'}`}>
+          {isPreviewMode ? <Pencil className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {isPreviewMode ? 'Voltar à gestão' : 'Ver como fica na vitrine'}
+        </button>
+      </div>
+
+      {isPreviewMode ? (
+        <CustomerCatalogPreview
+          tab={activeTab}
+          services={services}
+          packages={combos}
+          products={comandaProdutos}
+          primaryColor={primaryColor}
+          professionalSlug={professionalSlug || ''}
+        />
+      ) : (
+      <>
       {activeTab === 'servicos' && (
         <>
           {/* Card de Destaque + Botão Cadastrar Novo Serviço Esticado (Item 6) */}
@@ -998,9 +1020,8 @@ export default function ServicesManager({ initialServices, initialCombos, initia
                 </div>
                 <div>
                   <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Total de Serviços Cadastrados</span>
-                  <strong className="text-xl font-bold text-[#4A3F5C]">
-                    {activeServicesCount} ativos · {inactiveServicesCount} desativados
-                  </strong>
+                  <strong className="block text-2xl font-bold leading-tight text-[#4A3F5C]">{totalServicesCount}</strong>
+                  <span className="mt-0.5 block text-[11px] font-medium text-gray-500">{activeServicesCount} ativos / {inactiveServicesCount} desativados</span>
                 </div>
               </div>
             </div>
@@ -1557,6 +1578,8 @@ export default function ServicesManager({ initialServices, initialCombos, initia
             </div>
           )}
         </>
+      )}
+      </>
       )}
 
       {/* Modal de Criação / Edição de Serviço (Item 10a: Responsivo para mobile) */}

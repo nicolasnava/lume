@@ -1,6 +1,6 @@
 import { getRelatoriosEMetasAction } from '@/app/actions/reports'
 import RelatoriosViewClient from '@/components/dashboard/RelatoriosViewClient'
-import { redirect } from 'next/navigation'
+import DashboardDataError from '@/components/dashboard/DashboardDataError'
 
 export const metadata = {
   title: 'Relatórios & Metas | Lumê',
@@ -12,11 +12,7 @@ export default async function RelatoriosPage() {
 
   if (!data.success || !data.mesAtual) {
     // Se não autenticado, middleware redireciona ou fallback
-    return (
-      <div className="p-8 text-center text-sm text-gray-500">
-        Não foi possível carregar os relatórios. Verifique sua conexão e tente novamente.
-      </div>
-    )
+    return <DashboardDataError message={data.message || 'Não foi possível consultar os relatórios e indicadores financeiros.'} />
   }
 
   return (

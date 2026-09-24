@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   cancelBookingAction,
   completeBookingAction,
@@ -41,6 +41,9 @@ import { PixIcon } from '@/components/common/PaymentIcon'
 import Image from 'next/image'
 import { getCombosProfissionalAction } from '@/app/actions/combos'
 import { getComandaProdutosAction } from '@/app/actions/comanda'
+import { toggleBookingEditSection, type BookingEditSection } from '@/lib/booking-detail-ui'
+import { bookingStatusLabel, canEditBookingItems, normalizeBookingStatus } from '@/lib/booking-detail-state'
+import { serviceChangePreferenceKey, shouldConfirmItemChange } from '@/lib/service-management'
 
 export interface BookingDetail {
   id: string
@@ -111,6 +114,7 @@ export default function BookingDetailModal({
   const [completing, setCompleting] = useState(false)
   const [markingNoShow, setMarkingNoShow] = useState(false)
   const [editingServices, setEditingServices] = useState(false)
+  const [openEditSection, setOpenEditSection] = useState<BookingEditSection | null>(null)
   const [savingServices, setSavingServices] = useState(false)
   const [availableServices, setAvailableServices] = useState<Array<{ id: string; nome: string; preco: number; duracao_minutos: number; foto_url: string | null }>>([])
   const [availablePackages, setAvailablePackages] = useState<Array<{ id: string; nome: string; preco_combo: number; duracaoTotalMinutos: number; foto_url: string | null; servicos: Array<{ id: string }> }>>([])
@@ -119,6 +123,10 @@ export default function BookingDetailModal({
   const [selectedComboId, setSelectedComboId] = useState('')
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([])
   const [pendingServiceChange, setPendingServiceChange] = useState<{ type: 'add' | 'remove'; kind: 'service' | 'package' | 'product'; id: string; nome: string } | null>(null)
+  const [skipItemChangeConfirmation, setSkipItemChangeConfirmation] = useState(false)
+  const [dontAskAgain, setDontAskAgain] = useState(false)
+  const professionalId = booking?.profissional_id
+  const [currentStatus, setCurrentStatus] = useState<string>(normalizeBookingStatus(booking?.status))
 
   const [showCompleteForm, setShowCompleteForm] = useState(false)
   const [isServicesExpanded, setIsServicesExpanded] = useState(false)
@@ -135,6 +143,11 @@ export default function BookingDetailModal({
   })
 
   // Sincronizar preços individuais e valor cobrado total quando os dados do agendamento mudarem
+  useEffect(() => {
+    if (!professionalId || typeof window === 'undefined') return
+    setSkipItemChangeConfirmation(window.sessionStorage.getItem(serviceChangePreferenceKey(professionalId)) === 'true')
+  }, [professionalId])
+
   useEffect(() => {
     if (!booking) return
     const initial: Record<string, number> = {}
@@ -176,9 +189,14 @@ export default function BookingDetailModal({
     setSelectedComboId(booking.combo_id || '')
     setSelectedProductIds((booking.agendamento_comanda_produtos || []).map((item) => item.produto_id).filter((id): id is string => !!id))
     setEditingServices(false)
+    setOpenEditSection(null)
     setPendingServiceChange(null)
+    setDontAskAgain(false)
 
-    if (booking.status === 'confirmado') {
+    setCurrentStatus(normalizeBookingStatus(booking.status))
+    setIsEditingStatus(false)
+
+    if (canEditBookingItems(booking.status)) {
       Promise.all([getProfissionalServicesAndClientsAction(), getCombosProfissionalAction(), getComandaProdutosAction(undefined, true)]).then(([result, packages, products]) => {
         if (result.success) setAvailableServices(result.services)
         const activePackages = packages.filter((item) => item.ativo).map(({ id, nome, preco_combo, foto_url, duracaoTotalMinutos, servicos }) => ({ id, nome, preco_combo, foto_url, duracaoTotalMinutos, servicos }))
@@ -294,9 +312,27 @@ export default function BookingDetailModal({
   }
 
   // Edição Direta de Status (Item 4)
-  const [currentStatus, setCurrentStatus] = useState<string>(booking?.status || 'confirmado')
   const [isEditingStatus, setIsEditingStatus] = useState(false)
   const [savingStatus, setSavingStatus] = useState(false)
+  const statusMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!isEditingStatus) return
+    const closeIfOutside = (event: MouseEvent | TouchEvent) => {
+      if (statusMenuRef.current && !statusMenuRef.current.contains(event.target as Node)) setIsEditingStatus(false)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsEditingStatus(false)
+    }
+    document.addEventListener('mousedown', closeIfOutside)
+    document.addEventListener('touchstart', closeIfOutside)
+    window.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('mousedown', closeIfOutside)
+      document.removeEventListener('touchstart', closeIfOutside)
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [isEditingStatus])
 
   const handleUpdateStatus = async (newStatus: 'confirmado' | 'concluido' | 'cancelado' | 'no_show') => {
     if (!booking) return
@@ -440,9 +476,8 @@ export default function BookingDetailModal({
     }
   }
 
-  const confirmServiceChange = async () => {
-    if (!booking || !pendingServiceChange) return
-    const change = pendingServiceChange
+  const applyServiceChange = async (change: NonNullable<typeof pendingServiceChange>, rememberPreference = false) => {
+    if (!booking) return
     let nextIds = selectedServiceIds
     let nextComboId = selectedComboId
     let nextProductIds = selectedProductIds
@@ -457,6 +492,7 @@ export default function BookingDetailModal({
     if (!hasItems) {
       setToast({ show: true, message: 'Mantenha ao menos um serviço, pacote ou item da comanda.', type: 'error' })
       setPendingServiceChange(null)
+      setDontAskAgain(false)
       return
     }
 
@@ -472,8 +508,31 @@ export default function BookingDetailModal({
     setSelectedComboId(nextComboId)
     setSelectedProductIds(nextProductIds)
     setPendingServiceChange(null)
+    if (rememberPreference && booking.profissional_id) {
+      window.sessionStorage.setItem(serviceChangePreferenceKey(booking.profissional_id), 'true')
+      setSkipItemChangeConfirmation(true)
+    }
+    setDontAskAgain(false)
     setToast({ show: true, message: result.message || 'Procedimentos atualizados.', type: 'success' })
     onRefresh()
+  }
+
+  const requestServiceChange = (change: NonNullable<typeof pendingServiceChange>) => {
+    const storedPreference = professionalId && typeof window !== 'undefined'
+      ? window.sessionStorage.getItem(serviceChangePreferenceKey(professionalId)) === 'true'
+      : skipItemChangeConfirmation
+    if (!shouldConfirmItemChange(storedPreference)) {
+      setSkipItemChangeConfirmation(true)
+      void applyServiceChange(change)
+      return
+    }
+    setDontAskAgain(false)
+    setPendingServiceChange(change)
+  }
+
+  const confirmServiceChange = async () => {
+    if (!pendingServiceChange) return
+    await applyServiceChange(pendingServiceChange, dontAskAgain)
   }
 
   const effectiveHeaderPaymentMethod =
@@ -632,7 +691,7 @@ export default function BookingDetailModal({
         )}
 
         {/* 3. Status Atual com botão de edição estilo meta financeira (Item 4 e Item 27) */}
-        <div className="bg-[#FAF7F5] p-3.5 rounded-xl border border-gray-100 space-y-2.5">
+        <div ref={statusMenuRef} className="relative bg-[#FAF7F5] p-3.5 rounded-xl border border-gray-100 space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-gray-500">Status atual:</span>
 
@@ -652,13 +711,13 @@ export default function BookingDetailModal({
                 {currentStatus === 'cancelado' && <XCircle className="h-3.5 w-3.5" />}
                 {currentStatus === 'concluido' && <CheckCircle className="h-3.5 w-3.5" />}
                 {currentStatus === 'no_show' && <Ban className="h-3.5 w-3.5" />}
-                <span className="capitalize">
-                  {currentStatus === 'no_show' ? 'Faltou (No-Show)' : currentStatus}
-                </span>
+                <span>{bookingStatusLabel(currentStatus)}</span>
               </span>
               <button
                 type="button"
                 onClick={() => setIsEditingStatus((prev) => !prev)}
+                aria-label="Editar status do agendamento"
+                aria-expanded={isEditingStatus}
                 className="p-1 text-gray-400 hover:text-[#4A3F5C] hover:bg-gray-200/60 rounded-lg transition cursor-pointer"
                 title="Editar status atual"
               >
@@ -668,69 +727,20 @@ export default function BookingDetailModal({
           </div>
 
           {isEditingStatus && (
-            <div className="pt-2.5 border-t border-gray-200/60 space-y-1.5 animate-in fade-in duration-200">
-              <span className="text-[11px] font-bold text-gray-500 block">
-                Selecione o novo status:
-              </span>
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  disabled={savingStatus}
-                  onClick={() => handleUpdateStatus('confirmado')}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer disabled:opacity-50 ${
-                    currentStatus === 'confirmado'
-                      ? 'bg-emerald-200 text-emerald-900 border-2 border-emerald-400 shadow-xs'
-                      : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'
-                  }`}
-                >
-                  <Circle className="h-3.5 w-3.5 shrink-0" />
-                  <span>Confirmado</span>
+            <div role="menu" aria-label="Novo status" className="absolute right-2 top-full z-[80] mt-2 w-56 origin-top-right rounded-xl border border-[#B8A9D9]/35 bg-white p-1.5 shadow-lg shadow-[#4A3F5C]/10 animate-in fade-in slide-in-from-top-1 duration-150">
+              {([
+                { value: 'confirmado', label: 'Confirmado', icon: <Circle className="h-4 w-4" />, colors: 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200/90' },
+                { value: 'concluido', label: 'Concluído', icon: <CheckCircle className="h-4 w-4" />, colors: 'bg-[#E8E0F5] text-[#4A3F5C] hover:bg-[#DDD2EF]' },
+                { value: 'no_show', label: 'Faltou (No-Show)', icon: <Ban className="h-4 w-4" />, colors: 'bg-amber-100 text-amber-900 hover:bg-amber-200/90' },
+                { value: 'cancelado', label: 'Cancelado', icon: <XCircle className="h-4 w-4" />, colors: 'bg-rose-100 text-rose-900 hover:bg-rose-200/90' },
+              ] as const).map((option) => (
+                <button key={option.value} type="button" role="menuitemradio" aria-checked={currentStatus === option.value} disabled={savingStatus} onClick={() => handleUpdateStatus(option.value)} className={`mb-1 flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-xs font-semibold transition-colors duration-150 ease-out disabled:opacity-50 active:scale-[.98] ${option.colors} ${currentStatus === option.value ? 'ring-1 ring-inset ring-current/20' : ''}`}>
+                  {option.icon}
+                  <span className="flex-1">{option.label}</span>
+                  {!savingStatus && currentStatus === option.value ? <Check className="h-3.5 w-3.5" /> : null}
                 </button>
-
-                <button
-                  type="button"
-                  disabled={savingStatus}
-                  onClick={() => handleUpdateStatus('concluido')}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer disabled:opacity-50 ${
-                    currentStatus === 'concluido'
-                      ? 'bg-purple-200 text-purple-950 border-2 border-purple-400 shadow-xs'
-                      : 'bg-purple-50 text-purple-900 border border-purple-200 hover:bg-purple-100'
-                  }`}
-                >
-                  <CheckCircle className="h-3.5 w-3.5" />
-                  <span>Concluído</span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={savingStatus}
-                  onClick={() => handleUpdateStatus('no_show')}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer disabled:opacity-50 ${
-                    currentStatus === 'no_show'
-                      ? 'bg-amber-200 text-amber-950 border-2 border-amber-400 shadow-xs'
-                      : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
-                  }`}
-                >
-                  <Ban className="h-3.5 w-3.5" />
-                  <span>Faltou (No-Show)</span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={savingStatus}
-                  onClick={() => handleUpdateStatus('cancelado')}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition cursor-pointer disabled:opacity-50 ${
-                    currentStatus === 'cancelado'
-                      ? 'bg-red-200 text-red-950 border-2 border-red-400 line-through shadow-xs'
-                      : 'bg-red-50 text-red-800 border border-red-200 hover:bg-red-100 line-through'
-                  }`}
-                >
-                  <XCircle className="h-3.5 w-3.5" />
-                  <span>Cancelado</span>
-                </button>
-
-                {savingStatus && <Loader2 className="h-3.5 w-3.5 animate-spin text-[#4A3F5C]" />}
-              </div>
+              ))}
+              {savingStatus && <div className="flex items-center gap-2 px-3 py-2 text-[11px] font-medium text-[#6D6478]"><Loader2 className="h-3.5 w-3.5 animate-spin" />Salvando status...</div>}
             </div>
           )}
         </div>
@@ -741,11 +751,11 @@ export default function BookingDetailModal({
             <div className="flex items-center justify-between gap-2 border-b border-purple-100/80 pb-2.5">
               <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                 <Scissors className="h-4 w-4 text-[#B8A9D9] shrink-0" />
-                <button type="button" onClick={() => setIsServicesExpanded((prev) => !prev)} className="flex min-w-0 items-center gap-1.5 text-xs font-bold text-[#4A3F5C] transition-transform duration-150 ease-out active:scale-[.98]">
-                  <span className="truncate">Serviços selecionados ({booking.agendamento_servicos?.length || selectedServiceIds.length})</span>
-                  <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isServicesExpanded ? 'rotate-180' : ''}`} />
+                <button type="button" onClick={() => setIsServicesExpanded((prev) => !prev)} className="min-w-0 truncate text-left text-xs font-bold text-[#4A3F5C] transition-colors duration-150 ease-out hover:text-[#6D5C89]">
+                  Serviços ({booking.agendamento_servicos?.length || selectedServiceIds.length})
                 </button>
-                {currentStatus === 'confirmado' && <button type="button" aria-label={editingServices ? 'Fechar edição de serviços' : 'Editar serviços'} onClick={() => { setEditingServices((value) => !value); setIsServicesExpanded(true) }} className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-bold text-[#4A3F5C] transition-transform duration-150 ease-out hover:bg-white active:scale-[.97]"><Pencil className="h-3 w-3" /><span>{editingServices ? 'Fechar' : 'Editar'}</span></button>}
+                {canEditBookingItems(currentStatus) && <button type="button" aria-label={editingServices ? 'Fechar edição de serviços' : 'Editar serviços'} title={editingServices ? 'Fechar edição' : 'Editar serviços'} aria-expanded={editingServices} onClick={() => { const willOpen = !editingServices; setEditingServices(willOpen); setOpenEditSection(willOpen ? 'services' : null) }} className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[#4A3F5C] transition-colors duration-150 ease-out hover:bg-white active:scale-[.97]"><Pencil className="h-3.5 w-3.5" /></button>}
+                <button type="button" aria-label={isServicesExpanded ? 'Recolher serviços' : 'Expandir serviços'} aria-expanded={isServicesExpanded} onClick={() => setIsServicesExpanded((prev) => !prev)} className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[#4A3F5C] transition-colors duration-150 ease-out hover:bg-white active:scale-[.97]"><ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isServicesExpanded ? 'rotate-180' : ''}`} /></button>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <span className="text-xs font-semibold text-gray-400 whitespace-nowrap shrink-0">{totalDuracaoMinutos} min total</span>
@@ -760,13 +770,12 @@ export default function BookingDetailModal({
                     key={as.id || idx}
                     className="flex items-start justify-between gap-3 pt-2.5 first:pt-0 border-t first:border-0 border-purple-100/60"
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2"><div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white">{as.servicos?.foto_url && <Image src={as.servicos.foto_url} alt="" fill className="object-cover" unoptimized />}</div><p className="text-xs sm:text-sm font-semibold text-[#4A3F5C] leading-snug">
-                        {as.servicos?.nome || 'Serviço'}
-                      </p></div>
-                      <span className="inline-block text-[11px] text-gray-400 font-medium mt-0.5 whitespace-nowrap">
-                        {as.duracao_no_momento_minutos || as.servicos?.duracao_minutos || 0} min
-                      </span>
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white">{as.servicos?.foto_url && <Image src={as.servicos.foto_url} alt="" fill className="object-cover" unoptimized />}</div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs sm:text-sm font-semibold text-[#4A3F5C] leading-snug">{as.servicos?.nome || 'Serviço'}</p>
+                        <span className="inline-block text-[11px] text-gray-400 font-medium mt-0.5 whitespace-nowrap">{as.duracao_no_momento_minutos || as.servicos?.duracao_minutos || 0} min</span>
+                      </div>
                     </div>
                     <div className="flex flex-col items-end shrink-0">
                       {showCompleteForm ? (
@@ -895,49 +904,46 @@ export default function BookingDetailModal({
           </div>
         )}
 
-        {currentStatus === 'confirmado' && editingServices && (
-              <div className="mt-3 space-y-3 rounded-2xl border border-[#B8A9D9]/35 bg-[#FAF7F5] p-4 animate-in fade-in duration-150">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#8675A9]">Serviços do atendimento</p>
-                  <div className="mt-2 space-y-1.5">
-                    {availableServices.filter((service) => selectedServiceIds.includes(service.id)).map((service) => (
-                      <div key={service.id} className="flex items-center gap-2 border-b border-[#B8A9D9]/20 py-2 last:border-0">
-                        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white">{service.foto_url && <Image src={service.foto_url} alt="" fill className="object-cover" unoptimized />}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-[#4A3F5C]">{service.nome}</p><p className="text-[10px] text-gray-500">{service.duracao_minutos} min · R$ {Number(service.preco).toFixed(2)}</p></div>
-                        <button type="button" onClick={() => setPendingServiceChange({ type: 'remove', kind: 'service', id: service.id, nome: service.nome })} className="rounded-lg p-2 text-rose-600 transition-transform duration-150 ease-out active:scale-[.97]" aria-label={`Remover ${service.nome}`}><Trash2 className="h-4 w-4" /></button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="border-t border-[#B8A9D9]/25 pt-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#8675A9]">Pacotes</p>
-                  <div className="mt-2 space-y-1.5">
-                    {availablePackages.map((item) => { const selected = selectedComboId === item.id; return <button key={item.id} type="button" onClick={() => setPendingServiceChange({ type: selected ? 'remove' : 'add', kind: 'package', id: item.id, nome: item.nome })} className="flex w-full items-center gap-2 border-b border-[#B8A9D9]/20 py-2 text-left last:border-0 active:scale-[.99]">
-                      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white">{item.foto_url && <Image src={item.foto_url} alt="" fill className="object-cover" unoptimized />}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-[#4A3F5C]">{item.nome}</p><p className="text-[10px] text-gray-500">Pacote · {item.duracaoTotalMinutos} min · R$ {Number(item.preco_combo).toFixed(2)}</p></div>{selected ? <Trash2 className="h-4 w-4 text-rose-600" /> : <Plus className="h-4 w-4 text-[#8675A9]" />}
-                    </button>})}
-                  </div>
-                </div>
-                <div className="border-t border-[#B8A9D9]/25 pt-3">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#8675A9]">Itens da comanda</p>
-                  <div className="mt-2 space-y-1.5">
-                    {availableProducts.map((item) => { const selected = selectedProductIds.includes(item.id); return <button key={item.id} type="button" onClick={() => setPendingServiceChange({ type: selected ? 'remove' : 'add', kind: 'product', id: item.id, nome: item.nome })} className="flex w-full items-center gap-2 border-b border-[#B8A9D9]/20 py-2 text-left last:border-0 active:scale-[.99]">
-                      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white">{item.foto_url && <Image src={item.foto_url} alt="" fill className="object-cover" unoptimized />}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-[#4A3F5C]">{item.nome}</p><p className="text-[10px] text-gray-500">R$ {Number(item.preco).toFixed(2)}</p></div>{selected ? <Trash2 className="h-4 w-4 text-rose-600" /> : <Plus className="h-4 w-4 text-[#8675A9]" />}
-                    </button>})}
-                  </div>
-                </div>
-                {availableServices.some((service) => !selectedServiceIds.includes(service.id)) && (
-                  <div className="border-t border-[#B8A9D9]/25 pt-3">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#8675A9]">Adicionar agora</p>
-                    <div className="mt-2 space-y-1.5">
-                      {availableServices.filter((service) => !selectedServiceIds.includes(service.id)).map((service) => (
-                        <button key={service.id} type="button" onClick={() => setPendingServiceChange({ type: 'add', kind: 'service', id: service.id, nome: service.nome })} className="flex w-full items-center gap-2 border-b border-[#B8A9D9]/20 py-2 text-left transition-transform duration-150 ease-out last:border-0 active:scale-[0.98]">
-                          <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white">{service.foto_url && <Image src={service.foto_url} alt="" fill className="object-cover" unoptimized />}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-[#4A3F5C]">{service.nome}</p><p className="text-[10px] text-gray-500">{service.duracao_minutos} min · R$ {Number(service.preco).toFixed(2)}</p></div>
-                          <Plus className="h-4 w-4 text-[#8675A9]" />
-                        </button>
-                      ))}
+        {canEditBookingItems(currentStatus) && editingServices && (
+          <div className="mt-3 divide-y divide-[#B8A9D9]/25 border-t border-[#B8A9D9]/25 animate-in fade-in duration-150">
+            <section>
+              <button type="button" aria-expanded={openEditSection === 'services'} onClick={() => setOpenEditSection((current) => toggleBookingEditSection(current, 'services'))} className="flex min-h-11 w-full items-center justify-between gap-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6D5C89] transition-colors duration-150 ease-out hover:text-[#4A3F5C]">
+                <span>Serviços</span><ChevronDown className={`h-4 w-4 transition-transform duration-200 ${openEditSection === 'services' ? 'rotate-180' : ''}`} />
+              </button>
+              {openEditSection === 'services' && (
+                <div className="pb-2">
+                  {availableServices.map((service) => {
+                    const selected = selectedServiceIds.includes(service.id)
+                    return (
+                    <div key={service.id} className="flex items-center gap-2 border-t border-[#B8A9D9]/15 py-2">
+                      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white">{service.foto_url && <Image src={service.foto_url} alt="" fill className="object-cover" unoptimized />}</div>
+                      <div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-[#4A3F5C]">{service.nome}</p><p className="text-[10px] text-gray-500">{service.duracao_minutos} min · R$ {Number(service.preco).toFixed(2)}</p></div>
+                      <button type="button" role="checkbox" aria-checked={selected} disabled={savingServices} onClick={() => requestServiceChange({ type: selected ? 'remove' : 'add', kind: 'service', id: service.id, nome: service.nome })} className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition-colors duration-150 disabled:opacity-50 ${selected ? 'border-[#6D5C89] bg-[#6D5C89] text-white' : 'border-[#B8A9D9] bg-white text-transparent hover:bg-[#FAF7F5]'}`} aria-label={`${selected ? 'Desmarcar' : 'Selecionar'} ${service.nome}`}><Check className="h-4 w-4" /></button>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )})}
+                  {availableServices.length === 0 && <p className="border-t border-[#B8A9D9]/15 py-3 text-xs text-gray-500">Nenhum serviço disponível.</p>}
+                </div>
+              )}
+            </section>
+
+            <section>
+              <button type="button" aria-expanded={openEditSection === 'packages'} onClick={() => setOpenEditSection((current) => toggleBookingEditSection(current, 'packages'))} className="flex min-h-11 w-full items-center justify-between gap-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6D5C89] transition-colors duration-150 ease-out hover:text-[#4A3F5C]">
+                <span>Pacotes</span><ChevronDown className={`h-4 w-4 transition-transform duration-200 ${openEditSection === 'packages' ? 'rotate-180' : ''}`} />
+              </button>
+              {openEditSection === 'packages' && <div className="pb-2">{availablePackages.map((item) => { const selected = selectedComboId === item.id; return <button key={item.id} type="button" onClick={() => requestServiceChange({ type: selected ? 'remove' : 'add', kind: 'package', id: item.id, nome: item.nome })} className="flex w-full items-center gap-2 border-t border-[#B8A9D9]/15 py-2 text-left transition-colors duration-150 ease-out hover:bg-white/70 active:scale-[.99]">
+                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white">{item.foto_url && <Image src={item.foto_url} alt="" fill className="object-cover" unoptimized />}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-[#4A3F5C]">{item.nome}</p><p className="text-[10px] text-gray-500">Pacote · {item.duracaoTotalMinutos} min · R$ {Number(item.preco_combo).toFixed(2)}</p></div>{selected ? <Trash2 className="h-4 w-4 text-rose-600" /> : <Plus className="h-4 w-4 text-[#8675A9]" />}
+              </button>})}{availablePackages.length === 0 && <p className="border-t border-[#B8A9D9]/15 py-3 text-xs text-gray-500">Nenhum pacote disponível.</p>}</div>}
+            </section>
+
+            <section>
+              <button type="button" aria-expanded={openEditSection === 'products'} onClick={() => setOpenEditSection((current) => toggleBookingEditSection(current, 'products'))} className="flex min-h-11 w-full items-center justify-between gap-3 text-left text-[10px] font-bold uppercase tracking-wider text-[#6D5C89] transition-colors duration-150 ease-out hover:text-[#4A3F5C]">
+                <span>Comanda</span><ChevronDown className={`h-4 w-4 transition-transform duration-200 ${openEditSection === 'products' ? 'rotate-180' : ''}`} />
+              </button>
+              {openEditSection === 'products' && <div className="pb-2">{availableProducts.map((item) => { const selected = selectedProductIds.includes(item.id); return <button key={item.id} type="button" onClick={() => requestServiceChange({ type: selected ? 'remove' : 'add', kind: 'product', id: item.id, nome: item.nome })} className="flex w-full items-center gap-2 border-t border-[#B8A9D9]/15 py-2 text-left transition-colors duration-150 ease-out hover:bg-white/70 active:scale-[.99]">
+                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white">{item.foto_url && <Image src={item.foto_url} alt="" fill className="object-cover" unoptimized />}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-[#4A3F5C]">{item.nome}</p><p className="text-[10px] text-gray-500">R$ {Number(item.preco).toFixed(2)}</p></div>{selected ? <Trash2 className="h-4 w-4 text-rose-600" /> : <Plus className="h-4 w-4 text-[#8675A9]" />}
+              </button>})}{availableProducts.length === 0 && <p className="border-t border-[#B8A9D9]/15 py-3 text-xs text-gray-500">Nenhum item disponível.</p>}</div>}
+            </section>
+          </div>
         )}
 
         {/* Formulário de Conclusão e Registro de Pagamento */}
@@ -1166,6 +1172,7 @@ export default function BookingDetailModal({
         confirmLabel={pendingServiceChange?.type === 'add' ? 'Adicionar' : 'Remover'}
         destructive={pendingServiceChange?.type === 'remove'}
         loading={savingServices}
+        checkbox={{ label: 'Não perguntar novamente nesta sessão', checked: dontAskAgain, onChange: setDontAskAgain }}
         onClose={() => setPendingServiceChange(null)}
         onConfirm={confirmServiceChange}
       />
