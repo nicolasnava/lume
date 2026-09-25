@@ -42,6 +42,7 @@ import Image from 'next/image'
 import { getCombosProfissionalAction } from '@/app/actions/combos'
 import { getComandaProdutosAction } from '@/app/actions/comanda'
 import { toggleBookingEditSection, type BookingEditSection } from '@/lib/booking-detail-ui'
+import { mergeEditableServices } from '@/lib/booking-editable-services'
 import { bookingStatusLabel, canEditBookingItems, normalizeBookingStatus } from '@/lib/booking-detail-state'
 import { serviceChangePreferenceKey, shouldConfirmItemChange } from '@/lib/service-management'
 
@@ -116,7 +117,7 @@ export default function BookingDetailModal({
   const [editingServices, setEditingServices] = useState(false)
   const [openEditSection, setOpenEditSection] = useState<BookingEditSection | null>(null)
   const [savingServices, setSavingServices] = useState(false)
-  const [availableServices, setAvailableServices] = useState<Array<{ id: string; nome: string; preco: number; duracao_minutos: number; foto_url: string | null }>>([])
+  const [availableServices, setAvailableServices] = useState<Array<{ id: string; nome: string; preco: number; duracao_minutos: number; foto_url: string | null; ativo?: boolean | null }>>([])
   const [availablePackages, setAvailablePackages] = useState<Array<{ id: string; nome: string; preco_combo: number; duracaoTotalMinutos: number; foto_url: string | null; servicos: Array<{ id: string }> }>>([])
   const [availableProducts, setAvailableProducts] = useState<Array<{ id: string; nome: string; preco: number; foto_url: string | null }>>([])
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([])
@@ -198,11 +199,33 @@ export default function BookingDetailModal({
 
     if (canEditBookingItems(booking.status)) {
       Promise.all([getProfissionalServicesAndClientsAction(), getCombosProfissionalAction(), getComandaProdutosAction(undefined, true)]).then(([result, packages, products]) => {
-        if (result.success) setAvailableServices(result.services)
+        if (result.success) {
+          const bookedServiceSnapshots = (booking.agendamento_servicos || []).flatMap((item) => {
+            const service = item.servicos
+            if (!service?.id) return []
+            return [{
+              id: service.id,
+              nome: service.nome,
+              preco: Number(item.preco_no_momento ?? service.preco),
+              duracao_minutos: Number(item.duracao_no_momento_minutos ?? service.duracao_minutos),
+              foto_url: service.foto_url || null,
+              ativo: service.ativo ?? false,
+            }]
+          })
+          if (booking.servicos?.id && !bookedServiceSnapshots.some((service) => service.id === booking.servicos?.id)) {
+            bookedServiceSnapshots.push({
+              id: booking.servicos.id,
+              nome: booking.servicos.nome,
+              preco: Number(booking.servicos.preco),
+              duracao_minutos: Number(booking.servicos.duracao_minutos),
+              foto_url: booking.servicos.foto_url || null,
+              ativo: booking.servicos.ativo ?? false,
+            })
+          }
+          setAvailableServices(mergeEditableServices(result.services, bookedServiceSnapshots))
+        }
         const activePackages = packages.filter((item) => item.ativo).map(({ id, nome, preco_combo, foto_url, duracaoTotalMinutos, servicos }) => ({ id, nome, preco_combo, foto_url, duracaoTotalMinutos, servicos }))
         setAvailablePackages(activePackages)
-        const includedByCurrentPackage = new Set(activePackages.find((item) => item.id === booking.combo_id)?.servicos.map((service) => service.id) || [])
-        if (includedByCurrentPackage.size > 0) setSelectedServiceIds((ids) => ids.filter((id) => !includedByCurrentPackage.has(id)))
         setAvailableProducts(products.filter((item) => item.ativo).map(({ id, nome, preco, foto_url }) => ({ id, nome, preco, foto_url })))
       })
     }
@@ -917,7 +940,7 @@ export default function BookingDetailModal({
                     return (
                     <div key={service.id} className="flex items-center gap-2 border-t border-[#B8A9D9]/15 py-2">
                       <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white">{service.foto_url && <Image src={service.foto_url} alt="" fill className="object-cover" unoptimized />}</div>
-                      <div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-[#4A3F5C]">{service.nome}</p><p className="text-[10px] text-gray-500">{service.duracao_minutos} min · R$ {Number(service.preco).toFixed(2)}</p></div>
+                      <div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-[#4A3F5C]">{service.nome}</p><p className="text-[10px] text-gray-500">{service.ativo === false ? 'Desativado · ' : ''}{service.duracao_minutos} min · R$ {Number(service.preco).toFixed(2)}</p></div>
                       <button type="button" role="checkbox" aria-checked={selected} disabled={savingServices} onClick={() => requestServiceChange({ type: selected ? 'remove' : 'add', kind: 'service', id: service.id, nome: service.nome })} className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition-colors duration-150 disabled:opacity-50 ${selected ? 'border-[#6D5C89] bg-[#6D5C89] text-white' : 'border-[#B8A9D9] bg-white text-transparent hover:bg-[#FAF7F5]'}`} aria-label={`${selected ? 'Desmarcar' : 'Selecionar'} ${service.nome}`}><Check className="h-4 w-4" /></button>
                     </div>
                   )})}

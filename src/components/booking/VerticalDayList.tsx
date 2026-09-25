@@ -1,13 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Check, CalendarX } from 'lucide-react'
 import { WorkingDayInfo } from '@/lib/booking/availability'
+import { getSaoPauloDateString } from '@/lib/booking/availability-utils'
 
 interface VerticalDayListProps {
   workingDays: WorkingDayInfo[]
   selectedDateStr: string | null
   onSelectDate: (dateStr: string) => void
+  availabilityByDate?: Record<string, boolean>
+  onVisibleWeekChange?: (dateStrings: string[]) => void
   corPrimaria?: string
 }
 
@@ -15,21 +18,30 @@ export default function VerticalDayList({
   workingDays,
   selectedDateStr,
   onSelectDate,
+  availabilityByDate,
+  onVisibleWeekChange,
   corPrimaria = '#B8A9D9',
 }: VerticalDayListProps) {
   const [weekIndex, setWeekIndex] = useState(0)
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = getSaoPauloDateString(new Date())
 
   // Dividir o array de dias em semanas (7 dias por bloco)
   const daysPerWeek = 7
   const totalWeeks = Math.ceil(workingDays.length / daysPerWeek) || 1
 
   const startIndex = weekIndex * daysPerWeek
-  const currentWeekDays = workingDays.slice(startIndex, startIndex + daysPerWeek)
+  const currentWeekDays = useMemo(() => workingDays.slice(startIndex, startIndex + daysPerWeek), [workingDays, startIndex])
 
   const firstDay = currentWeekDays[0]
   const lastDay = currentWeekDays[currentWeekDays.length - 1]
+
+  const visibleWeekDates = useMemo(() => currentWeekDays.map((day) => day.dateStr), [currentWeekDays])
+  useEffect(() => {
+    if (visibleWeekDates.length > 0 && onVisibleWeekChange) {
+      onVisibleWeekChange(visibleWeekDates)
+    }
+  }, [visibleWeekDates, onVisibleWeekChange])
 
   const handlePrevWeek = () => {
     if (weekIndex > 0) {
@@ -81,10 +93,12 @@ export default function VerticalDayList({
       <div className="space-y-2.5">
         {currentWeekDays.map((day) => {
           const isToday = day.dateStr === todayStr
-          const isSelected = day.dateStr === selectedDateStr
           const dayNum = day.dateStr.split('-')[2]
           const isPast = day.dateStr < todayStr
-          const isAvailable = day.isWorkingDay && !isPast
+          const dateAvailability = availabilityByDate?.[day.dateStr]
+          const hasSlots = dateAvailability === true
+          const isAvailable = day.isWorkingDay && !isPast && (!availabilityByDate || hasSlots)
+          const isSelected = day.dateStr === selectedDateStr && isAvailable
 
           return (
             <button
@@ -129,11 +143,15 @@ export default function VerticalDayList({
                   </div>
                   {/* Item 29: Simplificar texto para 'Indisponível' */}
                   <span className="text-[11px] text-gray-500 font-medium block truncate">
-                    {isAvailable
-                      ? 'Horários disponíveis'
-                      : isPast
+                    {isPast
                       ? 'Data passada'
-                      : 'Indisponível'}
+                      : !day.isWorkingDay
+                      ? 'Indisponível'
+                      : availabilityByDate && dateAvailability === undefined
+                      ? 'Verificando horários'
+                      : isAvailable
+                      ? 'Horários disponíveis'
+                      : 'Sem horários disponíveis'}
                   </span>
                 </div>
               </div>

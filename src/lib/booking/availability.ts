@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { calculateSlotsForDate } from './availability-utils'
 
 export interface WorkingDayInfo {
   dateStr: string // YYYY-MM-DD
@@ -113,18 +114,7 @@ export async function getWorkingDaysInNextNDays(
   return result
 }
 
-function getTodayDateString(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date())
-}
-
-/**
- * Calcula os horários livres para um determinado serviço (ou duração total acumulada em minutos) e data.
- */
+/** Calcula horários de uma única data, preservando o formato usado pelo wizard. */
 export async function calculateAvailableSlots(
   profissionalId: string,
   servicoIdOrDuracaoMinutos: string | number,
@@ -132,164 +122,72 @@ export async function calculateAvailableSlots(
   allowPastSlots = false
 ): Promise<DayAvailability> {
   const supabase = createAdminClient()
-  const targetDate = new Date(`${dateStr}T12:00:00-03:00`)
-  const dayOfWeek = targetDate.getDay()
-
-  // 0. Buscar bloqueios específicos para esta data
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: bloqueios } = await (supabase.from('bloqueios_disponibilidade') as any)
-    .select('data, data_fim, hora_inicio, hora_fim')
-    .eq('profissional_id', profissionalId)
-
-  const rawBloqueios = (bloqueios || []) as BloqueioDbItem[]
-
-  // Filtrar bloqueios que afetam esta data específica
-  const matchingBlocks = rawBloqueios.filter((b) => {
-    const start = b.data
-    const end = b.data_fim || b.data
-    return dateStr >= start && dateStr <= end
-  })
-
-  // Se houver qualquer bloqueio de dia inteiro, retorna sem horários
-  if (matchingBlocks.some((b) => !b.hora_inicio)) {
-    return {
-      dateStr,
-      dayOfWeek,
-      isWorkingDay: false,
-      availableSlots: [],
-    }
+  const dayOfWeek = new Date(`${dateStr}T12:00:00-03:00`).getDay()
+  let durationMinutes = typeof servicoIdOrDuracaoMinutos === 'number' ? servicoIdOrDuracaoMinutos : 60
+  if (typeof servicoIdOrDuracaoMinutos === 'string') {
+    const { data: service } = await supabase.from('servicos').select('duracao_minutos').eq('id', servicoIdOrDuracaoMinutos).single()
+    if (service?.duracao_minutos) durationMinutes = service.duracao_minutos
   }
 
-  // Extrair faixas de horários bloqueados parcialmente no dia (fuso Brasil -03:00)
-  const partialBlockedRanges: { startMs: number; endMs: number }[] = []
-  matchingBlocks.forEach((b) => {
-    if (b.hora_inicio && b.hora_fim) {
-      const startMs = new Date(`${dateStr}T${b.hora_inicio.slice(0, 5)}:00-03:00`).getTime()
-      const endMs = new Date(`${dateStr}T${b.hora_fim.slice(0, 5)}:00-03:00`).getTime()
-      partialBlockedRanges.push({ startMs, endMs })
-    }
-  })
-
-  // 1. Buscar a disponibilidade da profissional para o dia da semana
-  const { data: disponibilidades } = await supabase
-    .from('disponibilidade')
-    .select('*')
-    .eq('profissional_id', profissionalId)
-    .eq('dia_semana', dayOfWeek)
-
-  if (!disponibilidades || disponibilidades.length === 0) {
-    return {
-      dateStr,
-      dayOfWeek,
-      isWorkingDay: false,
-      availableSlots: [],
-    }
-  }
-
-  // 2. Determinar a duração total em minutos
-  let duracaoMinutos = 60
-  if (typeof servicoIdOrDuracaoMinutos === 'number') {
-    duracaoMinutos = servicoIdOrDuracaoMinutos
-  } else if (typeof servicoIdOrDuracaoMinutos === 'string') {
-    const { data: servico } = await supabase
-      .from('servicos')
-      .select('duracao_minutos')
-      .eq('id', servicoIdOrDuracaoMinutos)
-      .single()
-
-    if (servico?.duracao_minutos) {
-      duracaoMinutos = servico.duracao_minutos
-    }
-  }
-
-  const duracaoMs = duracaoMinutos * 60 * 1000
-
-  // 3. Buscar agendamentos já ocupados no dia (fuso Brasil -03:00)
   const startOfDayIso = new Date(`${dateStr}T00:00:00-03:00`).toISOString()
   const endOfDayIso = new Date(`${dateStr}T23:59:59.999-03:00`).toISOString()
-
-  const { data: agendamentosExistentes } = await supabase
-    .from('agendamentos')
-    .select('data_hora_inicio, data_hora_fim')
-    .eq('profissional_id', profissionalId)
-    .neq('status', 'cancelado')
-    .gte('data_hora_inicio', startOfDayIso)
-    .lte('data_hora_inicio', endOfDayIso)
-
-  const ocupadosMs = (agendamentosExistentes || []).map((a) => ({
-    start: new Date(a.data_hora_inicio).getTime(),
-    end: new Date(a.data_hora_fim).getTime(),
-  }))
-
-  // 4. Gerar slots possíveis com base nos blocos e pausas
-  const availableSlotsMap = new Map<string, TimeSlot>()
-  const todayStr = getTodayDateString()
-
-  for (const disp of disponibilidades) {
-    const [hInicio, mInicio] = disp.hora_inicio.split(':').map(Number)
-    const [hFim, mFim] = disp.hora_fim.split(':').map(Number)
-
-    // Pausas cadastradas no dia (fuso Brasil -03:00)
+  const [blocksResult, availabilityResult, bookingsResult] = await Promise.all([
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pausas = (((disp as any).pausas as unknown) || []) as { pausa_inicio: string; pausa_fim: string }[]
-    const pausasMs = pausas.map((p) => ({
-      start: new Date(`${dateStr}T${p.pausa_inicio.slice(0, 5)}:00-03:00`).getTime(),
-      end: new Date(`${dateStr}T${p.pausa_fim.slice(0, 5)}:00-03:00`).getTime(),
-    }))
-
-    const startMinTotal = hInicio * 60 + mInicio
-    const endMinTotal = hFim * 60 + mFim
-
-    // Geração aritmética precisa de slots a cada 30 minutos
-    for (let curMin = startMinTotal; curMin + duracaoMinutos <= endMinTotal; curMin += 30) {
-      const curH = Math.floor(curMin / 60)
-      const curM = curMin % 60
-      const timeStr = `${String(curH).padStart(2, '0')}:${String(curM).padStart(2, '0')}`
-
-      const slotStartMs = new Date(`${dateStr}T${timeStr}:00-03:00`).getTime()
-      const slotEndMs = slotStartMs + duracaoMs
-
-      // A. Não permitir horários no passado se for a data de hoje (apenas para agendamentos públicos)
-      if (!allowPastSlots && dateStr === todayStr && slotStartMs <= Date.now()) {
-        continue
-      }
-
-      // B. Verificar conflito com agendamentos existentes
-      const temConflitoAgendamento = ocupadosMs.some((occ) => {
-        return slotStartMs < occ.end && slotEndMs > occ.start
-      })
-      if (temConflitoAgendamento) continue
-
-      // C. Verificar conflito com pausas de almoço/descanso
-      const temConflitoPausa = pausasMs.some((p) => {
-        return slotStartMs < p.end && slotEndMs > p.start
-      })
-      if (temConflitoPausa) continue
-
-      // D. Verificar conflito com bloqueios parciais de horário
-      const temConflitoBloqueioParcial = partialBlockedRanges.some((b) => {
-        return slotStartMs < b.endMs && slotEndMs > b.startMs
-      })
-      if (temConflitoBloqueioParcial) continue
-
-      if (!availableSlotsMap.has(timeStr)) {
-        availableSlotsMap.set(timeStr, {
-          timeStr,
-          dataHoraInicio: new Date(`${dateStr}T${timeStr}:00-03:00`).toISOString(),
-          dataHoraFim: new Date(slotEndMs).toISOString(),
-        })
-      }
-    }
-  }
-
-  const availableSlots = Array.from(availableSlotsMap.values()).sort((a, b) =>
-    a.timeStr.localeCompare(b.timeStr)
-  )
-
-  return {
+    (supabase.from('bloqueios_disponibilidade') as any).select('data, data_fim, hora_inicio, hora_fim').eq('profissional_id', profissionalId),
+    supabase.from('disponibilidade').select('*').eq('profissional_id', profissionalId).eq('dia_semana', dayOfWeek),
+    supabase.from('agendamentos').select('data_hora_inicio, data_hora_fim').eq('profissional_id', profissionalId).neq('status', 'cancelado').gte('data_hora_inicio', startOfDayIso).lte('data_hora_inicio', endOfDayIso),
+  ])
+  const blocks = (blocksResult.data || []) as BloqueioDbItem[]
+  const availability = (availabilityResult.data || []) as unknown as import('./availability-utils').RecurringAvailabilityWindow[]
+  const bookings = (bookingsResult.data || []) as import('./availability-utils').BusyBookingWindow[]
+  const matchingBlocks = blocks.filter((block) => dateStr >= block.data && dateStr <= (block.data_fim || block.data))
+  const isWorkingDay = availability.length > 0 && !matchingBlocks.some((block) => !block.hora_inicio)
+  const availableSlots = calculateSlotsForDate({
     dateStr,
-    dayOfWeek,
-    isWorkingDay: true,
-    availableSlots,
-  }
+    durationMinutes,
+    disponibilidades: availability,
+    bloqueios: blocks,
+    agendamentos: bookings,
+    nowMs: Date.now(),
+    allowPastSlots,
+  }) as TimeSlot[]
+
+  return { dateStr, dayOfWeek, isWorkingDay, availableSlots }
+}
+
+/**
+ * Busca disponibilidade de uma semana em consultas agrupadas e retorna apenas
+ * se cada dia tem pelo menos um horário compatível com a duração selecionada.
+ */
+export async function calculateDateAvailability(
+  profissionalId: string,
+  dateStrings: readonly string[],
+  durationMinutes: number
+): Promise<Record<string, boolean>> {
+  if (dateStrings.length === 0) return {}
+  const sortedDates = [...new Set(dateStrings)].sort()
+  const startDate = sortedDates[0]
+  const endDate = sortedDates[sortedDates.length - 1]
+  const startIso = new Date(`${startDate}T00:00:00-03:00`).toISOString()
+  const endIso = new Date(`${endDate}T23:59:59.999-03:00`).toISOString()
+  const supabase = createAdminClient()
+  const [blocksResult, availabilityResult, bookingsResult] = await Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.from('bloqueios_disponibilidade') as any).select('data, data_fim, hora_inicio, hora_fim').eq('profissional_id', profissionalId),
+    supabase.from('disponibilidade').select('*').eq('profissional_id', profissionalId),
+    supabase.from('agendamentos').select('data_hora_inicio, data_hora_fim').eq('profissional_id', profissionalId).neq('status', 'cancelado').gte('data_hora_inicio', startIso).lte('data_hora_inicio', endIso),
+  ])
+  const blocks = (blocksResult.data || []) as BloqueioDbItem[]
+  const availability = (availabilityResult.data || []) as unknown as import('./availability-utils').RecurringAvailabilityWindow[]
+  const bookings = (bookingsResult.data || []) as import('./availability-utils').BusyBookingWindow[]
+  const nowMs = Date.now()
+
+  return Object.fromEntries(sortedDates.map((dateStr) => [dateStr, calculateSlotsForDate({
+    dateStr,
+    durationMinutes,
+    disponibilidades: availability,
+    bloqueios: blocks,
+    agendamentos: bookings,
+    nowMs,
+  }).length > 0]))
 }

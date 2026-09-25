@@ -940,7 +940,7 @@ export default function ServicesManager({ initialServices, initialCombos, initia
   return (
     <div className="space-y-6">
       {/* Seletor de Abas: Serviços vs Pacotes vs Comanda Digital */}
-      <div className="relative flex items-center p-1 rounded-2xl bg-gray-100/90 border border-gray-200/80 max-w-xl">
+      <div className="relative flex max-w-xl items-center overflow-hidden rounded-2xl border border-gray-200/80 bg-gray-100/90 p-1">
         <div
           className="absolute top-1 bottom-1 rounded-xl bg-white shadow-xs transition-all duration-300 ease-out pointer-events-none"
           style={{
@@ -956,43 +956,43 @@ export default function ServicesManager({ initialServices, initialCombos, initia
         <button
           type="button"
           onClick={() => setActiveTab('servicos')}
-          className={`relative z-10 flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-xs font-bold transition-colors duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
+          className={`relative z-10 flex min-w-0 flex-1 flex-nowrap py-2.5 px-1.5 sm:px-4 rounded-xl text-[10px] sm:text-xs font-bold transition-colors duration-200 items-center justify-center gap-1 sm:gap-2 cursor-pointer ${
             activeTab === 'servicos'
               ? 'text-[#4A3F5C]'
               : 'text-gray-500 hover:text-gray-700'
           }`}
         >
-          <Scissors className="h-4 w-4 text-[#8675A9]" />
-          <span>Serviços ({services.length})</span>
+          <Scissors className="h-4 w-4 shrink-0 text-[#8675A9]" />
+          <span className="min-w-0 truncate whitespace-nowrap">Serviços ({services.length})</span>
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('combos')}
-          className={`relative z-10 flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-xs font-bold transition-colors duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
+          className={`relative z-10 flex min-w-0 flex-1 flex-nowrap py-2.5 px-1.5 sm:px-4 rounded-xl text-[10px] sm:text-xs font-bold transition-colors duration-200 items-center justify-center gap-1 sm:gap-2 cursor-pointer ${
             activeTab === 'combos'
               ? 'text-[#4A3F5C]'
               : 'text-gray-500 hover:text-gray-700'
           }`}
         >
-          <Package className="h-4 w-4 text-[#8675A9]" />
-          <span>Pacotes ({combos.length})</span>
+          <Package className="h-4 w-4 shrink-0 text-[#8675A9]" />
+          <span className="min-w-0 truncate whitespace-nowrap">Pacotes ({combos.length})</span>
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('comanda')}
-          className={`relative z-10 flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-xs font-bold transition-colors duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
+          className={`relative z-10 flex min-w-0 flex-1 flex-nowrap py-2.5 px-1.5 sm:px-4 rounded-xl text-[10px] sm:text-xs font-bold transition-colors duration-200 items-center justify-center gap-1 sm:gap-2 cursor-pointer ${
             activeTab === 'comanda'
               ? 'text-[#4A3F5C]'
               : 'text-gray-500 hover:text-gray-700'
           }`}
         >
-          <ShoppingBag className="h-4 w-4 text-[#8675A9]" />
-          <span>Comanda ({comandaProdutos.length})</span>
+          <ShoppingBag className="h-4 w-4 shrink-0 text-[#8675A9]" />
+          <span className="min-w-0 truncate whitespace-nowrap">Comanda ({comandaProdutos.length})</span>
         </button>
       </div>
 
-      <div className="flex justify-end">
-        <button type="button" aria-pressed={isPreviewMode} onClick={() => setIsPreviewMode((current) => !current)} className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-3.5 text-xs font-semibold transition-[background-color,color,border-color,transform] duration-200 ease-out active:scale-[0.98] ${isPreviewMode ? 'border-[#4A3F5C] bg-[#4A3F5C] text-white' : 'border-[#B8A9D9]/50 bg-white text-[#4A3F5C] hover:bg-[#FAF7F5]'}`}>
+      <div className="w-full">
+        <button type="button" aria-pressed={isPreviewMode} onClick={() => setIsPreviewMode((current) => !current)} className={`inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border px-3.5 text-xs font-semibold transition-[background-color,color,border-color,transform] duration-200 ease-out active:scale-[0.98] ${isPreviewMode ? 'border-[#4A3F5C] bg-[#4A3F5C] text-white' : 'border-[#B8A9D9]/50 bg-white text-[#4A3F5C] hover:bg-[#FAF7F5]'}`}>
           {isPreviewMode ? <Pencil className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           {isPreviewMode ? 'Voltar à gestão' : 'Ver como fica na vitrine'}
         </button>

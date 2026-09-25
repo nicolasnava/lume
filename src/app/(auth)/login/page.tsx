@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
@@ -10,6 +10,7 @@ import Toast from '@/components/ui/Toast'
 import { Lock, Mail, Loader2, Eye, EyeOff, X, KeyRound, CheckCircle2, ArrowRight } from 'lucide-react'
 import { getPostLoginRedirectAction } from '@/app/actions/admin2fa'
 import { translateAuthError } from '@/lib/utils/errorTranslations'
+import { getLoginSubmitPresentation, type LoginSubmitStatus } from '@/lib/login-submit-presentation'
 
 function getSafeRedirectUrl(target: string | null): string {
   const defaultUrl = '/dashboard/geral'
@@ -30,7 +31,6 @@ function getSafeRedirectUrl(target: string | null): string {
 }
 
 function LoginForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = getSafeRedirectUrl(searchParams.get('redirectTo'))
 
@@ -45,10 +45,13 @@ function LoginForm() {
   const [forgotSuccess, setForgotSuccess] = useState(false)
 
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' } | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loginStatus, setLoginStatus] = useState<LoginSubmitStatus>('idle')
+  const submitPresentation = getLoginSubmitPresentation(loginStatus)
+  const loading = submitPresentation.disabled
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (loading) return
     setToast(null)
 
     const validation = loginSchema.safeParse({ email, senha })
@@ -61,55 +64,66 @@ function LoginForm() {
       return
     }
 
-    setLoading(true)
-    const supabase = createClient()
-
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password: senha,
-    })
-
-    if (authError) {
-      const msg = translateAuthError(authError)
-      setToast({
-        show: true,
-        message: msg,
-        type: 'error',
-      })
-      setLoading(false)
-      return
-    }
-
-    // Avaliar privilégios de admin para redirecionamento direto e envio de 2FA
-    let targetUrl = redirectTo
-    let needs2fa = false
+    setLoginStatus('checking')
 
     try {
-      const postLogin = await getPostLoginRedirectAction(
-        authData.user?.id,
-        authData.user?.email || email
-      )
-      if (postLogin && postLogin.isAdmin) {
-        targetUrl = postLogin.redirectUrl || '/admin'
-        needs2fa = !!postLogin.needs2fa
+      const supabase = createClient()
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password: senha,
+      })
+
+      if (authError) {
+        const msg = translateAuthError(authError)
+        setToast({
+          show: true,
+          message: msg,
+          type: 'error',
+        })
+        setLoginStatus('idle')
+        return
       }
+
+      setLoginStatus('success')
+
+      // Avaliar privilégios de admin para redirecionamento direto e envio de 2FA
+      let targetUrl = redirectTo
+      let needs2fa = false
+
+      try {
+        const postLogin = await getPostLoginRedirectAction(
+          authData.user?.id,
+          authData.user?.email || email
+        )
+        if (postLogin && postLogin.isAdmin) {
+          targetUrl = postLogin.redirectUrl || '/admin'
+          needs2fa = !!postLogin.needs2fa
+        }
+      } catch (err) {
+        console.warn('[Login] Erro ao verificar pós-login admin, seguindo fluxo padrão:', err)
+      }
+
+      setToast({
+        show: true,
+        message: needs2fa
+          ? 'Verificação 2FA necessária. Redirecionando...'
+          : targetUrl.startsWith('/admin')
+          ? 'Acesso administrativo confirmado! Entrando no painel...'
+          : 'Login realizado! Entrando no painel...',
+        type: 'success',
+      })
+      window.setTimeout(() => {
+        window.location.href = targetUrl
+      }, 650)
     } catch (err) {
-      console.warn('[Login] Erro ao verificar pós-login admin, seguindo fluxo padrão:', err)
+      console.warn('[Login] Falha ao conectar durante a autenticação:', err)
+      setLoginStatus('idle')
+      setToast({
+        show: true,
+        message: 'Não foi possível conectar. Verifique sua conexão e tente novamente.',
+        type: 'error',
+      })
     }
-
-    setToast({
-      show: true,
-      message: needs2fa
-        ? 'Verificação 2FA necessária. Redirecionando...'
-        : targetUrl.startsWith('/admin')
-        ? 'Acesso administrativo confirmado! Entrando no painel...'
-        : 'Login realizado! Entrando no painel...',
-      type: 'success',
-    })
-
-    setTimeout(() => {
-      window.location.href = targetUrl
-    }, 500)
   }
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -252,13 +266,22 @@ function LoginForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center rounded-xl bg-[#3D2E4D] py-3.5 px-4 text-xs sm:text-sm font-bold text-white shadow-md transition hover:bg-[#2E223B] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#8C5383] focus:ring-offset-2 disabled:opacity-50 cursor-pointer"
+              aria-busy={submitPresentation.busy}
+              className={`login-submit-button w-full flex justify-center rounded-xl px-4 text-xs sm:text-sm font-bold text-white shadow-md focus:outline-none focus:ring-2 focus:ring-[#8C5383] focus:ring-offset-2 ${loginStatus !== 'idle' ? 'is-busy' : ''} ${loginStatus === 'success' ? 'is-success' : ''}`}
             >
-              {loading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                'Entrar na conta'
-              )}
+              <span className="login-submit-sweep" aria-hidden="true" />
+              <span className="login-submit-content">
+                <span className="login-submit-icon" aria-hidden="true">
+                  {loginStatus === 'checking' ? (
+                    <span className="login-submit-spinner" />
+                  ) : loginStatus === 'success' ? (
+                    <CheckCircle2 className="h-5 w-5" />
+                  ) : (
+                    <Lock className="h-[18px] w-[18px]" />
+                  )}
+                </span>
+                <span aria-live="polite">{submitPresentation.label}</span>
+              </span>
             </button>
           </div>
         </form>

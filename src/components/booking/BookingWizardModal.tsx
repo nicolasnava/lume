@@ -1,15 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Image from 'next/image'
 import { Database } from '@/lib/supabase/database.types'
 import {
   fetchAvailableSlotsAction,
+  fetchDateAvailabilityAction,
+  fetchWorkingDaysAction,
   createBookingAction,
 } from '@/app/actions/booking'
-import { getWorkingDaysInNextNDays, TimeSlot, WorkingDayInfo } from '@/lib/booking/availability'
+import { TimeSlot, WorkingDayInfo } from '@/lib/booking/availability'
 import Toast from '@/components/ui/Toast'
 import VerticalDayList from './VerticalDayList'
+import { isCurrentSlotResponse } from '@/lib/booking/availability-utils'
 import PaymentIcon from '@/components/common/PaymentIcon'
 import { getContrastingTextColor } from '@/lib/utils/contrast'
 import {
@@ -58,6 +61,7 @@ export default function BookingWizardModal({
   const [selectedServicos, setSelectedServicos] = useState<ServicoRow[]>(() =>
     initialServico ? [initialServico] : []
   )
+  const slotRequestId = useRef(0)
 
   useEffect(() => {
     if (initialServico) {
@@ -73,12 +77,22 @@ export default function BookingWizardModal({
   }, [initialServico, isOpen])
 
   const [workingDays, setWorkingDays] = useState<WorkingDayInfo[]>([])
+  const [dateAvailability, setDateAvailability] = useState<Record<string, boolean>>({})
   const [loadingDays, setLoadingDays] = useState(false)
   const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null)
+  const latestSelectedDate = useRef<string | null>(selectedDateStr)
+  latestSelectedDate.current = selectedDateStr
 
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
+
+  useEffect(() => {
+    slotRequestId.current += 1
+    latestSelectedDate.current = null
+    setAvailableSlots([])
+    setLoadingSlots(false)
+  }, [initialServico, isOpen])
 
   const [clienteNome, setClienteNome] = useState('')
   const [clienteTelefone, setClienteTelefone] = useState('')
@@ -114,13 +128,29 @@ export default function BookingWizardModal({
 
   const totalDuracaoMinutos = selectedServicos.reduce((sum, s) => sum + s.duracao_minutos, 0)
   const totalPreco = selectedServicos.reduce((sum, s) => sum + Number(s.preco), 0)
+  const latestAvailabilityDuration = useRef(totalDuracaoMinutos)
+  const availabilityRequestId = useRef(0)
+  latestAvailabilityDuration.current = totalDuracaoMinutos
+
+  const loadVisibleWeekAvailability = useCallback(async (dateStrings: string[]) => {
+    if (dateStrings.length === 0 || totalDuracaoMinutos <= 0) return
+    const requestId = ++availabilityRequestId.current
+    const requestedDuration = totalDuracaoMinutos
+    const result = await fetchDateAvailabilityAction(profissional.id, dateStrings, totalDuracaoMinutos)
+    if (requestId !== availabilityRequestId.current || requestedDuration !== latestAvailabilityDuration.current) return
+    setDateAvailability((current) => ({ ...current, ...result }))
+  }, [profissional.id, totalDuracaoMinutos])
+
+  useEffect(() => {
+    setDateAvailability({})
+  }, [totalDuracaoMinutos])
 
   // Item 17: Usar janela_agendamento_dias da profissional
   useEffect(() => {
     if (step === 2 && isOpen) {
       setLoadingDays(true)
       const janela = profissional.janela_agendamento_dias || 90
-      getWorkingDaysInNextNDays(profissional.id, janela)
+      fetchWorkingDaysAction(profissional.id, janela)
         .then((days) => {
           setWorkingDays(days)
           setLoadingDays(false)
@@ -145,15 +175,36 @@ export default function BookingWizardModal({
   }
 
   const handleSelectDate = async (dateStr: string) => {
+    if (dateAvailability[dateStr] !== true) return
+    const requestId = ++slotRequestId.current
+    const requestedDuration = totalDuracaoMinutos
+    latestSelectedDate.current = dateStr
     setSelectedDateStr(dateStr)
     setSelectedSlot(null)
+    setAvailableSlots([])
     setLoadingSlots(true)
     setErrorMsg(null)
     setStep(3)
 
-    const result = await fetchAvailableSlotsAction(profissional.id, totalDuracaoMinutos, dateStr)
-    setAvailableSlots(result.availableSlots)
-    setLoadingSlots(false)
+    try {
+      const result = await fetchAvailableSlotsAction(profissional.id, requestedDuration, dateStr)
+      if (!isCurrentSlotResponse({
+        requestId,
+        latestRequestId: slotRequestId.current,
+        requestedDate: dateStr,
+        selectedDate: latestSelectedDate.current,
+        requestedDurationMinutes: requestedDuration,
+        currentDurationMinutes: latestAvailabilityDuration.current,
+      })) return
+      setAvailableSlots(result.availableSlots)
+    } catch (error) {
+      if (requestId === slotRequestId.current) {
+        console.error('Erro ao carregar horários disponíveis:', error)
+        setAvailableSlots([])
+      }
+    } finally {
+      if (requestId === slotRequestId.current && latestSelectedDate.current === dateStr) setLoadingSlots(false)
+    }
   }
 
   const handleSelectSlot = (slot: TimeSlot) => {
@@ -525,6 +576,8 @@ export default function BookingWizardModal({
                     workingDays={workingDays}
                     selectedDateStr={selectedDateStr}
                     onSelectDate={handleSelectDate}
+                    availabilityByDate={dateAvailability}
+                    onVisibleWeekChange={loadVisibleWeekAvailability}
                     corPrimaria={corPrimaria}
                   />
                 )}

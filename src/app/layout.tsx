@@ -72,6 +72,7 @@ export const metadata: Metadata = {
 }
 
 import CookieConsentBanner from '@/components/common/CookieConsentBanner'
+import PwaLaunchTransition from '@/components/common/PwaLaunchTransition'
 
 export default function RootLayout({
   children,
@@ -112,6 +113,11 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               try {
+                var lumeStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+                if (lumeStandalone) document.documentElement.dataset.lumePwaLaunch = 'true';
+              } catch (e) {}
+
+              try {
                 if (!window.location.pathname.startsWith('/admin')) {
                   document.documentElement.classList.remove('dark');
                 }
@@ -151,6 +157,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-[#FAF8F5] text-[#3D2E4D] antialiased font-sans">
+        <PwaLaunchTransition />
         {children}
         <CookieConsentBanner />
       </body>

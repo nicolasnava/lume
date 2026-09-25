@@ -1,18 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Database } from '@/lib/supabase/database.types'
 import {
   fetchAvailableSlotsAction,
   fetchWorkingDaysAction,
+  fetchDateAvailabilityAction,
   createBookingAction,
 } from '@/app/actions/booking'
 import { TimeSlot, WorkingDayInfo } from '@/lib/booking/availability'
 import Toast from '@/components/ui/Toast'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import VerticalDayList from './VerticalDayList'
+import ComandaProductCard from './ComandaProductCard'
+import { isCurrentSlotResponse } from '@/lib/booking/availability-utils'
 import PaymentIcon from '@/components/common/PaymentIcon'
 import { getContrastingTextColor } from '@/lib/utils/contrast'
 import {
@@ -118,8 +121,11 @@ export default function BookingWizardPageClient({
   }
 
   const [workingDays, setWorkingDays] = useState<WorkingDayInfo[]>([])
+  const [dateAvailability, setDateAvailability] = useState<Record<string, boolean>>({})
   const [loadingDays, setLoadingDays] = useState(false)
   const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null)
+  const latestSelectedDate = useRef<string | null>(selectedDateStr)
+  latestSelectedDate.current = selectedDateStr
 
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
@@ -172,6 +178,23 @@ export default function BookingWizardPageClient({
     : selectedServicos.reduce((sum, s) => sum + Number(s.preco), 0)
   const produtosTotal = selectedProdutos.reduce((sum, produto) => sum + Number(produto.preco), 0)
   const totalGeral = totalPreco + produtosTotal
+  const latestAvailabilityDuration = useRef(totalDuracaoMinutos)
+  const availabilityRequestId = useRef(0)
+  const slotRequestId = useRef(0)
+  latestAvailabilityDuration.current = totalDuracaoMinutos
+
+  const loadVisibleWeekAvailability = useCallback(async (dateStrings: string[]) => {
+    if (dateStrings.length === 0 || totalDuracaoMinutos <= 0) return
+    const requestId = ++availabilityRequestId.current
+    const requestedDuration = totalDuracaoMinutos
+    const result = await fetchDateAvailabilityAction(profissional.id, dateStrings, totalDuracaoMinutos)
+    if (requestId !== availabilityRequestId.current || requestedDuration !== latestAvailabilityDuration.current) return
+    setDateAvailability((current) => ({ ...current, ...result }))
+  }, [profissional.id, totalDuracaoMinutos])
+
+  useEffect(() => {
+    setDateAvailability({})
+  }, [totalDuracaoMinutos])
 
   // Item 17: Carregar dias considerando a janela configurada da profissional
   useEffect(() => {
@@ -232,15 +255,36 @@ export default function BookingWizardPageClient({
   }
 
   const handleSelectDate = async (dateStr: string) => {
+    if (dateAvailability[dateStr] !== true) return
+    const requestId = ++slotRequestId.current
+    const requestedDuration = totalDuracaoMinutos
+    latestSelectedDate.current = dateStr
     setSelectedDateStr(dateStr)
     setSelectedSlot(null)
+    setAvailableSlots([])
     setLoadingSlots(true)
     setErrorMsg(null)
     setStep(3)
 
-    const result = await fetchAvailableSlotsAction(profissional.id, totalDuracaoMinutos, dateStr)
-    setAvailableSlots(result.availableSlots)
-    setLoadingSlots(false)
+    try {
+      const result = await fetchAvailableSlotsAction(profissional.id, requestedDuration, dateStr)
+      if (!isCurrentSlotResponse({
+        requestId,
+        latestRequestId: slotRequestId.current,
+        requestedDate: dateStr,
+        selectedDate: latestSelectedDate.current,
+        requestedDurationMinutes: requestedDuration,
+        currentDurationMinutes: latestAvailabilityDuration.current,
+      })) return
+      setAvailableSlots(result.availableSlots)
+    } catch (error) {
+      if (requestId === slotRequestId.current) {
+        console.error('Erro ao carregar horários disponíveis:', error)
+        setAvailableSlots([])
+      }
+    } finally {
+      if (requestId === slotRequestId.current && latestSelectedDate.current === dateStr) setLoadingSlots(false)
+    }
   }
 
   const handleSelectSlot = (slot: TimeSlot) => {
@@ -755,12 +799,14 @@ export default function BookingWizardPageClient({
                 {allComandaProdutos.some((produto) => produto.ativo && !selectedProdutos.some((selected) => selected.id === produto.id)) && (
                   <div className="space-y-3 border-t border-gray-100 pt-4">
                     <h4 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#4A3F5C]"><Package className="h-4 w-4 text-[#8675A9]" /><span>Comanda digital</span></h4>
-                    <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2">
+                    <div className="-mx-1 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-2">
                       {allComandaProdutos.filter((produto) => produto.ativo && !selectedProdutos.some((selected) => selected.id === produto.id)).map((produto) => (
-                        <article key={produto.id} className="w-[72%] shrink-0 snap-start overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xs sm:w-56">
-                          <button type="button" onClick={() => setDetailInfo({ title: produto.nome, image: produto.foto_url || null, duration: 'Comanda digital', price: Number(produto.preco), description: produto.descricao || 'Item da comanda digital' })} className="block w-full text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#8675A9]"><div className="relative h-36 bg-[#FAF7F5]">{produto.foto_url ? <Image src={produto.foto_url} alt={produto.nome} fill className="object-cover" unoptimized /> : <div className="flex h-full items-center justify-center"><Package className="h-8 w-8 text-[#B8A9D9]" /></div>}</div><div className="min-h-10 space-y-1 p-3"><p className="line-clamp-2 text-sm font-bold text-[#4A3F5C]">{produto.nome}</p><p className="whitespace-nowrap text-xs font-bold text-emerald-700">R$ {Number(produto.preco).toFixed(2)}</p></div></button>
-                          <div className="px-3 pb-3"><button type="button" onClick={() => setSelectedProdutos((items) => [...items, produto])} className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-[#B8A9D9]/40 bg-[#B8A9D9]/15 px-3 py-2 text-xs font-bold text-[#4A3F5C] transition-transform duration-150 ease-out active:scale-[.98]"><Plus className="h-3.5 w-3.5" /><span>Adicionar</span></button></div>
-                        </article>
+                        <ComandaProductCard
+                          key={produto.id}
+                          produto={produto}
+                          onOpenDetails={() => setDetailInfo({ title: produto.nome, image: produto.foto_url || null, duration: 'Comanda digital', price: Number(produto.preco), description: produto.descricao || 'Item da comanda digital' })}
+                          onAdd={() => setSelectedProdutos((items) => [...items, produto])}
+                        />
                       ))}
                     </div>
                   </div>
@@ -896,6 +942,8 @@ export default function BookingWizardPageClient({
                     workingDays={workingDays}
                     selectedDateStr={selectedDateStr}
                     onSelectDate={handleSelectDate}
+                    availabilityByDate={dateAvailability}
+                    onVisibleWeekChange={loadVisibleWeekAvailability}
                     corPrimaria={corPrimaria}
                   />
                 )}
@@ -1332,29 +1380,27 @@ export default function BookingWizardPageClient({
       />
       {detailInfo && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-[#211B2A]/65 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailInfo(null) }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="booking-item-detail-title" className="relative max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-3xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <div className="relative h-64 w-full overflow-hidden bg-[#FAF7F5] sm:h-72">
+          <section role="dialog" aria-modal="true" aria-labelledby="booking-item-detail-title" className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="relative h-[clamp(7rem,24dvh,12rem)] w-full shrink-0 overflow-hidden bg-[#FAF7F5]">
               {detailInfo.image ? <Image src={detailInfo.image} alt={detailInfo.title} fill className="object-cover" unoptimized /> : <div className="flex h-full items-center justify-center text-[#B8A9D9]"><Scissors className="h-14 w-14" /></div>}
               <button type="button" onClick={() => setDetailInfo(null)} aria-label="Fechar detalhes" className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-[#4A3F5C] shadow-md transition-transform duration-150 ease-out active:scale-[0.97]"><X className="h-5 w-5" /></button>
             </div>
-            <div className="space-y-4 p-5 sm:p-6">
-              <div>
-                <h2 id="booking-item-detail-title" className="text-xl font-bold text-[#4A3F5C]">{detailInfo.title}</h2>
-                <p className="mt-2 text-sm leading-6 text-[#6D6478]">{detailInfo.description}</p>
+            <div className="flex min-h-0 flex-1 flex-col gap-3 p-4 sm:gap-4 sm:p-5">
+              <div className="min-h-0">
+                <h2 id="booking-item-detail-title" className="line-clamp-2 text-lg font-bold text-[#4A3F5C] sm:text-xl">{detailInfo.title}</h2>
+                <p className="mt-1.5 line-clamp-2 text-sm leading-5 text-[#6D6478]">{detailInfo.description}</p>
               </div>
-              <div className="flex items-center justify-between border-y border-[#4A3F5C]/10 py-3 text-sm">
+              <div className="flex shrink-0 items-center justify-between border-y border-[#4A3F5C]/10 py-2.5 text-sm">
                 <span className="flex items-center gap-2 text-[#6D6478]"><Clock className="h-4 w-4 text-[#8675A9]" />{detailInfo.duration}</span>
                 <span className="whitespace-nowrap font-bold text-emerald-700">R$ {detailInfo.price.toFixed(2)}</span>
               </div>
               {detailInfo.included && detailInfo.included.length > 0 && (
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#4A3F5C]">Serviços incluídos</h3>
-                  <ul className="mt-2 divide-y divide-[#4A3F5C]/10">
-                    {detailInfo.included.map((name) => <li key={name} className="py-2 text-sm text-[#6D6478]">{name}</li>)}
-                  </ul>
+                <div className="min-h-0">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-[#4A3F5C]">Serviços incluídos</h3>
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-[#6D6478]" title={detailInfo.included.join(', ')}>{detailInfo.included.join(' · ')}</p>
                 </div>
               )}
-              <button type="button" onClick={() => setDetailInfo(null)} className="w-full rounded-full bg-[#4A3F5C] px-5 py-3 text-sm font-semibold text-white transition duration-200 ease-out hover:bg-[#392F49] active:scale-[0.98]">Voltar ao atendimento</button>
+              <button type="button" onClick={() => setDetailInfo(null)} className="mt-auto w-full shrink-0 rounded-full bg-[#4A3F5C] px-5 py-2.5 text-sm font-semibold text-white transition duration-200 ease-out hover:bg-[#392F49] active:scale-[0.98]">Voltar ao atendimento</button>
             </div>
           </section>
         </div>

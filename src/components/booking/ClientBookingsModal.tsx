@@ -1,16 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import {
   lookupClientBookingsAction,
   cancelClientBookingAction,
   rescheduleClientBookingAction,
   fetchWorkingDaysAction,
+  fetchDateAvailabilityAction,
   fetchAvailableSlotsAction,
   ClientBookingItem,
 } from '@/app/actions/booking'
 import VerticalDayList from '@/components/booking/VerticalDayList'
 import { WorkingDayInfo, TimeSlot } from '@/lib/booking/availability'
+import { isCurrentSlotResponse } from '@/lib/booking/availability-utils'
 import Toast from '@/components/ui/Toast'
 import {
   Calendar,
@@ -76,13 +78,49 @@ export default function ClientBookingsModal({
 
   // Estados do fluxo de reagendamento
   const [workingDays, setWorkingDays] = useState<WorkingDayInfo[]>([])
+  const [dateAvailability, setDateAvailability] = useState<Record<string, boolean>>({})
   const [loadingDays, setLoadingDays] = useState(false)
   const [selectedDateStr, setSelectedDateStr] = useState<string | null>(null)
+  const latestSelectedDate = useRef<string | null>(selectedDateStr)
+  latestSelectedDate.current = selectedDateStr
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
   const [rescheduling, setRescheduling] = useState(false)
   const [rescheduleResult, setRescheduleResult] = useState<{ novoInicio: string; novoFim: string } | null>(null)
+
+  const activeBookingDurationMinutes = (() => {
+    if (activeBooking?.data_hora_inicio && activeBooking?.data_hora_fim) {
+      const difference = new Date(activeBooking.data_hora_fim).getTime() - new Date(activeBooking.data_hora_inicio).getTime()
+      if (difference > 0) return Math.round(difference / 60_000)
+    }
+    return activeBooking?.servicos?.duracao_minutos || 30
+  })()
+  const currentAvailabilityContext = `${activeBooking?.profissional_id || loadedProfissionalId || ''}:${activeBooking?.id || ''}:${activeBookingDurationMinutes}`
+  const latestAvailabilityContext = useRef(currentAvailabilityContext)
+  const availabilityRequestId = useRef(0)
+  const slotRequestId = useRef(0)
+  latestAvailabilityContext.current = currentAvailabilityContext
+
+  const loadVisibleWeekAvailability = useCallback(async (dateStrings: string[]) => {
+    const profissionalId = activeBooking?.profissional_id || loadedProfissionalId
+    if (!profissionalId || dateStrings.length === 0) return
+    const requestId = ++availabilityRequestId.current
+    const requestedContext = currentAvailabilityContext
+    const result = await fetchDateAvailabilityAction(profissionalId, dateStrings, activeBookingDurationMinutes)
+    if (requestId !== availabilityRequestId.current || requestedContext !== latestAvailabilityContext.current) return
+    setDateAvailability((current) => ({ ...current, ...result }))
+  }, [activeBooking?.profissional_id, activeBookingDurationMinutes, currentAvailabilityContext, loadedProfissionalId])
+
+  const closeActionModal = () => {
+    slotRequestId.current += 1
+    latestSelectedDate.current = null
+    setActiveBooking(null)
+    setSelectedDateStr(null)
+    setSelectedSlot(null)
+    setAvailableSlots([])
+    setLoadingSlots(false)
+  }
 
   if (!isOpen) return null
 
@@ -128,16 +166,20 @@ export default function ClientBookingsModal({
     setPast([])
     setErrorMsg(null)
     setLateNoticeInfo(null)
-    setActiveBooking(null)
+    closeActionModal()
   }
 
   const handleOpenActionModal = (booking: ClientBookingItem) => {
+    slotRequestId.current += 1
+    latestSelectedDate.current = null
     setActiveBooking(booking)
     setActionStep('choose')
     setActionError(null)
     setSelectedDateStr(null)
     setSelectedSlot(null)
     setAvailableSlots([])
+    setLoadingSlots(false)
+    setDateAvailability({})
     setRescheduleResult(null)
 
     // Verificar antecedência mínima de 4h
@@ -155,8 +197,14 @@ export default function ClientBookingsModal({
   }
 
   const handleSelectRescheduleOption = async () => {
+    slotRequestId.current += 1
+    latestSelectedDate.current = null
+    setSelectedDateStr(null)
+    setAvailableSlots([])
+    setLoadingSlots(false)
     setActionStep('reschedule_date')
     setActionError(null)
+    setDateAvailability({})
 
     // Carregar dias de atendimento se ainda não carregados
     const profId = activeBooking?.profissional_id || loadedProfissionalId
@@ -174,35 +222,43 @@ export default function ClientBookingsModal({
   }
 
   const handleSelectDateForReschedule = async (dateStr: string) => {
+    if (dateAvailability[dateStr] !== true) return
+    const requestId = ++slotRequestId.current
+    const requestedDuration = activeBookingDurationMinutes
+    const requestedContext = currentAvailabilityContext
+    latestSelectedDate.current = dateStr
     setSelectedDateStr(dateStr)
     setSelectedSlot(null)
+    setAvailableSlots([])
     setActionStep('reschedule_time')
     setLoadingSlots(true)
     setActionError(null)
 
     const profId = activeBooking?.profissional_id || loadedProfissionalId
     if (!profId) {
-      setLoadingSlots(false)
+      if (requestId === slotRequestId.current) setLoadingSlots(false)
       return
     }
 
     // Determinar duração do serviço
-    let duracaoMinutos = 30
-    if (activeBooking?.data_hora_inicio && activeBooking?.data_hora_fim) {
-      const msDiff = new Date(activeBooking.data_hora_fim).getTime() - new Date(activeBooking.data_hora_inicio).getTime()
-      if (msDiff > 0) duracaoMinutos = Math.round(msDiff / 60000)
-    } else if (activeBooking?.servicos?.duracao_minutos) {
-      duracaoMinutos = activeBooking.servicos.duracao_minutos
-    }
-
     try {
-      const res = await fetchAvailableSlotsAction(profId, duracaoMinutos, dateStr)
+      const res = await fetchAvailableSlotsAction(profId, requestedDuration, dateStr)
+      if (!isCurrentSlotResponse({
+        requestId,
+        latestRequestId: slotRequestId.current,
+        requestedDate: dateStr,
+        selectedDate: latestSelectedDate.current,
+        requestedDurationMinutes: requestedDuration,
+        currentDurationMinutes: activeBookingDurationMinutes,
+        requestedContext,
+        currentContext: latestAvailabilityContext.current,
+      })) return
       setAvailableSlots(res.availableSlots || [])
     } catch (err) {
       console.error('Erro ao carregar horários disponíveis:', err)
-      setAvailableSlots([])
+      if (requestId === slotRequestId.current) setAvailableSlots([])
     } finally {
-      setLoadingSlots(false)
+      if (requestId === slotRequestId.current && latestSelectedDate.current === dateStr) setLoadingSlots(false)
     }
   }
 
@@ -295,7 +351,7 @@ export default function ClientBookingsModal({
       const canceledItem = { ...activeBooking, status: 'cancelado' as const }
       setUpcoming((prev) => prev.filter((b) => b.id !== activeBooking.id))
       setPast((prev) => [canceledItem, ...prev])
-      setActiveBooking(null)
+      closeActionModal()
     }
   }
 
@@ -514,7 +570,7 @@ export default function ClientBookingsModal({
 
                   <button
                     type="button"
-                    onClick={() => setActiveBooking(null)}
+                    onClick={closeActionModal}
                     className="w-full py-2.5 rounded-2xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition cursor-pointer"
                   >
                     Voltar
@@ -537,7 +593,7 @@ export default function ClientBookingsModal({
                       </p>
                     </div>
                     <button
-                      onClick={() => setActiveBooking(null)}
+                        onClick={closeActionModal}
                       className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition"
                     >
                       <X className="h-4 w-4" />
@@ -682,6 +738,8 @@ export default function ClientBookingsModal({
                       workingDays={workingDays}
                       selectedDateStr={selectedDateStr}
                       onSelectDate={handleSelectDateForReschedule}
+                      availabilityByDate={dateAvailability}
+                      onVisibleWeekChange={loadVisibleWeekAvailability}
                       corPrimaria={corPrimaria}
                     />
                   )}
@@ -922,7 +980,7 @@ export default function ClientBookingsModal({
 
                   <button
                     type="button"
-                    onClick={() => setActiveBooking(null)}
+                    onClick={closeActionModal}
                     className="w-full py-3 rounded-2xl text-xs font-bold text-white shadow-sm transition hover:opacity-90 cursor-pointer"
                     style={{ backgroundColor: '#4A3F5C' }}
                   >

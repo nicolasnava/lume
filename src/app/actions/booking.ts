@@ -2,7 +2,16 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { clienteAgendamentoSchema } from '@/lib/validations'
-import { calculateAvailableSlots, getWorkingDaysInNextNDays } from '@/lib/booking/availability'
+import { calculateAvailableSlots, calculateDateAvailability, getWorkingDaysInNextNDays } from '@/lib/booking/availability'
+import {
+  canSelectBookingService,
+  canSelectPackageServices,
+  getLegacySingleServiceSnapshot,
+  getHistoricalPackageSnapshot,
+  parseCouponDiscount,
+  preserveServiceSnapshot,
+  type BookingServiceSnapshot,
+} from '@/lib/booking-editable-services'
 import { checkRateLimitDb } from '@/lib/rateLimit'
 import {
   createGoogleCalendarEvent,
@@ -53,6 +62,25 @@ export async function fetchAvailableSlotsAction(
       isWorkingDay: false,
       availableSlots: [],
     }
+  }
+}
+
+/** Checks only the visible week and keeps the database reads grouped. */
+export async function fetchDateAvailabilityAction(
+  profissionalId: string,
+  dateStrings: string[],
+  durationMinutes: number
+): Promise<Record<string, boolean>> {
+  try {
+    const uniqueDates = [...new Set(dateStrings)]
+    const validDates = uniqueDates.length <= 7 && uniqueDates.every((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+    if (!profissionalId || !validDates || !Number.isFinite(durationMinutes) || durationMinutes <= 0 || durationMinutes > 1440) {
+      return Object.fromEntries(uniqueDates.map((dateStr) => [dateStr, false]))
+    }
+    return await calculateDateAvailability(profissionalId, uniqueDates, durationMinutes)
+  } catch (error) {
+    console.error('Erro ao verificar dias sem horários disponíveis:', error)
+    return Object.fromEntries(dateStrings.map((dateStr) => [dateStr, false]))
   }
 }
 
@@ -506,7 +534,7 @@ export async function updateBookingItemsAction(
     const admin = createAdminClient()
     const { data: booking } = await admin
       .from('agendamentos')
-      .select('id, profissional_id, data_hora_inicio, google_event_id, status, clientes(nome, telefone)')
+      .select('id, profissional_id, servico_id, combo_id, data_hora_inicio, data_hora_fim, valor_cobrado, observacao_pagamento, google_event_id, status, clientes(nome, telefone)')
       .eq('id', bookingId)
       .eq('profissional_id', user.id)
       .maybeSingle()
@@ -516,46 +544,117 @@ export async function updateBookingItemsAction(
       return { success: false, message: 'Só é possível editar procedimentos de atendimentos confirmados ou concluídos.' }
     }
 
+    const { data: originalServiceRowsData } = await admin.from('agendamento_servicos')
+      .select('servico_id, preco_no_momento, duracao_no_momento_minutos')
+      .eq('agendamento_id', bookingId)
+    const originalServiceRows = (originalServiceRowsData || []) as BookingServiceSnapshot[]
+    const originalServiceIds = new Set([
+      ...originalServiceRows.flatMap((row) => row.servico_id ? [row.servico_id] : []),
+      ...(booking.servico_id ? [booking.servico_id] : []),
+    ])
     const { data: selectedServices, error: servicesError } = uniqueServiceIds.length > 0 ? await admin
       .from('servicos')
       .select('id, nome, preco, duracao_minutos, foto_url, ativo')
       .eq('profissional_id', user.id)
-      .eq('ativo', true)
       .in('id', uniqueServiceIds) : { data: [], error: null }
 
-    if (servicesError || !selectedServices || selectedServices.length !== uniqueServiceIds.length) {
+    if (servicesError || !selectedServices || selectedServices.length !== uniqueServiceIds.length || selectedServices.some((service) => !canSelectBookingService(service.id, service.ativo === true, originalServiceIds))) {
       return { success: false, message: 'Um dos serviços escolhidos não está mais disponível.' }
     }
+    const { data: originalProductRowsData } = await admin.from('agendamento_comanda_produtos')
+      .select('produto_id, nome_no_momento, preco_no_momento')
+      .eq('agendamento_id', bookingId)
+    const originalProductRows = (originalProductRowsData || []) as Array<{
+      produto_id: string | null
+      nome_no_momento: string
+      preco_no_momento: number
+    }>
+    const originalProductIds = new Set(originalProductRows.flatMap((row) => row.produto_id ? [row.produto_id] : []))
+    const bookingDurationMinutes = Math.max(0, Math.round((new Date(booking.data_hora_fim).getTime() - new Date(booking.data_hora_inicio).getTime()) / 60_000))
+    const retainedCouponDiscount = parseCouponDiscount(booking.observacao_pagamento)
+    const legacyServiceSnapshot = booking.servico_id
+      ? getLegacySingleServiceSnapshot({
+        serviceId: booking.servico_id,
+        bookingServiceId: booking.servico_id,
+        hasServiceSnapshots: originalServiceRows.length > 0,
+        originalProductTotal: originalProductRows.reduce((sum, row) => sum + Number(row.preco_no_momento || 0), 0),
+        hasCombo: Boolean(booking.combo_id),
+        chargedTotal: booking.valor_cobrado === null ? null : Number(booking.valor_cobrado),
+        couponDiscount: retainedCouponDiscount,
+        bookingDurationMinutes,
+      })
+      : null
+    const resolvedSelectedServices = (selectedServices || []).map((service) => {
+      const snapshot = preserveServiceSnapshot(service, originalServiceRows)
+      if (!legacyServiceSnapshot || service.id !== booking.servico_id) return snapshot
+      return { ...snapshot, preco: legacyServiceSnapshot.price, duracao_minutos: legacyServiceSnapshot.durationMinutes }
+    })
 
     let combo: { id: string; nome: string; preco_combo: number; duracao_minutos: number | null; foto_url: string | null } | null = null
-    let comboServices: Array<{ id: string; nome: string; preco: number; duracao_minutos: number; foto_url: string | null }> = []
+    let comboServices: Array<{ id: string; nome: string; preco: number; duracao_minutos: number; foto_url: string | null; ativo: boolean | null }> = []
     if (comboId) {
       const { data: comboRow } = await admin.from('combos')
-        .select('id, nome, preco_combo, duracao_minutos, foto_url')
-        .eq('id', comboId).eq('profissional_id', user.id).eq('ativo', true).maybeSingle()
-      if (!comboRow) return { success: false, message: 'O pacote escolhido não está mais disponível.' }
+        .select('id, nome, preco_combo, duracao_minutos, foto_url, ativo')
+        .eq('id', comboId).eq('profissional_id', user.id).maybeSingle()
+      if (!comboRow || (comboRow.ativo !== true && comboId !== booking.combo_id)) return { success: false, message: 'O pacote escolhido não está mais disponível.' }
       combo = { ...comboRow, preco_combo: Number(comboRow.preco_combo), duracao_minutos: comboRow.duracao_minutos ? Number(comboRow.duracao_minutos) : null }
       const { data: comboLinks } = await admin.from('combo_servicos')
-        .select('servicos(id, nome, preco, duracao_minutos, foto_url)')
+        .select('servicos(id, nome, preco, duracao_minutos, foto_url, ativo)')
         .eq('combo_id', comboId)
-      comboServices = ((comboLinks || []) as unknown as Array<{ servicos: { id: string; nome: string; preco: number; duracao_minutos: number; foto_url: string | null } | null }>)
-        .flatMap((row) => row.servicos ? [{ ...row.servicos, preco: Number(row.servicos.preco), duracao_minutos: Number(row.servicos.duracao_minutos) }] : [])
+      const joinedComboServices = ((comboLinks || []) as unknown as Array<{ servicos: { id: string; nome: string; preco: number; duracao_minutos: number; foto_url: string | null; ativo: boolean | null } | null }>)
+        .flatMap((row) => row.servicos ? [row.servicos] : [])
+      if (!canSelectPackageServices(joinedComboServices, originalServiceIds, comboId === booking.combo_id)) {
+        return { success: false, message: 'Este pacote contém um serviço desativado que não fazia parte do atendimento original.' }
+      }
+      comboServices = joinedComboServices.map((service) => preserveServiceSnapshot(service, originalServiceRows))
+    }
+
+    const historicalPackageServiceIds = new Set<string>()
+    if (booking.combo_id) {
+      const { data: originalComboLinks } = await admin.from('combo_servicos')
+        .select('servicos(id)')
+        .eq('combo_id', booking.combo_id)
+      for (const row of (originalComboLinks || []) as unknown as Array<{ servicos: { id: string } | null }>) {
+        if (row.servicos) historicalPackageServiceIds.add(row.servicos.id)
+      }
     }
 
     const includedIds = new Set(comboServices.map((service) => service.id))
-    const extraServices = (selectedServices || []).filter((service) => !includedIds.has(service.id))
+    const extraServices = resolvedSelectedServices.filter((service) => !includedIds.has(service.id))
     const allServices = [...comboServices, ...extraServices]
 
     const { data: products, error: productsError } = uniqueProductIds.length > 0 ? await admin.from('comanda_produtos')
-      .select('id, nome, preco, foto_url')
-      .eq('profissional_id', user.id).eq('ativo', true).in('id', uniqueProductIds) : { data: [], error: null }
-    if (productsError || !products || products.length !== uniqueProductIds.length) {
+      .select('id, nome, preco, foto_url, ativo')
+      .eq('profissional_id', user.id).in('id', uniqueProductIds) : { data: [], error: null }
+    if (productsError || !products || products.length !== uniqueProductIds.length || products.some((product) => product.ativo === false && !originalProductIds.has(product.id))) {
       return { success: false, message: 'Um dos itens da comanda não está mais disponível.' }
     }
 
-    const duration = (combo?.duracao_minutos || comboServices.reduce((sum, service) => sum + service.duracao_minutos, 0)) + extraServices.reduce((sum, service) => sum + service.duracao_minutos, 0) || (products?.length ? 30 : 0)
-    const servicesTotal = (combo ? combo.preco_combo : comboServices.reduce((sum, service) => sum + Number(service.preco), 0)) + extraServices.reduce((sum, service) => sum + Number(service.preco), 0)
-    const productsTotal = (products || []).reduce((sum, product) => sum + Number(product.preco), 0)
+    const resolvedProducts = (products || []).map((product) => {
+      const snapshot = originalProductRows.find((row) => row.produto_id === product.id)
+      return snapshot ? { ...product, nome: snapshot.nome_no_momento, preco: Number(snapshot.preco_no_momento) } : product
+    })
+    const historicalExtras = originalServiceRows.filter((row) => row.servico_id && !historicalPackageServiceIds.has(row.servico_id))
+    const historicalPackage = combo && combo.id === booking.combo_id
+      ? getHistoricalPackageSnapshot({
+        chargedTotal: Number(booking.valor_cobrado || 0),
+        couponDiscount: parseCouponDiscount(booking.observacao_pagamento),
+        originalExtraServices: historicalExtras,
+        originalProducts: originalProductRows,
+        bookingDurationMinutes,
+      })
+      : null
+    const comboPrice = combo
+      ? historicalPackage ? historicalPackage.price : combo.preco_combo
+      : comboServices.reduce((sum, service) => sum + Number(service.preco), 0)
+    const comboDuration = combo
+      ? historicalPackage && historicalPackage.durationMinutes > 0
+        ? historicalPackage.durationMinutes
+        : combo.duracao_minutos || comboServices.reduce((sum, service) => sum + service.duracao_minutos, 0)
+      : comboServices.reduce((sum, service) => sum + service.duracao_minutos, 0)
+    const duration = comboDuration + extraServices.reduce((sum, service) => sum + service.duracao_minutos, 0) || (resolvedProducts.length ? 30 : 0)
+    const servicesTotal = comboPrice + extraServices.reduce((sum, service) => sum + Number(service.preco), 0)
+    const productsTotal = resolvedProducts.reduce((sum, product) => sum + Number(product.preco), 0)
     if (duration <= 0) return { success: false, message: 'O pacote ou serviço precisa ter uma duração válida.' }
     const end = new Date(new Date(booking.data_hora_inicio).getTime() + duration * 60 * 1000).toISOString()
 
@@ -565,7 +664,7 @@ export async function updateBookingItemsAction(
         servico_id: allServices[0]?.id || null,
         combo_id: combo?.id || null,
         data_hora_fim: end,
-        valor_cobrado: servicesTotal + productsTotal,
+        valor_cobrado: Math.max(0, servicesTotal + productsTotal - retainedCouponDiscount),
       })
       .eq('id', bookingId)
       .eq('profissional_id', user.id)
@@ -589,8 +688,8 @@ export async function updateBookingItemsAction(
     }
 
     await admin.from('agendamento_comanda_produtos').delete().eq('agendamento_id', bookingId)
-    if (products && products.length > 0) {
-      const { error: productInsertError } = await admin.from('agendamento_comanda_produtos').insert(products.map((product) => ({
+    if (resolvedProducts.length > 0) {
+      const { error: productInsertError } = await admin.from('agendamento_comanda_produtos').insert(resolvedProducts.map((product) => ({
         agendamento_id: bookingId,
         produto_id: product.id,
         nome_no_momento: product.nome,

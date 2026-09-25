@@ -2,10 +2,12 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import GeralViewClient from '@/components/dashboard/GeralViewClient'
+import type { BookingDetail } from '@/components/dashboard/BookingDetailModal'
 import StudioPendingInvitesBanner from '@/components/dashboard/StudioPendingInvitesBanner'
 import { obterConvitesPendentesUsuario } from '@/app/actions/estudio'
 import DashboardDataError from '@/components/dashboard/DashboardDataError'
 import { getDashboardQueryState } from '@/lib/dashboard-query-state'
+import { findNextConfirmedBooking } from '@/lib/dashboard-next-booking'
 
 export const revalidate = 0
 export const dynamic = 'force-dynamic'
@@ -24,8 +26,8 @@ export default async function DashboardGeralPage() {
   const adminSupabase = createAdminClient()
 
   // Buscar profissional e convites pendentes de studio em paralelo
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [profissionalRes, convitesPendentes] = await Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (adminSupabase.from('profissionais') as any)
       .select('nome, onboarding_concluido')
       .eq('id', user.id)
@@ -133,14 +135,13 @@ export default async function DashboardGeralPage() {
       servicoDuracaoMinutos: totalDuracao,
       servicoPreco: precoFinal,
       temServicoDesativado: Boolean(hasDesativado),
-      rawBooking: b as any,
+      rawBooking: b as unknown as BookingDetail,
     }
   })
 
-  // Próximo agendamento pendente a partir do momento atual (ou o primeiro de hoje se nenhum for futuro)
-  const nowMs = Date.now()
-  const nextPendingBooking =
-    todayBookingsList.find((b) => new Date(b.dataHoraInicio).getTime() >= nowMs) || todayBookingsList[0] || null
+  // Só destaca uma reserva futura ainda confirmada; atendimentos finalizados
+  // continuam no histórico do dia, mas não ocupam o card de próximo atendimento.
+  const nextPendingBooking = findNextConfirmedBooking(todayBookingsList, Date.now())
 
   return (
     <>

@@ -8,12 +8,7 @@ import {
   Clock,
   Plus,
   ArrowRight,
-  User,
-  Scissors,
   ChevronDown,
-  ChevronUp,
-  Phone,
-  DollarSign,
   BarChart2,
   ChevronRight,
   AlertTriangle,
@@ -32,7 +27,7 @@ export interface GeralBookingItem {
   servicoDuracaoMinutos?: number | null
   servicoPreco?: number | null
   temServicoDesativado?: boolean
-  rawBooking?: any
+  rawBooking?: BookingDetail
 }
 
 interface GeralViewClientProps {
@@ -313,6 +308,7 @@ export default function GeralViewClient({
         </div>
 
         {/* Card 2: Próximo Atendimento (Padronizado: Linha 1 = icon nome • icon horario | Linha 2 = icon servico • icon valor) */}
+        {nextBooking && (
         <div className="rounded-3xl bg-white p-5 shadow-2xs border border-gray-200/80 flex flex-col justify-between space-y-3">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -389,6 +385,7 @@ export default function GeralViewClient({
             <span>Resumo em tempo real do seu dia</span>
           </div>
         </div>
+        )}
       </div>
 
       {/* ATALHOS RÁPIDOS */}

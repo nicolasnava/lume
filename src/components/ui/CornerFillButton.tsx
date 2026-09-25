@@ -1,6 +1,7 @@
-import React from 'react'
+import React, { type CSSProperties } from 'react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { LANDING_BUTTON_TRANSITION_MS } from '@/lib/landing-button-motion'
 
 export type CornerFillVariant = 'dark' | 'light' | 'pill'
 
@@ -29,6 +30,7 @@ export const CornerFillButton = React.forwardRef<
       fillClassName,
       icon,
       children,
+      style,
       ...props
     },
     ref
@@ -46,10 +48,14 @@ export const CornerFillButton = React.forwardRef<
     }
 
     const baseClasses = cn(
-      'lume-corner-fill-btn group inline-flex items-center justify-center rounded-full border px-6 sm:px-7 py-3.5 sm:py-4 text-sm sm:text-base font-bold active:scale-[0.97] cursor-pointer whitespace-nowrap select-none transition-transform duration-150',
+      'lume-corner-fill-btn group inline-flex items-center justify-center rounded-full border px-6 sm:px-7 py-3.5 sm:py-4 text-sm sm:text-base font-bold cursor-pointer whitespace-nowrap select-none transition-[box-shadow,border-color] duration-200 ease-out',
       variantClasses[variant],
       className
     )
+    const motionStyle = {
+      ...style,
+      '--lume-button-duration': `${LANDING_BUTTON_TRANSITION_MS}ms`,
+    } as CSSProperties
 
     const content = (
       <>
@@ -84,6 +90,7 @@ export const CornerFillButton = React.forwardRef<
           target={target}
           rel={rel}
           className={baseClasses}
+          style={motionStyle}
           ref={ref as React.Ref<HTMLAnchorElement>}
         >
           {content}
@@ -95,6 +102,7 @@ export const CornerFillButton = React.forwardRef<
       <button
         type="button"
         className={baseClasses}
+        style={motionStyle}
         ref={ref as React.Ref<HTMLButtonElement>}
         {...props}
       >

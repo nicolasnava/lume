@@ -9,6 +9,7 @@ import ClientBookingsModal from './ClientBookingsModal'
 import WorkingHoursModal from './WorkingHoursModal'
 import PublicReviewsSection, { PublicReviewItem } from '@/components/reviews/PublicReviewsSection'
 import PublicStudioToast from './PublicStudioToast'
+import ComandaProductCard from './ComandaProductCard'
 import { getContrastingTextColor } from '@/lib/utils/contrast'
 import { parseCategorias, getCategoryLabel, parseModalidades, MODALIDADE_MAP } from '@/lib/utils/categories'
 import { isStudioOpenNow } from '@/lib/utils/workingHours'
@@ -24,7 +25,6 @@ import {
   ChevronLeft,
   Package,
   ShoppingBag,
-  Plus,
   X,
   ChevronDown,
   Images,
@@ -336,49 +336,12 @@ export default function PublicShowcaseView({
             {/* Grid com Formato Diferenciado: Foco Principal na Foto + NOME E VALOR */}
             <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 no-scrollbar" style={{ scrollbarWidth: 'none' }}>
               {comandaProdutos.map((produto) => (
-                <div
+                <ComandaProductCard
                   key={produto.id}
-                  onClick={() => setSelectedComandaItem(produto)}
-                  className="group w-[76%] shrink-0 snap-center rounded-3xl bg-white p-3 sm:w-[250px] sm:p-3.5 border border-gray-200/80 shadow-2xs hover:border-[#B8A9D9] hover:shadow-md transition-[transform,box-shadow,border-color] duration-200 ease-out active:scale-[0.98] cursor-pointer flex flex-col justify-between"
-                >
-                  {/* FOCO NA FOTO: Grande, nítida, com aspect-square arredondado */}
-                  <div className="relative h-56 w-full rounded-2xl overflow-hidden bg-[#FAF7F5] border border-gray-100/80 shrink-0">
-                    {produto.foto_url ? (
-                      <Image
-                        src={produto.foto_url}
-                        alt={produto.nome}
-                        fill
-                        className="object-cover transition-transform duration-200 ease-out group-hover:scale-106"
-                        unoptimized
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-purple-50/80 to-pink-50/50">
-                        <ShoppingBag className="h-10 w-10 text-[#B8A9D9]/70 group-hover:scale-110 transition-transform duration-200 ease-out" />
-                        <span className="text-[10px] font-bold text-[#4A3F5C]/40 uppercase tracking-wider mt-1">
-                          Lumê Care
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* NOME E VALOR EM DESTAQUE */}
-                  <div className="pt-3 pb-1 space-y-1">
-                    <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-wide text-[#4A3F5C] line-clamp-1 group-hover:text-[#8675A9] transition-colors">
-                      {produto.nome}
-                    </h3>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm sm:text-base font-black text-emerald-700">
-                        {new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        }).format(produto.preco)}
-                      </span>
-                      <Link onClick={(event) => event.stopPropagation()} href={`${studioContext ? `/studio/${studioContext.slug}/${profissional.slug}` : `/p/${profissional.slug}`}/agendar?produto=${produto.id}`} className="h-8 w-8 rounded-xl bg-purple-50 group-hover:bg-[#4A3F5C] group-hover:text-white text-[#4A3F5C] border border-[#B8A9D9]/30 flex items-center justify-center transition-[transform,background-color,color] duration-150 ease-out active:scale-[0.97]" aria-label={`Adicionar ${produto.nome} ao atendimento`}>
-                        <Plus className="h-3.5 w-3.5" />
-                      </Link>
-                    </div>
-                  </div>
-                </div>
+                  produto={produto}
+                  onOpenDetails={() => setSelectedComandaItem(produto)}
+                  addHref={`${studioContext ? `/studio/${studioContext.slug}/${profissional.slug}` : `/p/${profissional.slug}`}/agendar?produto=${produto.id}`}
+                />
               ))}
             </div>
           </section>
@@ -498,10 +461,10 @@ export default function PublicShowcaseView({
 
       {/* MODAL DE DETALHES DO PRODUTO DA COMANDA DIGITAL */}
       {selectedComandaItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-sm rounded-3xl bg-white overflow-hidden shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 backdrop-blur-xs sm:p-4">
+          <div className="relative flex max-h-[calc(100dvh-1rem)] w-full max-w-sm flex-col overflow-hidden rounded-3xl bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             {/* Foto em Destaque */}
-            <div className="relative w-full h-64 sm:h-72 bg-[#FAF7F5]">
+            <div className="relative h-[clamp(4rem,20dvh,12rem)] min-h-16 w-full shrink-0 bg-[#FAF7F5]">
               {selectedComandaItem.foto_url ? (
                 <Image
                   src={selectedComandaItem.foto_url}
@@ -528,23 +491,23 @@ export default function PublicShowcaseView({
             </div>
 
             {/* Conteúdo: NOME, VALOR e Descrição */}
-            <div className="p-5 space-y-3.5 bg-white">
+            <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden bg-white p-4 sm:gap-3.5 sm:p-5">
               <div className="space-y-1">
                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
                   Comanda Digital
                 </span>
-                <h3 className="text-base font-extrabold text-[#4A3F5C] leading-snug">
+                <h3 className="line-clamp-2 text-base font-extrabold leading-snug text-[#4A3F5C]">
                   {selectedComandaItem.nome}
                 </h3>
               </div>
 
               {selectedComandaItem.descricao && (
-                <p className="text-xs text-gray-600 leading-relaxed font-medium">
+                <p className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-gray-600">
                   {selectedComandaItem.descricao}
                 </p>
               )}
 
-              <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-3">
+              <div className="mt-auto flex shrink-0 items-center justify-between gap-3 border-t border-gray-100 pt-2.5 sm:pt-3">
                 <div>
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
                     Valor
