@@ -82,10 +82,11 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
   const { start, end, prevStart, prevEnd } = getDateRanges(filter)
 
   // 1. Buscar profissionais reais (excluindo desativadas por soft delete e contas demo)
-  const { data: allProfissionais } = await adminSupabase
+  const { data: allProfissionais, error: profissionaisError } = await adminSupabase
     .from('profissionais')
     .select('id, nome, slug, categoria, status_conta, plano_tipo, valor_mensalidade, created_at, deletado_em, is_demo, foto_url, whatsapp')
     .is('deletado_em', null)
+  if (profissionaisError) throw new Error('Não foi possível carregar os dados das profissionais.')
 
   const activeProfs = (allProfissionais || []).filter((p: any) => !p.is_demo)
   const totalProfissionais = activeProfs.length
@@ -109,9 +110,10 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
 
   // 2. Agendamentos totais e no período (filtrando contas demo)
   const nonDemoIds = new Set(activeProfs.map((p) => p.id))
-  const { data: rawAgendamentos } = await adminSupabase
+  const { data: rawAgendamentos, error: agendamentosError } = await adminSupabase
     .from('agendamentos')
     .select('id, data_hora_inicio, status, valor_cobrado, pago, profissional_id')
+  if (agendamentosError) throw new Error('Não foi possível carregar os dados dos agendamentos.')
 
   const allAgendamentos = (rawAgendamentos || []).filter((a) => nonDemoIds.has(a.profissional_id))
 
@@ -138,14 +140,25 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
 
   // 3. Faturamento de atendimentos no período
   const faturamentoPeriodo = agendamentosPeriodo.reduce((acc, curr) => {
-    if (curr.status === 'concluido' || curr.status === 'confirmado') {
+    if (curr.status === 'concluido') {
       return acc + Number(curr.valor_cobrado || 0)
     }
     return acc
   }, 0)
 
+  const faturamentoPeriodoAnterior = agendamentosPrev.reduce((acc, curr) => (
+    curr.status === 'concluido' ? acc + Number(curr.valor_cobrado || 0) : acc
+  ), 0)
+  const faturamentoVariacaoPct = faturamentoPeriodoAnterior > 0
+    ? Math.round(((faturamentoPeriodo - faturamentoPeriodoAnterior) / faturamentoPeriodoAnterior) * 100)
+    : faturamentoPeriodo > 0 ? 100 : 0
+  const agendamentosConcluidosPeriodo = agendamentosPeriodo.filter((a) => a.status === 'concluido').length
+  const ticketMedioPeriodo = agendamentosConcluidosPeriodo > 0
+    ? faturamentoPeriodo / agendamentosConcluidosPeriodo
+    : 0
+
   const faturamentoTotalGeral = (allAgendamentos || []).reduce((acc, curr) => {
-    if (curr.status === 'concluido' || curr.status === 'confirmado') {
+    if (curr.status === 'concluido') {
       return acc + Number(curr.valor_cobrado || 0)
     }
     return acc
@@ -155,7 +168,8 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
   const mrrEstimado = activeProfs
     .filter((p) => p.status_conta === 'ativa')
     .reduce((sum, p) => {
-      const val = Number(p.valor_mensalidade || 69.00)
+      const val = Number(p.valor_mensalidade || 0)
+      if (!Number.isFinite(val) || val <= 0) return sum
       return sum + (p.plano_tipo === 'anual' ? val / 12 : val)
     }, 0)
 
@@ -192,25 +206,31 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
   ]
 
   // Distribuição por Plano (retrocompatibilidade)
-  const planosDistributionMap = { Mensal: 0, Anual: 0, Cortesia: 0 }
+  const planosDistributionMap = {
+    Mensal: { count: 0, mrr: 0 },
+    Anual: { count: 0, mrr: 0 },
+    Cortesia: { count: 0, mrr: 0 },
+  }
   activeProfs.forEach((p) => {
-    if (p.status_conta === 'cortesia') {
-      planosDistributionMap.Cortesia += 1
-    } else if (p.plano_tipo === 'anual') {
-      planosDistributionMap.Anual += 1
-    } else {
-      planosDistributionMap.Mensal += 1
+    const category = p.status_conta === 'cortesia' ? 'Cortesia' : p.plano_tipo === 'anual' ? 'Anual' : 'Mensal'
+    const current = planosDistributionMap[category]
+    current.count += 1
+    if (p.status_conta === 'ativa') {
+      const monthlyValue = Number(p.valor_mensalidade || 0)
+      if (Number.isFinite(monthlyValue) && monthlyValue > 0) {
+        current.mrr += p.plano_tipo === 'anual' ? monthlyValue / 12 : monthlyValue
+      }
     }
   })
 
   const planosDistribution = [
-    { plano: 'Mensal', esteMes: planosDistributionMap.Mensal },
-    { plano: 'Anual', esteMes: planosDistributionMap.Anual },
-    { plano: 'Cortesia', esteMes: planosDistributionMap.Cortesia },
+    { plano: 'Mensal', esteMes: planosDistributionMap.Mensal.count, mrrMensal: planosDistributionMap.Mensal.mrr },
+    { plano: 'Anual', esteMes: planosDistributionMap.Anual.count, mrrMensal: planosDistributionMap.Anual.mrr },
+    { plano: 'Cortesia', esteMes: planosDistributionMap.Cortesia.count, mrrMensal: planosDistributionMap.Cortesia.mrr },
   ]
 
   // 7. Timeline Real para Gráfico
-  const timelineMap: Record<string, { dataLabel: string; cadastros: number; agendamentos: number }> = {}
+  const timelineMap: Record<string, { mes: string; fullMes: string; cadastros: number; agendamentos: number; concluidos: number; cancelamentos: number; faturamento: number }> = {}
   const isLongPeriod = (end.getTime() - start.getTime()) > 60 * 24 * 60 * 60 * 1000
 
   const currDate = new Date(start)
@@ -224,7 +244,7 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
       : currDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 
     if (!timelineMap[key]) {
-      timelineMap[key] = { dataLabel, cadastros: 0, agendamentos: 0 }
+      timelineMap[key] = { mes: dataLabel, fullMes: currDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }), cadastros: 0, agendamentos: 0, concluidos: 0, cancelamentos: 0, faturamento: 0 }
     }
 
     if (isLongPeriod) {
@@ -253,6 +273,11 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
       : d.toISOString().split('T')[0]
     if (timelineMap[key]) {
       timelineMap[key].agendamentos += 1
+      if (a.status === 'concluido') {
+        timelineMap[key].concluidos += 1
+        timelineMap[key].faturamento += Number(a.valor_cobrado || 0)
+      }
+      if (a.status === 'cancelado') timelineMap[key].cancelamentos += 1
     }
   })
 
@@ -260,32 +285,33 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
 
   // 8. Top Profissionais Reais
   const profAgendamentoMap: Record<string, { count: number; receita: number }> = {}
-  ;(allAgendamentos || []).forEach((a) => {
+  agendamentosPeriodo.forEach((a) => {
     if (a.profissional_id) {
       if (!profAgendamentoMap[a.profissional_id]) {
         profAgendamentoMap[a.profissional_id] = { count: 0, receita: 0 }
       }
       profAgendamentoMap[a.profissional_id].count += 1
-      if (a.status === 'concluido' || a.status === 'confirmado') {
+      if (a.status === 'concluido') {
         profAgendamentoMap[a.profissional_id].receita += Number(a.valor_cobrado || 0)
       }
     }
   })
 
-  const topProfissionais = activeProfs
-    .map((p) => {
-      const cat = formatCategoryDisplay(p.categoria)
-      return {
+  const professionalsWithMetrics = activeProfs.map((p) => ({
         id: p.id,
         nome: p.nome,
         slug: p.slug,
         foto_url: p.foto_url || null,
-        cat,
+        cat: formatCategoryDisplay(p.categoria),
         agendamentos: profAgendamentoMap[p.id]?.count || 0,
         receitaNum: profAgendamentoMap[p.id]?.receita || 0,
-      }
-    })
+  }))
+  const topProfissionais = professionalsWithMetrics
     .sort((a, b) => b.agendamentos - a.agendamentos)
+    .slice(0, 3)
+  const topProfissionaisPorFaturamento = professionalsWithMetrics
+    .slice()
+    .sort((a, b) => b.receitaNum - a.receitaNum)
     .slice(0, 3)
 
   // 9. Atividade Recente Real (Com mais informações essenciais)
@@ -306,7 +332,10 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 8)
     .map((p) => {
-      const mrrVal = p.status_conta === 'ativa' ? Number(p.valor_mensalidade || 69.00) : 0
+      const planPrice = Number(p.valor_mensalidade || 0)
+      const mrrVal = p.status_conta === 'ativa' && Number.isFinite(planPrice) && planPrice > 0
+        ? (p.plano_tipo === 'anual' ? planPrice / 12 : planPrice)
+        : 0
       const cat = formatCategoryDisplay(p.categoria)
       return {
         id: p.id,
@@ -325,12 +354,7 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
     })
 
   // 10. Profissionais Inativas (>14 dias sem login)
-  let inactiveProfissionais: Awaited<ReturnType<typeof getInactiveProfissionais>> = []
-  try {
-    inactiveProfissionais = await getInactiveProfissionais(14)
-  } catch (err) {
-    console.warn('[getAdminDashboardData] Erro ao buscar inativas:', err)
-  }
+  const inactiveProfissionais = await getInactiveProfissionais(14)
 
   return {
     totalProfissionais,
@@ -340,7 +364,10 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
     agendamentosPeriodoTotal: agendamentosPeriodo.length,
     agendamentosVariacaoPct,
     faturamentoPeriodo,
+    faturamentoVariacaoPct,
     faturamentoTotalGeral,
+    agendamentosConcluidosPeriodo,
+    ticketMedioPeriodo,
     mrrEstimado,
     ativasCount,
     inativasCount,
@@ -348,6 +375,7 @@ export async function getAdminDashboardData(filter: AdminPeriodFilter) {
     planosDistribution,
     statusDistribution,
     topProfissionais,
+    topProfissionaisPorFaturamento,
     atividadeRecente,
     inactiveProfissionais,
   }
@@ -1494,4 +1522,3 @@ export async function getAdminStudioDetail(id: string) {
     convites: convites || [],
   }
 }
-

@@ -171,29 +171,42 @@ export async function deleteServiceAction(serviceId: string) {
 
     if (!service) return { success: false, message: 'Serviço não encontrado.' }
 
-    // 1. Verificar se já existem agendamentos vinculados a este serviço
-    const { count, error: countError } = await adminSupabase
+    // Histórico de serviços pode estar no campo legado ou na tabela de detalhes (multi-serviço/pacote).
+    const { data: legacyBookings, error: legacyError } = await adminSupabase
       .from('agendamentos')
-      .select('id', { count: 'exact', head: true })
+      .select('id')
+      .eq('servico_id', serviceId)
+      .eq('profissional_id', user.id)
+
+    if (legacyError) throw legacyError
+
+    const { data: detailRows, error: detailError } = await adminSupabase
+      .from('agendamento_servicos')
+      .select('agendamento_id')
       .eq('servico_id', serviceId)
 
-    if (countError) {
-      throw countError
-    }
+    if (detailError) throw detailError
 
-    const hasBookings = count && count > 0
+    const candidateBookingIds = [...new Set([
+      ...(legacyBookings || []).map((booking) => booking.id),
+      ...(detailRows || []).map((row) => row.agendamento_id),
+    ])]
+    const { data: relatedBookings, error: relatedBookingsError } = candidateBookingIds.length > 0
+      ? await adminSupabase.from('agendamentos')
+        .select('id, status, data_hora_inicio')
+        .eq('profissional_id', user.id)
+        .in('id', candidateBookingIds)
+      : { data: [], error: null }
+
+    if (relatedBookingsError) throw relatedBookingsError
+    const hasBookings = (relatedBookings || []).length > 0
 
     if (hasBookings) {
       // Serviços com atendimentos em aberto permanecem apenas desativados até a conclusão.
       const nowIso = new Date().toISOString()
-      const { count: pendingCount } = await adminSupabase
-        .from('agendamentos')
-        .select('id', { count: 'exact', head: true })
-        .eq('servico_id', serviceId)
-        .eq('status', 'confirmado')
-        .gte('data_hora_inicio', nowIso)
-
-      const pending = pendingCount || 0
+      const pending = (relatedBookings || []).filter((booking) =>
+        booking.status === 'confirmado' && booking.data_hora_inicio >= nowIso
+      ).length
 
       if (pending === 0) {
         const { error: archiveError } = await adminSupabase

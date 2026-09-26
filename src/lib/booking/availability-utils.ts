@@ -47,6 +47,52 @@ export function getSaoPauloDateString(date: Date): string {
   }).format(date)
 }
 
+/** Checks whether an appointment interval overlaps a persisted availability block. */
+export function isAvailabilityBlockOverlap(
+  block: AvailabilityBlockWindow,
+  appointmentStartIso: string,
+  appointmentEndIso: string,
+): boolean {
+  const appointmentStart = new Date(appointmentStartIso).getTime()
+  const appointmentEnd = new Date(appointmentEndIso).getTime()
+  if (!Number.isFinite(appointmentStart) || !Number.isFinite(appointmentEnd) || appointmentEnd <= appointmentStart) {
+    return false
+  }
+
+  const blockEndDate = block.data_fim || block.data
+  const firstDate = getSaoPauloDateString(new Date(appointmentStart))
+  const lastDate = getSaoPauloDateString(new Date(appointmentEnd - 1))
+  const rangeStart = firstDate > block.data ? firstDate : block.data
+  const rangeEnd = lastDate < blockEndDate ? lastDate : blockEndDate
+  if (rangeStart > rangeEnd) return false
+
+  const [year, month, day] = rangeStart.split('-').map(Number)
+  let cursor = new Date(Date.UTC(year, month - 1, day))
+  const [endYear, endMonth, endDay] = rangeEnd.split('-').map(Number)
+  const lastDay = Date.UTC(endYear, endMonth - 1, endDay)
+  const hasPartialHours = Boolean(block.hora_inicio && block.hora_fim)
+
+  while (cursor.getTime() <= lastDay) {
+    const dateStr = cursor.toISOString().slice(0, 10)
+    const blockStartIso = hasPartialHours
+      ? `${dateStr}T${block.hora_inicio!.slice(0, 5)}:00-03:00`
+      : `${dateStr}T00:00:00-03:00`
+    const nextDate = new Date(cursor.getTime() + 86_400_000).toISOString().slice(0, 10)
+    const blockEndIso = hasPartialHours
+      ? `${dateStr}T${block.hora_fim!.slice(0, 5)}:00-03:00`
+      : `${nextDate}T00:00:00-03:00`
+    const blockStart = new Date(blockStartIso).getTime()
+    const blockEnd = new Date(blockEndIso).getTime()
+
+    // Malformed partial blocks fail closed for the affected day.
+    if (!Number.isFinite(blockStart) || !Number.isFinite(blockEnd) || blockEnd <= blockStart) return true
+    if (appointmentStart < blockEnd && appointmentEnd > blockStart) return true
+    cursor = new Date(cursor.getTime() + 86_400_000)
+  }
+
+  return false
+}
+
 export function calculateSlotsForDate(input: DaySlotInput): CalculatedTimeSlot[] {
   const { dateStr, durationMinutes, disponibilidades, bloqueios, agendamentos } = input
   if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) return []

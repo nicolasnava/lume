@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { getStoredPixCode, hasFinancialCouponDiscount } from '@/lib/subscription/billing-guards'
 
 export interface SubscriptionData {
   statusConta: 'trial' | 'ativa' | 'atrasada' | 'suspensa' | 'cortesia' | 'cancelada'
@@ -122,37 +123,11 @@ export async function changeProfissionalPlan(newPlanoSlug: 'mensal' | 'anual' | 
     throw new Error('Usuária não autenticada.')
   }
 
-  const adminSupabase = createAdminClient()
-
-  // Buscar dados do plano selecionado
-  const { data: plano, error: planoError } = await adminSupabase
-    .from('saas_planos')
-    .select('*')
-    .eq('slug', newPlanoSlug)
-    .single()
-
-  if (planoError || !plano) {
-    throw new Error('Plano não encontrado.')
+  void newPlanoSlug
+  return {
+    success: false as const,
+    message: 'A cobrança online ainda não está configurada. Seu plano atual não foi alterado.',
   }
-
-  const novoValor = Number(plano.preco)
-
-  // Atualizar registro da profissional
-  const { error: updateError } = await adminSupabase
-    .from('profissionais')
-    .update({
-      plano_tipo: newPlanoSlug,
-      valor_mensalidade: novoValor,
-    })
-    .eq('id', user.id)
-
-  if (updateError) {
-    console.error('[changeProfissionalPlan] Erro ao atualizar plano:', updateError)
-    throw new Error('Não foi possível alterar o plano no momento.')
-  }
-
-  revalidatePath('/perfil')
-  return { success: true, planoSlug: newPlanoSlug, valor: novoValor }
 }
 
 /**
@@ -198,10 +173,18 @@ export async function applySubscriptionCoupon(codigo: string) {
     throw new Error('Este cupom atingiu o limite máximo de utilizações.')
   }
 
+  if (hasFinancialCouponDiscount(cupom)) {
+    throw new Error('Cupons não podem reduzir o valor fixo da assinatura.')
+  }
+
+  if (!cupom.dias_trial_extra || cupom.dias_trial_extra <= 0) {
+    throw new Error('Este cupom não oferece dias de teste adicionais.')
+  }
+
   // 2. Aplicar benefício
   const { data: prof } = await adminSupabase
     .from('profissionais')
-    .select('trial_ends_at, valor_mensalidade, status_conta')
+    .select('trial_ends_at')
     .eq('id', user.id)
     .single()
 
@@ -215,20 +198,9 @@ export async function applySubscriptionCoupon(codigo: string) {
     mensagemSucesso = `Parabéns! Você ganhou +${cupom.dias_trial_extra} dias de teste gratuito!`
   }
 
-  if (cupom.desconto_pct && cupom.desconto_pct > 0) {
-    const valorAtual = Number(prof?.valor_mensalidade || 69.90)
-    const novoValor = Math.max(0, valorAtual * (1 - cupom.desconto_pct / 100))
-    updates.valor_mensalidade = Math.round(novoValor * 100) / 100
-    mensagemSucesso = `Cupom de ${cupom.desconto_pct}% de desconto aplicado nas suas próximas mensalidades!`
-  } else if (cupom.desconto_valor && cupom.desconto_valor > 0) {
-    const valorAtual = Number(prof?.valor_mensalidade || 69.90)
-    const novoValor = Math.max(0, valorAtual - Number(cupom.desconto_valor))
-    updates.valor_mensalidade = Math.round(novoValor * 100) / 100
-    mensagemSucesso = `Desconto de R$ ${Number(cupom.desconto_valor).toFixed(2)} aplicado na sua mensalidade!`
-  }
-
   if (Object.keys(updates).length > 0) {
-    await adminSupabase.from('profissionais').update(updates).eq('id', user.id)
+    const { error: updateError } = await adminSupabase.from('profissionais').update(updates).eq('id', user.id)
+    if (updateError) throw new Error('Não foi possível aplicar os dias adicionais do cupom.')
   }
 
   // Incrementar contagem de usos do cupom
@@ -267,9 +239,10 @@ export async function getInvoicePaymentDetails(faturaId: string) {
     throw new Error('Fatura não encontrada.')
   }
 
-  const pixCode =
-    fatura.codigo_pix ||
-    `00020126580014BR.GOV.BCB.PIX0136lume-pagamento-${fatura.id.slice(0, 8)}5204000053039865405${Number(fatura.valor).toFixed(2)}5802BR5915LUME TECNOLOGIA6009SAO PAULO62070503***6304${fatura.id.slice(-4).toUpperCase()}`
+  const pixCode = getStoredPixCode(fatura.codigo_pix)
+  if (!pixCode) {
+    throw new Error('Esta fatura ainda não tem um código PIX real. A cobrança online não está configurada.')
+  }
 
   return {
     id: fatura.id,

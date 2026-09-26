@@ -1,6 +1,8 @@
 import { Database } from '@/lib/supabase/database.types'
+import { getLocalDayOfWeek, isScheduleOpenAt } from './local-time'
 
 type DisponibilidadeRow = Database['public']['Tables']['disponibilidade']['Row']
+const BUSINESS_TIME_ZONE = 'America/Sao_Paulo'
 
 const FULL_DAY_NAMES = [
   { dayIndex: 1, name: 'Segunda-feira' },
@@ -16,21 +18,7 @@ const FULL_DAY_NAMES = [
  * Verifica se o estabelecimento está aberto agora.
  */
 export function isStudioOpenNow(disponibilidades: DisponibilidadeRow[]): boolean {
-  if (!disponibilidades || disponibilidades.length === 0) return false
-
-  const now = new Date()
-  const currentDay = now.getDay() // 0 = Dom, 1 = Seg, ...
-  const currentHours = String(now.getHours()).padStart(2, '0')
-  const currentMinutes = String(now.getMinutes()).padStart(2, '0')
-  const currentTime = `${currentHours}:${currentMinutes}`
-
-  const todaySlots = disponibilidades.filter((d) => d.dia_semana === currentDay)
-
-  return todaySlots.some((slot) => {
-    const start = slot.hora_inicio.slice(0, 5)
-    const end = slot.hora_fim.slice(0, 5)
-    return currentTime >= start && currentTime <= end
-  })
+  return isScheduleOpenAt(disponibilidades, new Date(), BUSINESS_TIME_ZONE)
 }
 
 /**
@@ -39,7 +27,7 @@ export function isStudioOpenNow(disponibilidades: DisponibilidadeRow[]): boolean
  */
 export function getDetailedWorkingHoursTable(disponibilidades: DisponibilidadeRow[]) {
   const now = new Date()
-  const todayDayIndex = now.getDay()
+  const todayDayIndex = getLocalDayOfWeek(now, BUSINESS_TIME_ZONE)
 
   const dayBoundsMap = new Map<number, { minStart: string; maxEnd: string }>()
 

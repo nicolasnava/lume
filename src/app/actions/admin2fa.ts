@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { checkRateLimitDb } from '@/lib/rateLimit'
 import {
   generateAndSendAdminOtp,
   verifyAdminOtp,
@@ -164,6 +165,22 @@ export async function verifyAdmin2faAction(code: string): Promise<{
 
     if (!adminRecord) {
       return { success: false, message: 'Acesso não autorizado.' }
+    }
+
+    const otpAttempts = await checkRateLimitDb({
+      chave: `admin_otp_verify_${adminRecord.id}`,
+      acao: 'verificar_codigo_2fa',
+      limit: 5,
+      windowMinutes: 10,
+      failClosed: true,
+    })
+    if (!otpAttempts.allowed) {
+      return {
+        success: false,
+        message: otpAttempts.temporaryFailure
+          ? 'Não foi possível validar a segurança agora. Tente novamente em instantes.'
+          : 'Muitas tentativas de verificação. Aguarde 10 minutos e solicite um novo código.',
+      }
     }
 
     const verifyResult = await verifyAdminOtp(

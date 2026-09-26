@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getOrCreateProfissional } from '@/lib/profissionais/getOrCreateProfissional'
 import { parseCategorias } from '@/lib/utils/categories'
 import { extrairFotosEspaco, extrairMetadadosStudio, limparBioStudio } from '@/lib/studio/utils'
+import { isStudioRevenueEligible } from '@/lib/booking/booking-payment-state'
 
 export interface StudioMember {
   id: string
@@ -1417,7 +1418,7 @@ export async function obterMetricasStudioAction(
   // 4. Buscar agendamentos de todos os membros no período
   const { data: agendamentosRaw, error: agendamentosError } = await adminSupabase
     .from('agendamentos')
-    .select('id, profissional_id, status, status_pagamento, valor_cobrado, data_hora_inicio')
+    .select('id, profissional_id, status, status_pagamento, pago, valor_cobrado, data_hora_inicio')
     .in('profissional_id', memberIds)
     .gte('data_hora_inicio', startDate.toISOString())
     .lte('data_hora_inicio', endDate.toISOString())
@@ -1453,9 +1454,7 @@ export async function obterMetricasStudioAction(
     totalCancelados += cancelados.length
 
     // Atendimentos considerados para receita: concluídos ou pagos
-    const faturaveis = profBookings.filter(
-      (b) => b.status === 'concluido' || (b.status === 'confirmado' && b.status_pagamento === 'pago')
-    )
+    const faturaveis = profBookings.filter(isStudioRevenueEligible)
     const valorSoma = faturaveis.reduce((acc, cur) => acc + Number(cur.valor_cobrado || 0), 0)
 
     const comissaoPct = m.comissao_personalizada_pct != null ? Number(m.comissao_personalizada_pct) : comissaoPadrao

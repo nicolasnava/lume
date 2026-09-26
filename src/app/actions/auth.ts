@@ -2,21 +2,112 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { cadastroMultiStepSchema, CadastroMultiStepInput, cadastroSchema, CadastroInput } from '@/lib/validations'
+import { cadastroMultiStepSchema, CadastroMultiStepInput, cadastroSchema, CadastroInput, loginSchema } from '@/lib/validations'
 import { generateUniqueSlug, normalizeSlug } from '@/lib/utils/slug'
 import { translateAuthError } from '@/lib/utils/errorTranslations'
+import { checkRateLimitDb, getClientIp, hashRateLimitSubject } from '@/lib/rateLimit'
 
 export type SignUpData = (CadastroMultiStepInput | CadastroInput) & { ref?: string }
+
+export async function signInAction(formData: {
+  email: string
+  senha: string
+  website?: string
+  companyUrl?: string
+  faxNumber?: string
+}): Promise<{ success: boolean; message?: string; user?: { id: string; email: string | null } }> {
+  try {
+    const ip = await getClientIp()
+    const ipFingerprint = hashRateLimitSubject(ip)
+
+    // Campo honeypot invisível: descarta bots simples sem guardar o texto enviado.
+    if ([formData.website, formData.companyUrl, formData.faxNumber].some((value) => value?.trim())) {
+      await checkRateLimitDb({
+        chave: `login_honeypot_${ipFingerprint}`,
+        acao: 'login_honeypot',
+        limit: 1,
+        windowMinutes: 60,
+        failClosed: true,
+      })
+      return { success: false, message: 'Não foi possível autenticar. Confira os dados e tente novamente.' }
+    }
+
+    const validation = loginSchema.safeParse({ email: formData.email, senha: formData.senha })
+    if (!validation.success) return { success: false, message: validation.error.errors[0]?.message || 'Dados de acesso inválidos.' }
+
+    const ipLimit = await checkRateLimitDb({
+      chave: `login_ip_${ipFingerprint}`,
+      acao: 'login',
+      limit: 30,
+      windowMinutes: 15,
+      failClosed: true,
+    })
+    if (!ipLimit.allowed) {
+      return {
+        success: false,
+        message: ipLimit.temporaryFailure
+          ? 'Não foi possível validar a segurança do acesso agora. Tente novamente em instantes.'
+          : 'Muitas tentativas de acesso deste dispositivo. Aguarde 15 minutos antes de tentar novamente.',
+      }
+    }
+
+    const accountFingerprint = hashRateLimitSubject(validation.data.email)
+    const accountLimit = await checkRateLimitDb({
+      chave: `login_account_${accountFingerprint}`,
+      acao: 'login',
+      limit: 20,
+      windowMinutes: 60,
+      failClosed: true,
+    })
+    if (!accountLimit.allowed) {
+      return {
+        success: false,
+        message: accountLimit.temporaryFailure
+          ? 'Não foi possível validar a segurança do acesso agora. Tente novamente em instantes.'
+          : 'Muitas tentativas para esta conta. Aguarde e tente novamente mais tarde.',
+      }
+    }
+
+    const identityFingerprint = hashRateLimitSubject(`${ip}:${validation.data.email}`)
+    const identityLimit = await checkRateLimitDb({
+      chave: `login_identity_${identityFingerprint}`,
+      acao: 'login',
+      limit: 8,
+      windowMinutes: 15,
+      failClosed: true,
+    })
+    if (!identityLimit.allowed) {
+      return {
+        success: false,
+        message: identityLimit.temporaryFailure
+          ? 'Não foi possível validar a segurança do acesso agora. Tente novamente em instantes.'
+          : 'Muitas tentativas para esta conta neste dispositivo. Aguarde 15 minutos e tente novamente.',
+      }
+    }
+
+    const supabase = await createClient()
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: validation.data.email,
+      password: validation.data.senha,
+    })
+    if (error || !data.user) {
+      return { success: false, message: error ? translateAuthError(error) : 'Não foi possível autenticar. Confira os dados e tente novamente.' }
+    }
+
+    return { success: true, user: { id: data.user.id, email: data.user.email || null } }
+  } catch (error) {
+    console.error('[signInAction] Falha ao autenticar:', error)
+    return { success: false, message: 'Não foi possível autenticar agora. Tente novamente em instantes.' }
+  }
+}
 
 export async function signUpAction(formData: SignUpData) {
   try {
     // 1. Validação de formato dos dados (tenta validar multi-step completo primeiro; se faltar, tenta o básico)
     const multiStepValidation = cadastroMultiStepSchema.safeParse(formData)
-    let isFullData = false
     let validData: CadastroMultiStepInput
 
     if (multiStepValidation.success) {
-      isFullData = true
       validData = multiStepValidation.data
     } else {
       const basicValidation = cadastroSchema.safeParse(formData)
@@ -233,11 +324,11 @@ export async function signUpAction(formData: SignUpData) {
         ? 'Conta criada com sucesso! Por favor, verifique seu e-mail para confirmar a conta antes de fazer login.'
         : 'Conta criada com sucesso!',
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[signUpAction] Exceção inesperada:', error)
     return {
       success: false,
-      message: translateAuthError(error),
+      message: translateAuthError(error instanceof Error ? error.message : null),
     }
   }
 }

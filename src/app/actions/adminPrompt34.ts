@@ -8,8 +8,13 @@ import { getAuthenticatedAdmin } from '@/lib/admin/checkAdmin'
  * 1. REGISTRO DE LOGIN (LOGIN LOGS)
  * Registra um evento de login se a profissional ainda não tiver um log registrado no dia de hoje.
  */
-export async function recordLoginLog(profissionalId: string) {
+export async function recordLoginLog() {
   try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const profissionalId = user.id
     const adminSupabase = createAdminClient()
     const todayStr = new Date().toISOString().split('T')[0]
 
@@ -347,7 +352,7 @@ export async function getAdminNpsSummary() {
 
   if (error) throw new Error('Erro ao buscar pesquisas NPS.')
 
-  const { data: profs } = await adminSupabase
+  const { data: profs, error: profsError } = await adminSupabase
     .from('profissionais')
     .select('id, nome, slug')
 
@@ -503,16 +508,18 @@ export async function getInactiveProfissionais(daysLimit: number = 14) {
   const adminSupabase = createAdminClient()
 
   // 1. Buscar todas as profissionais ativas (não desativadas por soft delete)
-  const { data: profs } = await adminSupabase
+  const { data: profs, error: profsError } = await adminSupabase
     .from('profissionais')
     .select('id, nome, slug, whatsapp, created_at')
     .is('deletado_em', null)
+  if (profsError) throw new Error('Não foi possível carregar profissionais para o alerta de inatividade.')
 
   // 2. Buscar último login log de cada profissional
-  const { data: loginLogs } = await adminSupabase
+  const { data: loginLogs, error: loginLogsError } = await adminSupabase
     .from('login_logs')
     .select('profissional_id, created_at')
     .order('created_at', { ascending: false })
+  if (loginLogsError) throw new Error('Não foi possível carregar os acessos para o alerta de inatividade.')
 
   const emailMap = new Map<string, string>()
   try {

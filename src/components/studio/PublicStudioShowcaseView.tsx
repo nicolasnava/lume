@@ -243,15 +243,12 @@ export default function PublicStudioShowcaseView({
                   const isAtivo = membro.ativo_no_estudio !== false
                   const categorias = parseCategorias(membro.categoria)
                   const nomeExibicao = formatNomeProfissional(membro.nome)
+                  const cardClassName = `group relative block rounded-3xl sm:rounded-[32px] bg-white sm:bg-gradient-to-r sm:from-white sm:via-white sm:to-purple-50/25 border border-gray-200/80 sm:border-[#B8A9D9]/35 hover:border-[#B8A9D9] p-5 sm:p-6 md:p-7 shadow-xs hover:shadow-xl transition-all duration-300 transform ${isAtivo ? 'hover:-translate-y-1 cursor-pointer' : 'cursor-default'} overflow-hidden ${
+                    !isAtivo ? 'filter grayscale opacity-60' : ''
+                  }`
 
-                  return (
-                    <Link
-                      key={membro.id}
-                      href={`/studio/${studio.slug}/${membro.slug}`}
-                      className={`group relative block rounded-3xl sm:rounded-[32px] bg-white sm:bg-gradient-to-r sm:from-white sm:via-white sm:to-purple-50/25 border border-gray-200/80 sm:border-[#B8A9D9]/35 hover:border-[#B8A9D9] p-5 sm:p-6 md:p-7 shadow-xs hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer overflow-hidden ${
-                        !isAtivo ? 'filter grayscale opacity-60 hover:opacity-80' : ''
-                      }`}
-                    >
+                  const cardContent = (
+                    <>
                       {/* Efeito sutil de barra lateral na cor do studio */}
                       <div
                         className="absolute left-0 top-0 bottom-0 w-1.5 transition-all duration-300 opacity-0 group-hover:opacity-100"
@@ -301,8 +298,8 @@ export default function PublicStudioShowcaseView({
 
                         {/* Rodapé do card: divisor e Ver serviços & horários */}
                         <div className="pt-3.5 mt-3.5 border-t border-gray-100 flex items-center justify-between text-xs font-bold text-[#4A3F5C]">
-                          <span>Ver serviços & horários</span>
-                          <ArrowRight className="h-4 w-4 text-[#B8A9D9] group-hover:translate-x-1 transition-transform" />
+                          <span>{isAtivo ? 'Ver serviços & horários' : 'Indisponível no momento'}</span>
+                          {isAtivo && <ArrowRight className="h-4 w-4 text-[#B8A9D9] group-hover:translate-x-1 transition-transform" />}
                         </div>
                       </div>
 
@@ -365,11 +362,21 @@ export default function PublicStudioShowcaseView({
                         {/* CTA destacado à direita ampliado */}
                         <div className="shrink-0">
                           <span className="inline-flex items-center justify-center rounded-full border border-[#4A3F5C]/10 bg-[#B8A9D9] px-5 py-3 font-extrabold text-xs text-[#4A3F5C] shadow-xs transition-[transform,background-color,color,box-shadow] duration-200 ease-out group-hover:-translate-y-0.5 group-hover:scale-[1.04] group-hover:border-[#4A3F5C] group-hover:bg-[#4A3F5C] group-hover:text-white group-hover:shadow-md md:px-6 md:py-3.5 md:text-sm">
-                            <span>Agendar</span>
+                            <span>{isAtivo ? 'Agendar' : 'Indisponível'}</span>
                           </span>
                         </div>
                       </div>
+                    </>
+                  )
+
+                  return isAtivo ? (
+                    <Link key={membro.id} href={`/studio/${studio.slug}/${membro.slug}`} className={cardClassName}>
+                      {cardContent}
                     </Link>
+                  ) : (
+                    <div key={membro.id} className={cardClassName} aria-disabled="true">
+                      {cardContent}
+                    </div>
                   )
                 })}
               </div>

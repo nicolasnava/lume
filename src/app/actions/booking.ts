@@ -3,6 +3,9 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { clienteAgendamentoSchema } from '@/lib/validations'
 import { calculateAvailableSlots, calculateDateAvailability, getWorkingDaysInNextNDays } from '@/lib/booking/availability'
+import { isAvailabilityBlockOverlap, type AvailabilityBlockWindow } from '@/lib/booking/availability-utils'
+import { canCustomerMutateBooking } from '@/lib/booking/booking-lifecycle'
+import { getCompletedBookingPaymentStatus } from '@/lib/booking/booking-payment-state'
 import {
   canSelectBookingService,
   canSelectPackageServices,
@@ -13,6 +16,12 @@ import {
   type BookingServiceSnapshot,
 } from '@/lib/booking-editable-services'
 import { checkRateLimitDb } from '@/lib/rateLimit'
+import { createClient } from '@/lib/supabase/server'
+import {
+  haveRequestedServicesWithOwner,
+  isBookingOwner,
+  isRequestedSlotAvailable,
+} from '@/lib/booking/security-policies'
 import {
   createGoogleCalendarEvent,
   updateGoogleCalendarEvent,
@@ -26,6 +35,38 @@ export interface CreateBookingResponse {
   errorType?: 'EXCLUSION_VIOLATION' | 'VALIDATION_ERROR' | 'SERVICE_NOT_FOUND' | 'UNKNOWN'
   message?: string
   agendamentoId?: string
+}
+
+async function authorizeProfessionalBookingMutation(
+  bookingId: string
+): Promise<{ success: true; profissionalId: string } | { success: false; message: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, message: 'Sessão expirada. Entre novamente.' }
+
+  const admin = createAdminClient()
+  const { data: booking, error } = await admin
+    .from('agendamentos')
+    .select('profissional_id')
+    .eq('id', bookingId)
+    .maybeSingle()
+
+  if (error || !booking) return { success: false, message: 'Agendamento não encontrado.' }
+  if (!isBookingOwner(user.id, booking.profissional_id)) {
+    return { success: false, message: 'Você não tem permissão para alterar este agendamento.' }
+  }
+
+  return { success: true, profissionalId: user.id }
+}
+
+async function rollbackIncompleteBooking(bookingId: string, profissionalId: string): Promise<boolean> {
+  const admin = createAdminClient()
+  const services = await admin.from('agendamento_servicos').delete().eq('agendamento_id', bookingId)
+  const products = await admin.from('agendamento_comanda_produtos').delete().eq('agendamento_id', bookingId)
+  const booking = await admin.from('agendamentos').delete().eq('id', bookingId).eq('profissional_id', profissionalId)
+  const cleanupError = services.error || products.error || booking.error
+  if (cleanupError) console.error('[booking] Falha ao desfazer gravação incompleta:', cleanupError)
+  return !cleanupError
 }
 
 /**
@@ -189,14 +230,15 @@ export async function createBookingAction(formData: {
 
   try {
     // 2. Buscar informações de todos os serviços selecionados
-    let servicosList: Array<{ id: string; duracao_minutos: number; nome: string; preco: number; ativo?: boolean | null }> = []
+    let servicosList: Array<{ id: string; profissional_id: string; duracao_minutos: number; nome: string; preco: number; ativo?: boolean | null }> = []
     if (servicoIdsList.length > 0) {
       const { data, error: servicosError } = await supabase
         .from('servicos')
-        .select('id, duracao_minutos, nome, preco, ativo')
+        .select('id, profissional_id, duracao_minutos, nome, preco, ativo')
         .in('id', servicoIdsList)
+        .eq('profissional_id', profissional_id)
 
-      if (servicosError || !data || data.length !== servicoIdsList.length) {
+      if (servicosError || !data || !haveRequestedServicesWithOwner(profissional_id, servicoIdsList, data)) {
         return {
           success: false,
           errorType: 'SERVICE_NOT_FOUND',
@@ -232,11 +274,14 @@ export async function createBookingAction(formData: {
         .maybeSingle()
 
       if (!comboData) return { success: false, errorType: 'VALIDATION_ERROR', message: 'O pacote escolhido não está mais disponível.' }
-      const { data: packageLinks } = await supabase.from('combo_servicos')
-        .select('servicos(id, duracao_minutos, nome, preco, ativo)')
+      const { data: packageLinks, error: packageLinksError } = await supabase.from('combo_servicos')
+        .select('servicos(id, profissional_id, duracao_minutos, nome, preco, ativo)')
         .eq('combo_id', formData.combo_id)
-      const packageServices = ((packageLinks || []) as unknown as Array<{ servicos: { id: string; duracao_minutos: number; nome: string; preco: number; ativo?: boolean | null } | null }>)
+      const packageServices = ((packageLinks || []) as unknown as Array<{ servicos: { id: string; profissional_id: string; duracao_minutos: number; nome: string; preco: number; ativo?: boolean | null } | null }>)
         .flatMap((row) => row.servicos ? [row.servicos] : [])
+      if (packageLinksError || packageServices.length !== (packageLinks || []).length || packageServices.some((service) => service.profissional_id !== profissional_id)) {
+        return { success: false, errorType: 'VALIDATION_ERROR', message: 'O pacote possui um serviço inválido e não pode ser agendado.' }
+      }
       const packageIds = new Set(packageServices.map((service) => service.id))
       const extraServices = servicosList.filter((service) => !packageIds.has(service.id))
       const inactivePackageService = packageServices.find((service) => service.ativo === false)
@@ -254,6 +299,21 @@ export async function createBookingAction(formData: {
         errorType: 'VALIDATION_ERROR',
         message: 'Este pacote ainda não possui uma duração válida.',
       }
+    }
+
+    const requestedStartMs = new Date(data_hora_inicio).getTime()
+    if (!Number.isFinite(requestedStartMs) || requestedStartMs <= Date.now()) {
+      return { success: false, errorType: 'VALIDATION_ERROR', message: 'Escolha um horário futuro disponível.' }
+    }
+    const requestedDate = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date(requestedStartMs))
+    const availability = await calculateAvailableSlots(profissional_id, totalDuracaoMinutos, requestedDate)
+    if (!isRequestedSlotAvailable(data_hora_inicio, availability.availableSlots)) {
+      return { success: false, errorType: 'VALIDATION_ERROR', message: 'Este horário não está mais disponível. Escolha outro horário.' }
     }
 
     const produtoIds = [...new Set(formData.produto_ids || [])]
@@ -427,6 +487,8 @@ export async function createBookingAction(formData: {
 
       if (servicosInsertError) {
         console.error('[agendamento_servicos] Erro ao registrar serviços do pacote:', servicosInsertError)
+        await rollbackIncompleteBooking(novoAgendamento.id, profissional_id)
+        return { success: false, errorType: 'UNKNOWN', message: 'Não foi possível registrar os serviços do agendamento. A reserva não foi confirmada.' }
       }
     }
 
@@ -441,6 +503,8 @@ export async function createBookingAction(formData: {
         .insert(produtoRows)
       if (produtosInsertError) {
         console.error('[agendamento_comanda_produtos] Erro ao registrar produtos:', produtosInsertError)
+        await rollbackIncompleteBooking(novoAgendamento.id, profissional_id)
+        return { success: false, errorType: 'UNKNOWN', message: 'Não foi possível registrar os itens da comanda. A reserva não foi confirmada.' }
       }
     }
 
@@ -547,7 +611,10 @@ export async function updateBookingItemsAction(
     const { data: originalServiceRowsData } = await admin.from('agendamento_servicos')
       .select('servico_id, preco_no_momento, duracao_no_momento_minutos')
       .eq('agendamento_id', bookingId)
-    const originalServiceRows = (originalServiceRowsData || []) as BookingServiceSnapshot[]
+    const originalServiceRows = (originalServiceRowsData || []) as Array<BookingServiceSnapshot & {
+      preco_no_momento: number
+      duracao_no_momento_minutos: number
+    }>
     const originalServiceIds = new Set([
       ...originalServiceRows.flatMap((row) => row.servico_id ? [row.servico_id] : []),
       ...(booking.servico_id ? [booking.servico_id] : []),
@@ -584,6 +651,48 @@ export async function updateBookingItemsAction(
         bookingDurationMinutes,
       })
       : null
+    const serviceRowsToRestore: Array<{
+      servico_id: string | null
+      preco_no_momento: number
+      duracao_no_momento_minutos: number
+    }> = originalServiceRows.length > 0
+      ? originalServiceRows
+      : legacyServiceSnapshot && booking.servico_id
+        ? [{
+          servico_id: booking.servico_id,
+          preco_no_momento: legacyServiceSnapshot.price,
+          duracao_no_momento_minutos: legacyServiceSnapshot.durationMinutes,
+        }]
+        : []
+    const restoreOriginalBooking = async () => {
+      const clearServices = await admin.from('agendamento_servicos').delete().eq('agendamento_id', bookingId)
+      const clearProducts = await admin.from('agendamento_comanda_produtos').delete().eq('agendamento_id', bookingId)
+      const restoreServices = serviceRowsToRestore.length > 0
+        ? await admin.from('agendamento_servicos').insert(serviceRowsToRestore.map((row) => ({
+          agendamento_id: bookingId,
+          servico_id: row.servico_id,
+          preco_no_momento: row.preco_no_momento,
+          duracao_no_momento_minutos: row.duracao_no_momento_minutos,
+        })))
+        : { error: null }
+      const restoreProducts = originalProductRows.length > 0
+        ? await admin.from('agendamento_comanda_produtos').insert(originalProductRows.map((row) => ({
+          agendamento_id: bookingId,
+          produto_id: row.produto_id,
+          nome_no_momento: row.nome_no_momento,
+          preco_no_momento: row.preco_no_momento,
+        })))
+        : { error: null }
+      const restoreBooking = await admin.from('agendamentos').update({
+        servico_id: booking.servico_id,
+        combo_id: booking.combo_id,
+        data_hora_fim: booking.data_hora_fim,
+        valor_cobrado: booking.valor_cobrado,
+      }).eq('id', bookingId).eq('profissional_id', user.id)
+      const error = clearServices.error || clearProducts.error || restoreServices.error || restoreProducts.error || restoreBooking.error
+      if (error) console.error('[updateBookingItemsAction] Falha ao restaurar atendimento original:', error)
+      return !error
+    }
     const resolvedSelectedServices = (selectedServices || []).map((service) => {
       const snapshot = preserveServiceSnapshot(service, originalServiceRows)
       if (!legacyServiceSnapshot || service.id !== booking.servico_id) return snapshot
@@ -674,7 +783,11 @@ export async function updateBookingItemsAction(
       return { success: false, message: conflict ? 'A nova duração invade outro horário da agenda.' : 'Não foi possível atualizar o atendimento.' }
     }
 
-    await admin.from('agendamento_servicos').delete().eq('agendamento_id', bookingId)
+    const { error: clearServicesError } = await admin.from('agendamento_servicos').delete().eq('agendamento_id', bookingId)
+    if (clearServicesError) {
+      await restoreOriginalBooking()
+      return { success: false, message: 'Não foi possível atualizar os serviços; os dados anteriores foram restaurados.' }
+    }
     if (allServices.length > 0) {
       const { error: detailError } = await admin.from('agendamento_servicos').insert(
       allServices.map((service) => ({
@@ -684,10 +797,17 @@ export async function updateBookingItemsAction(
         duracao_no_momento_minutos: service.duracao_minutos,
       }))
     )
-      if (detailError) return { success: false, message: 'O atendimento foi atualizado, mas os detalhes dos serviços não puderam ser salvos.' }
+      if (detailError) {
+        await restoreOriginalBooking()
+        return { success: false, message: 'Não foi possível salvar os serviços; os dados anteriores foram restaurados.' }
+      }
     }
 
-    await admin.from('agendamento_comanda_produtos').delete().eq('agendamento_id', bookingId)
+    const { error: clearProductsError } = await admin.from('agendamento_comanda_produtos').delete().eq('agendamento_id', bookingId)
+    if (clearProductsError) {
+      await restoreOriginalBooking()
+      return { success: false, message: 'Não foi possível atualizar os itens da comanda; os dados anteriores foram restaurados.' }
+    }
     if (resolvedProducts.length > 0) {
       const { error: productInsertError } = await admin.from('agendamento_comanda_produtos').insert(resolvedProducts.map((product) => ({
         agendamento_id: bookingId,
@@ -695,7 +815,10 @@ export async function updateBookingItemsAction(
         nome_no_momento: product.nome,
         preco_no_momento: Number(product.preco),
       })))
-      if (productInsertError) return { success: false, message: 'O atendimento foi atualizado, mas os itens da comanda não puderam ser salvos.' }
+       if (productInsertError) {
+         await restoreOriginalBooking()
+         return { success: false, message: 'Não foi possível salvar os itens da comanda; os dados anteriores foram restaurados.' }
+       }
     }
 
     if (booking.google_event_id) {
@@ -733,6 +856,8 @@ export async function updateBookingServicesAction(bookingId: string, serviceIds:
  */
 export async function cancelBookingAction(agendamentoId: string): Promise<{ success: boolean; message?: string }> {
   try {
+    const authorization = await authorizeProfessionalBookingMutation(agendamentoId)
+    if (!authorization.success) return authorization
     const supabase = createAdminClient()
 
     // 1. Buscar agendamento com informações necessárias
@@ -740,6 +865,7 @@ export async function cancelBookingAction(agendamentoId: string): Promise<{ succ
       .from('agendamentos')
       .select('id, profissional_id, google_event_id, status')
       .eq('id', agendamentoId)
+      .eq('profissional_id', authorization.profissionalId)
       .single()
 
     if (fetchError || !agendamento) {
@@ -759,6 +885,7 @@ export async function cancelBookingAction(agendamentoId: string): Promise<{ succ
       .from('agendamentos')
       .update({ status: 'cancelado' })
       .eq('id', agendamentoId)
+      .eq('profissional_id', authorization.profissionalId)
 
     if (updateError) {
       throw updateError
@@ -795,13 +922,16 @@ export async function rescheduleBookingAction(
   novaDataHoraInicio: string
 ): Promise<{ success: boolean; message?: string }> {
   try {
+    const authorization = await authorizeProfessionalBookingMutation(agendamentoId)
+    if (!authorization.success) return authorization
     const supabase = createAdminClient()
 
     // 1. Buscar agendamento com os relacionamentos do cliente e serviço
     const { data: agendamento, error: fetchError } = await supabase
       .from('agendamentos')
-      .select('*, clientes(nome, telefone), servicos(nome, duracao_minutos, ativo)')
+      .select('id, profissional_id, google_event_id, status, data_hora_inicio, data_hora_fim, clientes(nome, telefone), servicos(nome, duracao_minutos, ativo)')
       .eq('id', agendamentoId)
+      .eq('profissional_id', authorization.profissionalId)
       .single()
 
     if (fetchError || !agendamento || !agendamento.servicos || !agendamento.clientes) {
@@ -820,8 +950,18 @@ export async function rescheduleBookingAction(
       }
     }
 
-    const duracaoMinutos = servicoObj.duracao_minutos || 60
+    const duracaoMinutos = Math.max(1, Math.round((new Date(agendamento.data_hora_fim).getTime() - new Date(agendamento.data_hora_inicio).getTime()) / 60_000)) || servicoObj.duracao_minutos || 60
     const inicioDate = new Date(novaDataHoraInicio)
+    if (!Number.isFinite(inicioDate.getTime()) || inicioDate.getTime() <= Date.now()) {
+      return { success: false, message: 'Escolha um horário futuro disponível.' }
+    }
+    const requestedDate = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(inicioDate)
+    const availability = await calculateAvailableSlots(authorization.profissionalId, duracaoMinutos, requestedDate)
+    if (!isRequestedSlotAvailable(novaDataHoraInicio, availability.availableSlots)) {
+      return { success: false, message: 'Este horário não está mais disponível. Escolha outro horário.' }
+    }
     const fimDate = new Date(inicioDate.getTime() + duracaoMinutos * 60 * 1000)
     const novaDataHoraFim = fimDate.toISOString()
 
@@ -833,6 +973,7 @@ export async function rescheduleBookingAction(
         data_hora_fim: novaDataHoraFim,
       })
       .eq('id', agendamentoId)
+      .eq('profissional_id', authorization.profissionalId)
 
     if (updateError) {
       throw updateError
@@ -897,13 +1038,16 @@ export async function completeBookingAction(
   payload: CompleteBookingPayload
 ): Promise<{ success: boolean; message?: string }> {
   try {
+    const authorization = await authorizeProfessionalBookingMutation(agendamentoId)
+    if (!authorization.success) return authorization
     const supabase = createAdminClient()
 
-    if (!payload.forma_pagamento) {
+    const paymentMethods: readonly string[] = ['dinheiro', 'pix', 'cartao', 'cartao_credito', 'cartao_debito', 'outro']
+    if (!paymentMethods.includes(payload.forma_pagamento)) {
       return { success: false, message: 'Selecione uma forma de pagamento válida.' }
     }
 
-    if (payload.valor_cobrado < 0) {
+    if (!Number.isFinite(payload.valor_cobrado) || payload.valor_cobrado < 0) {
       return { success: false, message: 'O valor cobrado não pode ser negativo.' }
     }
 
@@ -914,9 +1058,11 @@ export async function completeBookingAction(
         forma_pagamento: payload.forma_pagamento,
         valor_cobrado: Number(payload.valor_cobrado),
         pago: payload.pago,
+        status_pagamento: getCompletedBookingPaymentStatus(payload.pago),
         observacao_pagamento: payload.observacao_pagamento || null,
       })
       .eq('id', agendamentoId)
+      .eq('profissional_id', authorization.profissionalId)
 
     if (updateError) {
       throw updateError
@@ -930,6 +1076,7 @@ export async function completeBookingAction(
           await (supabase.from('agendamento_servicos') as any)
             .update({ preco_no_momento: Number(sp.preco) })
             .eq('id', sp.id)
+            .eq('agendamento_id', agendamentoId)
         }
       }
     }
@@ -954,6 +1101,8 @@ export async function markNoShowBookingAction(
   agendamentoId: string
 ): Promise<{ success: boolean; message?: string }> {
   try {
+    const authorization = await authorizeProfessionalBookingMutation(agendamentoId)
+    if (!authorization.success) return authorization
     const supabase = createAdminClient()
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -962,6 +1111,7 @@ export async function markNoShowBookingAction(
         status: 'no_show',
       })
       .eq('id', agendamentoId)
+      .eq('profissional_id', authorization.profissionalId)
 
     if (updateError) {
       throw updateError
@@ -1145,12 +1295,13 @@ export async function cancelClientBookingAction(params: {
       return { success: false, message: 'Você não tem permissão para cancelar este agendamento.' }
     }
 
-    if (agendamento.status === 'cancelado') {
-      return { success: false, message: 'Este agendamento já se encontra cancelado.' }
-    }
-
-    if (agendamento.status === 'concluido') {
-      return { success: false, message: 'Este agendamento já foi concluído e não pode ser cancelado.' }
+    if (!canCustomerMutateBooking(agendamento.status)) {
+      const message = agendamento.status === 'cancelado'
+        ? 'Este agendamento já se encontra cancelado.'
+        : agendamento.status === 'concluido'
+          ? 'Este agendamento já foi concluído e não pode ser cancelado.'
+          : 'Somente agendamentos confirmados podem ser cancelados online.'
+      return { success: false, message }
     }
 
     // 2. Verificar antecedência mínima de 4 horas
@@ -1167,13 +1318,19 @@ export async function cancelClientBookingAction(params: {
     }
 
     // 3. Atualizar status para cancelado
-    const { error: updateError } = await supabase
+    const { data: updatedBooking, error: updateError } = await supabase
       .from('agendamentos')
       .update({ status: 'cancelado' })
       .eq('id', agendamentoId)
+      .eq('status', 'confirmado')
+      .select('id')
+      .maybeSingle()
 
     if (updateError) {
       throw updateError
+    }
+    if (!updatedBooking) {
+      return { success: false, message: 'Este agendamento já foi alterado. Atualize a página e tente novamente.' }
     }
 
     // 4. Deletar do Google Calendar se houver evento
@@ -1266,7 +1423,7 @@ export async function rescheduleClientBookingAction(params: {
       return { success: false, message: 'Você não tem permissão para remarcar este agendamento.' }
     }
 
-    if (agendamento.status !== 'confirmado') {
+    if (!canCustomerMutateBooking(agendamento.status)) {
       return {
         success: false,
         message: `Não é possível remarcar um agendamento com status "${agendamento.status}". Apenas agendamentos confirmados podem ser remarcados.`,
@@ -1319,6 +1476,7 @@ export async function rescheduleClientBookingAction(params: {
 
     if (conflitoError) {
       console.error('[rescheduleClientBookingAction] Erro ao verificar conflitos:', conflitoError)
+      return { success: false, message: 'Não foi possível validar esse horário agora. Tente novamente.' }
     }
 
     if (conflitos && conflitos.length > 0) {
@@ -1330,14 +1488,20 @@ export async function rescheduleClientBookingAction(params: {
     }
 
     // Verificar bloqueios de disponibilidade
-    const { data: bloqueios } = await supabase
-      .from('bloqueios_disponibilidade')
-      .select('id')
+    const { data: bloqueios, error: bloqueiosError } = await (supabase
+      .from('bloqueios_disponibilidade') as any)
+      .select('data, data_fim, hora_inicio, hora_fim')
       .eq('profissional_id', agendamento.profissional_id)
-      .lt('data_hora_inicio', novaDataHoraFimIso)
-      .gt('data_hora_fim', novaDataHoraInicioIso)
 
-    if (bloqueios && bloqueios.length > 0) {
+    if (bloqueiosError) {
+      console.error('[rescheduleClientBookingAction] Erro ao verificar bloqueios:', bloqueiosError)
+      return { success: false, message: 'Não foi possível validar esse horário agora. Tente novamente.' }
+    }
+
+    const overlapsBlock = ((bloqueios || []) as AvailabilityBlockWindow[]).some((block) =>
+      isAvailabilityBlockOverlap(block, novaDataHoraInicioIso, novaDataHoraFimIso),
+    )
+    if (overlapsBlock) {
       return {
         success: false,
         message: 'A profissional possui um intervalo/bloqueio programado neste horário. Por favor, escolha outro horário.',
@@ -1345,13 +1509,16 @@ export async function rescheduleClientBookingAction(params: {
     }
 
     // 5. Atualizar agendamento
-    const { error: updateError } = await supabase
+    const { data: updatedBooking, error: updateError } = await supabase
       .from('agendamentos')
       .update({
         data_hora_inicio: novaDataHoraInicioIso,
         data_hora_fim: novaDataHoraFimIso,
       })
       .eq('id', agendamentoId)
+      .eq('status', 'confirmado')
+      .select('id')
+      .maybeSingle()
 
     if (updateError) {
       const isExclusionError =
@@ -1368,6 +1535,9 @@ export async function rescheduleClientBookingAction(params: {
         }
       }
       throw updateError
+    }
+    if (!updatedBooking) {
+      return { success: false, message: 'Este agendamento já foi alterado. Atualize a página e tente novamente.' }
     }
 
     // 6. Sincronizar com Google Calendar se configurado
@@ -1430,24 +1600,36 @@ export async function updateBookingStatusAction(
   novoStatus: 'confirmado' | 'concluido' | 'cancelado' | 'no_show'
 ): Promise<{ success: boolean; message?: string }> {
   try {
+    const authorization = await authorizeProfessionalBookingMutation(agendamentoId)
+    if (!authorization.success) return authorization
+    const allowedStatuses: readonly string[] = ['confirmado', 'concluido', 'cancelado', 'no_show']
+    if (!allowedStatuses.includes(novoStatus)) return { success: false, message: 'Status de agendamento inválido.' }
     const supabase = createAdminClient()
     const { data: agendamento, error: fetchError } = await supabase
       .from('agendamentos')
       .select('id, profissional_id, google_event_id, status')
       .eq('id', agendamentoId)
+      .eq('profissional_id', authorization.profissionalId)
       .single()
 
     if (fetchError || !agendamento) {
       return { success: false, message: 'Agendamento não encontrado.' }
     }
 
-    const { error: updateError } = await supabase
+    const { data: updatedBooking, error: updateError } = await supabase
       .from('agendamentos')
       .update({ status: novoStatus })
       .eq('id', agendamentoId)
+      .eq('profissional_id', authorization.profissionalId)
+      .eq('status', agendamento.status)
+      .select('id')
+      .maybeSingle()
 
     if (updateError) {
       throw updateError
+    }
+    if (!updatedBooking) {
+      return { success: false, message: 'O status mudou enquanto você editava. Atualize a página e tente novamente.' }
     }
 
     if (novoStatus === 'cancelado' && agendamento.google_event_id) {

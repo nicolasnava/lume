@@ -6,37 +6,15 @@ import { AnimatePresence, motion } from 'motion/react'
 import {
   TrendingUp,
   Loader2,
-  DollarSign,
   AlertTriangle,
-  Download,
-  ShieldCheck,
   Sparkles,
-  Star,
   Trophy,
   Medal,
-  Award,
-  History,
   Clock,
-  CreditCard,
   Globe,
-  Radio,
-  Send,
-  CheckCircle2,
-  AlertCircle,
-  TrendingDown,
-  Users,
-  MessageSquare,
-  Phone,
   ChevronDown,
-  ChevronRight,
-  Plus,
   X,
-  Calendar,
-  BarChart3,
   Target,
-  SlidersHorizontal,
-  Filter,
-  ArrowRight,
 } from 'lucide-react'
 import {
   ResponsiveContainer,
@@ -56,61 +34,25 @@ import { getAdminDashboardData, AdminPeriodFilter } from '@/app/actions/admin'
 
 interface AdminDashboardClientProps {
   initialData: Awaited<ReturnType<typeof getAdminDashboardData>>
-  adminNome?: string
   initialAiInsight?: string
 }
 
 export default function AdminDashboardClient({
   initialData,
   initialAiInsight,
-  adminNome = 'Carolina V.',
 }: AdminDashboardClientProps) {
   const [data, setData] = useState(initialData)
-  const [period, setPeriod] = useState<AdminPeriodFilter['period']>('mes')
+  const [period, setPeriod] = useState<AdminPeriodFilter['period']>('30dias')
   const [isPending, startTransition] = useTransition()
   const [showAiCard, setShowAiCard] = useState(false)
-  const [chartMetric, setChartMetric] = useState<'mrr' | 'contas' | 'gmv'>('mrr')
+  const [chartMetric, setChartMetric] = useState<'cadastros' | 'agendamentos' | 'faturamento'>('cadastros')
   const [showDashboardGraphFilters, setShowDashboardGraphFilters] = useState(false)
   const [distribuicaoPeriod, setDistribuicaoPeriod] = useState<'geral' | 'mensal' | 'anual'>('geral')
-  const [selectedAuditLog, setSelectedAuditLog] = useState<string | null>(null)
-  const [expandedCard, setExpandedCard] = useState<'mrr' | 'profissionais' | 'gmv' | 'conversao' | null>(null)
+  const [expandedCard, setExpandedCard] = useState<'mrr' | 'profissionais' | 'gmv' | 'agendamentos' | null>(null)
   const [alertMsgOpen, setAlertMsgOpen] = useState<string | null>(null)
-  const [performerFilter, setPerformerFilter] = useState<'agendamentos' | 'clientes' | 'faturamento' | 'avaliacoes'>('faturamento')
+  const [performerFilter, setPerformerFilter] = useState<'agendamentos' | 'faturamento'>('faturamento')
   const [showAllPriorities, setShowAllPriorities] = useState(false)
-  const [priorities, setPriorities] = useState([
-    {
-      id: 'p1',
-      color: 'bg-[#F87171]',
-      title: '3 falhas de pagamento em assinaturas ativas',
-      desc: 'Cobranças recusadas com risco de cancelamento imediato · R$ 209,70 em risco',
-      btnLabel: 'Cobrar no Asaas',
-      btnColor: 'bg-[#F87171]/15 hover:bg-[#F87171]/25 text-[#F87171] border-[#F87171]/30',
-      href: '/admin/financeiro',
-    },
-    {
-      id: 'p2',
-      color: 'bg-[#F5B84B]',
-      title: '42 assinaturas vencem nas próximas 48 horas',
-      desc: 'Renovações automáticas programadas no gateway Asaas · Projeção R$ 2.935,80',
-      btnLabel: 'Ver profissionais',
-      btnColor: 'bg-[#B8A9D9]/15 hover:bg-[#B8A9D9]/25 text-[#B8A9D9] border-[#B8A9D9]/30',
-      href: '/admin/profissionais',
-    },
-    {
-      id: 'p3',
-      color: 'bg-[#34D399]',
-      title: '18 profissionais elegíveis para upgrade Solo para Studio',
-      desc: 'Atingiram mais de 120 agendamentos/mês e operam em salas compartilhadas',
-      btnLabel: 'Ver oportunidade',
-      btnColor: 'bg-[#34D399]/15 hover:bg-[#34D399]/25 text-[#34D399] border-[#34D399]/30',
-      href: '/admin/estudios',
-    },
-  ])
-  const [showAddPriority, setShowAddPriority] = useState(false)
-  const [newPriorityTitle, setNewPriorityTitle] = useState('')
-  const [newPriorityDesc, setNewPriorityDesc] = useState('')
-  const [alertFilter, setAlertFilter] = useState<'todos' | 'pagamento' | 'trial' | 'atividade' | 'cobranca'>('todos')
-  const [showProjection, setShowProjection] = useState(false)
+  const [alertFilter, setAlertFilter] = useState<'todos' | 'atividade'>('todos')
 
   const toggleShowAiCard = () => {
     setShowAiCard((prev) => !prev)
@@ -223,9 +165,9 @@ export default function AdminDashboardClient({
       churn: '1,8%',
     },
   }
-  const periodMetrics = periodMetricsMap[period as string] || periodMetricsMap['mes']
+  const legacyPeriodMetrics = periodMetricsMap[period as string] || periodMetricsMap['mes']
 
-  const dashboardKpiHistory = {
+  const legacyDashboardKpiHistory = {
     mrr: {
       title: 'Receita Recorrente Mensal (MRR)',
       subtitle: 'Evolução dos contratos recorrentes ativos nos últimos 6 meses',
@@ -281,8 +223,8 @@ export default function AdminDashboardClient({
   }
 
   // Métricas consolidadas seguras contra dados vazios em ambiente local
-  const currentMrr = data.mrrEstimado && data.mrrEstimado > 50000 ? data.mrrEstimado : 142850
-  const currentGmv = data.faturamentoPeriodo && data.faturamentoPeriodo > 500000 ? data.faturamentoPeriodo : 3892400
+  const currentMrr = data.mrrEstimado
+  const currentGmv = data.faturamentoPeriodo
 
   // Dados com datas do tempo presente real (2026) e projeção opcional de 6 meses (Out/26 a Mar/27)
   const baseHistoricalData = [
@@ -388,22 +330,10 @@ export default function AdminDashboardClient({
     },
   ]
 
-  const evolutionChartData = (showProjection
-    ? [...baseHistoricalData, ...projectedMonthsData]
-    : baseHistoricalData
-  ).map((item) => ({
-    ...item,
-    // Valores para curvas contínuas (histórico sólido até Set/26, projeção tracejada a partir de Set/26)
-    mrrHist: !item.isProjection ? item.mrr : null,
-    mrrProj: item.isProjection || item.mes === 'Set/26' ? item.mrr : null,
-    contasHist: !item.isProjection ? item.contas : null,
-    contasProj: item.isProjection || item.mes === 'Set/26' ? item.contas : null,
-    gmvHist: !item.isProjection ? item.gmv : null,
-    gmvProj: item.isProjection || item.mes === 'Set/26' ? item.gmv : null,
-  }))
+  const evolutionChartData = data.chartData
 
   // Distribuição rigorosa da base: Solo + Estúdios + Trial (com filtro Geral / Mensal / Anual)
-  const activePlansData =
+  const legacyActivePlansData =
     distribuicaoPeriod === 'anual'
       ? [
           {
@@ -485,9 +415,9 @@ export default function AdminDashboardClient({
           },
         ]
 
-  const totalBase = activePlansData.reduce((acc, p) => acc + p.count, 0)
+  const legacyTotalBase = legacyActivePlansData.reduce((acc, p) => acc + p.count, 0)
 
-  const alertMessages = [
+  const legacyAlertMessages = [
     {
       phone: '5511999990001',
       msg: 'Olá, equipe Studio Glow & Co! Identificamos uma falha no processamento da assinatura Lumê (cartão final 4821). Para manter seu link e agendamentos ativos, atualize sua forma de pagamento.',
@@ -506,7 +436,7 @@ export default function AdminDashboardClient({
     },
   ]
 
-  const performersData: Record<
+  const legacyPerformersData: Record<
     'faturamento' | 'agendamentos' | 'clientes' | 'avaliacoes',
     Array<{
       id: string
@@ -546,6 +476,93 @@ export default function AdminDashboardClient({
   }
 
   // Ícones de ranking sem fundo — puramente a cor do ícone
+  const periodLabel = period === 'hoje' ? 'hoje' : period === 'ano' ? 'neste ano' : period === 'semana' ? 'nesta semana' : 'no período'
+  const periodMetrics = {
+    mrr: data.mrrEstimado,
+    mrrPct: 'Assinaturas ativas',
+    arr: formatCurrency(data.mrrEstimado * 12),
+    ativas: data.ativasCount,
+    novosLabel: `${data.profsPeriodoAtual} novas ${periodLabel}`,
+    gmv: data.faturamentoPeriodo,
+    gmvPct: `${data.faturamentoVariacaoPct > 0 ? '+' : ''}${data.faturamentoVariacaoPct}% vs. período anterior`,
+    ticketMedio: formatCurrency(data.ticketMedioPeriodo),
+    agendamentos: data.agendamentosPeriodoTotal,
+  }
+
+  const dashboardKpiHistory = {
+    mrr: {
+      title: 'Receita recorrente mensal', subtitle: 'Calculada pelas assinaturas ativas cadastradas.', color: '#B8A9D9',
+      history: [{ mes: 'Atual', valor: formatCurrency(data.mrrEstimado), delta: 'Atual', sub: `${data.ativasCount} assinaturas ativas` }],
+    },
+    profissionais: {
+      title: 'Profissionais ativas', subtitle: 'Contas com status ativo no cadastro.', color: '#38BDF8',
+      history: [{ mes: 'Atual', valor: data.ativasCount.toLocaleString('pt-BR'), delta: 'Atual', sub: `${data.totalProfissionais} contas cadastradas` }],
+    },
+    gmv: {
+      title: 'Faturamento realizado', subtitle: 'Atendimentos concluídos no intervalo selecionado.', color: '#F5B84B',
+      history: [{ mes: periodLabel, valor: formatCurrency(data.faturamentoPeriodo), delta: 'Realizado', sub: `${data.agendamentosConcluidosPeriodo} atendimentos concluídos` }],
+    },
+    agendamentos: {
+      title: 'Agendamentos', subtitle: 'Registros da agenda no intervalo selecionado.', color: '#34D399',
+      history: [{ mes: periodLabel, valor: data.agendamentosPeriodoTotal.toLocaleString('pt-BR'), delta: 'Atual', sub: `${data.agendamentosConcluidosPeriodo} concluídos` }],
+    },
+  }
+
+  const alertCounts = {
+    atrasada: data.statusDistribution.find((item) => item.key === 'atrasada')?.value || 0,
+    suspensa: data.statusDistribution.find((item) => item.key === 'suspensa')?.value || 0,
+  }
+  const priorities = [
+    ...(alertCounts.atrasada > 0 ? [{ id: 'atrasadas', color: 'bg-[#F87171]', title: `${alertCounts.atrasada} ${alertCounts.atrasada === 1 ? 'conta atrasada' : 'contas atrasadas'}`, desc: 'Revise o status das assinaturas no cadastro.', btnLabel: 'Ver profissionais', btnColor: 'bg-[#B8A9D9]/15 hover:bg-[#B8A9D9]/25 text-[#B8A9D9] border-[#B8A9D9]/30', href: '/admin/profissionais' }] : []),
+    ...(alertCounts.suspensa > 0 ? [{ id: 'suspensas', color: 'bg-[#F5B84B]', title: `${alertCounts.suspensa} ${alertCounts.suspensa === 1 ? 'conta suspensa' : 'contas suspensas'}`, desc: 'Confira os cadastros e regularize as pendências necessárias.', btnLabel: 'Ver profissionais', btnColor: 'bg-[#B8A9D9]/15 hover:bg-[#B8A9D9]/25 text-[#B8A9D9] border-[#B8A9D9]/30', href: '/admin/profissionais' }] : []),
+    ...(data.inactiveProfissionais.length > 0 ? [{ id: 'inativas', color: 'bg-[#B8A9D9]', title: `${data.inactiveProfissionais.length} profissionais sem acesso há 14 dias ou mais`, desc: 'Veja a lista de contas sem atividade recente.', btnLabel: 'Ver profissionais', btnColor: 'bg-[#B8A9D9]/15 hover:bg-[#B8A9D9]/25 text-[#B8A9D9] border-[#B8A9D9]/30', href: '/admin/profissionais' }] : []),
+  ]
+
+  const accountAlerts = data.inactiveProfissionais.map((profissional) => ({
+    id: profissional.id,
+    category: 'atividade',
+    icon: Clock,
+    iconColor: 'text-[#B8A9D9]',
+    tipoColor: 'text-[#B8A9D9]',
+    nome: profissional.nome,
+    tipo: 'Sem acesso recente',
+    desc: `Último acesso há ${profissional.diasSemAcesso} dias`,
+    btnLabel: 'Ver cadastro',
+    btnColor: 'bg-white/[0.06] hover:bg-white/[0.1] text-[#F8F5FA] border-white/10',
+    href: '/admin/profissionais',
+    phone: profissional.whatsapp?.replace(/\D/g, '') || '',
+    msg: `Olá, ${profissional.nome}. Sentimos sua falta no Lumê. Se precisar de ajuda para retomar o uso da sua agenda, nossa equipe está à disposição.`,
+  }))
+
+  const performersSource = performerFilter === 'faturamento'
+    ? data.topProfissionaisPorFaturamento
+    : data.topProfissionais
+  const performersData = performersSource.map((profissional, index) => ({
+    id: profissional.id,
+    rank: Math.min(index + 1, 4) as 1 | 2 | 3 | 4,
+    nome: profissional.nome,
+    sub: profissional.cat,
+    value: performerFilter === 'faturamento' ? formatCurrency(profissional.receitaNum) : `${profissional.agendamentos.toLocaleString('pt-BR')} agendamentos`,
+    valueColor: performerFilter === 'faturamento' ? 'text-[#34D399]' : 'text-[#B8A9D9]',
+    href: '/admin/profissionais',
+  }))
+
+  const activePlansData = data.planosDistribution
+    .filter((item) => distribuicaoPeriod === 'geral' || item.plano.toLowerCase() === distribuicaoPeriod)
+    .map((item, index, rows) => {
+      const total = rows.reduce((sum, row) => sum + row.esteMes, 0)
+      return {
+        name: item.plano,
+        sub: `${item.esteMes.toLocaleString('pt-BR')} contas cadastradas`,
+        count: item.esteMes,
+        pct: total > 0 ? Math.round((item.esteMes / total) * 100) : 0,
+        revenue: `${formatCurrency(item.mrrMensal)}/mês ativo`,
+        color: ['#B8A9D9', '#8B5CF6', '#F5B84B'][index % 3],
+      }
+    })
+  const totalBase = activePlansData.reduce((sum, plan) => sum + plan.count, 0)
+  const planMixLabel = data.planosDistribution.map((plan) => `${plan.esteMes} ${plan.plano}`).join(' · ')
+
   function RankIcon({ rank }: { rank: 1 | 2 | 3 | 4 }) {
     if (rank === 1) return <Trophy className="h-4 w-4 text-[#F5B84B]" />
     if (rank === 2) return <Medal className="h-4 w-4 text-[#B8A9D9]" />
@@ -612,7 +629,7 @@ export default function AdminDashboardClient({
       {/* CARD DE INSIGHT DO ASSISTENTE IA */}
       {showAiCard && (
         <AdminAiInsightCard
-          initialInsight={initialAiInsight || 'Operação estável. A curva de novos cadastros e a retenção de clientes demonstram crescimento contínuo de receita recorrente.'}
+          initialInsight={initialAiInsight || 'Ainda não há um insight disponível para este período.'}
           onOpenChat={() => window.dispatchEvent(new CustomEvent('open-admin-ai-chat'))}
         />
       )}
@@ -642,18 +659,12 @@ export default function AdminDashboardClient({
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#B8A9D9]/10 rounded-full blur-2xl pointer-events-none" />
           <div className="min-w-0">
             <span className="block min-w-0 max-w-full truncate whitespace-nowrap text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider">
-              {period === 'hoje'
-                ? 'Receita de hoje'
-                : period === 'ano'
-                ? 'Receita anual acumulada (ARR)'
-                : 'Receita recorrente mensal (MRR)'}
+              Receita recorrente mensal (MRR)
             </span>
             <div className="mt-2.5 flex min-w-0 items-baseline gap-1">
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span key={periodMetrics.mrr} initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="block min-w-0 max-w-full truncate whitespace-nowrap text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
-                  {periodMetrics.mrr >= 1000000
-                    ? `R$ ${(periodMetrics.mrr / 1000000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}M`
-                    : `R$ ${periodMetrics.mrr.toLocaleString('pt-BR')},00`}
+                  {formatCurrency(periodMetrics.mrr)}
                 </motion.span>
               </AnimatePresence>
             </div>
@@ -664,13 +675,7 @@ export default function AdminDashboardClient({
           </div>
           <div className="flex items-end justify-between pt-3 border-t border-white/[0.08] mt-3">
               <span className="min-w-0 flex-1 truncate whitespace-nowrap text-[11px] text-[#A9A1B5] font-normal">
-              {period === 'hoje' ? (
-                <>Projeção do dia: <strong className="text-[#F8F5FA] font-semibold">R$ 5.200,00</strong></>
-              ) : period === 'ano' ? (
-                <>MRR médio: <strong className="text-[#F8F5FA] font-semibold">R$ 142.850,00</strong></>
-              ) : (
-                <>Mês vigente: <strong className="text-[#F8F5FA] font-semibold">1º ao fim do mês</strong></>
-              )}
+              ARR estimado: <strong className="text-[#F8F5FA] font-semibold">{periodMetrics.arr}</strong>
             </span>
             <svg className="w-16 h-6 overflow-visible shrink-0" viewBox="0 0 64 24" fill="none">
               <path d="M2 19 C 12 17, 20 12, 30 11 C 40 10, 48 13, 56 6 L 64 3" stroke="#B8A9D9" strokeWidth="2.5" strokeLinecap="round" />
@@ -718,7 +723,7 @@ export default function AdminDashboardClient({
           </div>
           <div className="flex items-end justify-between pt-3 border-t border-white/[0.08] mt-3">
               <span className="min-w-0 flex-1 truncate whitespace-nowrap text-[11px] text-[#A9A1B5] font-normal">
-              Mix: <strong className="text-[#F8F5FA] font-semibold">1.180 Solo · 248 Studio</strong>
+              Planos: <strong className="text-[#F8F5FA] font-semibold">{planMixLabel}</strong>
             </span>
             <svg className="w-16 h-6 overflow-visible shrink-0" viewBox="0 0 64 24" fill="none">
               <path d="M2 18 C 14 16, 24 13, 34 9 C 44 8, 54 5, 64 3" stroke="#38BDF8" strokeWidth="2.5" strokeLinecap="round" />
@@ -754,11 +759,7 @@ export default function AdminDashboardClient({
             <div className="mt-2.5 flex min-w-0 items-baseline gap-1">
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span key={periodMetrics.gmv} initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="block min-w-0 max-w-full truncate whitespace-nowrap text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
-                  {periodMetrics.gmv >= 1000000
-                    ? `R$ ${(periodMetrics.gmv / 1000000).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}M`
-                    : periodMetrics.gmv >= 1000
-                    ? `R$ ${(periodMetrics.gmv / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}k`
-                    : `R$ ${periodMetrics.gmv.toLocaleString('pt-BR')},00`}
+                  {formatCurrency(periodMetrics.gmv)}
                 </motion.span>
               </AnimatePresence>
             </div>
@@ -778,21 +779,21 @@ export default function AdminDashboardClient({
         </motion.div>
 
         <motion.div
-          onClick={() => setExpandedCard(expandedCard === 'conversao' ? null : 'conversao')}
+          onClick={() => setExpandedCard(expandedCard === 'agendamentos' ? null : 'agendamentos')}
           role="button"
           tabIndex={0}
-          aria-expanded={expandedCard === 'conversao'}
+          aria-expanded={expandedCard === 'agendamentos'}
           onKeyDown={(event) => {
             if (event.key === 'Enter' || event.key === ' ') {
               event.preventDefault()
-              setExpandedCard(expandedCard === 'conversao' ? null : 'conversao')
+              setExpandedCard(expandedCard === 'agendamentos' ? null : 'agendamentos')
             }
           }}
           whileHover={{ y: -3, scale: 1.005 }}
           whileTap={{ scale: 0.985 }}
           transition={{ type: 'spring', stiffness: 380, damping: 30, mass: 0.55 }}
           className={`min-w-0 bg-[#18141F] p-5 sm:p-6 rounded-2xl shadow-xs flex flex-col justify-between h-full min-h-[160px] relative overflow-hidden cursor-pointer transition-[border-color,box-shadow] duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B8A9D9] ${
-            expandedCard === 'conversao'
+            expandedCard === 'agendamentos'
               ? 'border-2 border-[#34D399] ring-2 ring-[#34D399]/30'
               : 'border border-[#34D399]/30 hover:border-[#34D399]/70'
           }`}
@@ -800,24 +801,24 @@ export default function AdminDashboardClient({
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#34D399]/10 rounded-full blur-2xl pointer-events-none" />
           <div className="min-w-0">
             <span className="block min-w-0 max-w-full truncate whitespace-nowrap text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider">
-              Conversão de teste
+              Agendamentos no período
             </span>
             <div className="mt-2.5 flex min-w-0 items-baseline gap-2 whitespace-nowrap">
               <AnimatePresence mode="wait" initial={false}>
-                <motion.span key={periodMetrics.conversao} initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="block min-w-0 max-w-full truncate whitespace-nowrap text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
-                  {periodMetrics.conversao}
+                <motion.span key={periodMetrics.agendamentos} initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="block min-w-0 max-w-full truncate whitespace-nowrap text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
+                  {periodMetrics.agendamentos.toLocaleString('pt-BR')}
                 </motion.span>
               </AnimatePresence>
-              <span className="shrink-0 whitespace-nowrap text-xs text-[#A9A1B5] font-semibold">Saudável</span>
+              <span className="shrink-0 whitespace-nowrap text-xs text-[#A9A1B5] font-semibold">registros</span>
             </div>
             <div className="mt-1 flex min-w-0 items-center gap-1.5 whitespace-nowrap text-xs font-bold text-[#34D399]">
               <TrendingUp className="h-3.5 w-3.5" />
-              <span>Retenção 98,2% da base</span>
+              <span>{data.agendamentosConcluidosPeriodo.toLocaleString('pt-BR')} concluídos</span>
             </div>
           </div>
           <div className="flex items-end justify-between pt-3 border-t border-white/[0.08] mt-3">
               <span className="min-w-0 flex-1 truncate whitespace-nowrap text-[11px] text-[#A9A1B5] font-normal">
-              Churn líquido: <strong className="text-[#F8F5FA] font-semibold">{periodMetrics.churn}</strong>
+              Faturamento concluído: <strong className="text-[#F8F5FA] font-semibold">{formatCurrency(periodMetrics.gmv)}</strong>
             </span>
             <svg className="w-16 h-6 overflow-visible shrink-0" viewBox="0 0 64 24" fill="none">
               <path d="M2 17 C 14 15, 24 13, 34 11 C 44 9, 54 6, 64 4" stroke="#34D399" strokeWidth="2.5" strokeLinecap="round" />
@@ -855,18 +856,16 @@ export default function AdminDashboardClient({
           <div className="flex items-center justify-between gap-3 pb-2 border-b border-white/[0.08]">
             <div>
               <h3 className="text-base font-bold text-[#F8F5FA] tracking-tight">
-                {chartMetric === 'mrr' && 'Evolução de Receita'}
-                {chartMetric === 'contas' && 'Evolução de Novas Contas'}
-                {chartMetric === 'gmv' && 'Evolução de Volume Transacionado'}
+                {chartMetric === 'cadastros' && 'Novos cadastros'}
+                {chartMetric === 'agendamentos' && 'Agendamentos'}
+                {chartMetric === 'faturamento' && 'Faturamento concluído'}
               </h3>
               <p className="text-xs text-[#A9A1B5] font-normal mt-0.5">
-                {showProjection
-                  ? 'Projeção estimada para os próximos 6 meses'
-                  : 'Visão consolidada dos últimos 6 meses'}
+                Dados reais agrupados no intervalo selecionado
               </p>
             </div>
             <span className="text-xs font-semibold text-[#34D399]">
-              {chartMetric === 'mrr' ? periodMetrics.mrrPct : chartMetric === 'contas' ? periodMetrics.novosLabel : periodMetrics.gmvPct}
+              {periodLabel}
             </span>
           </div>
 
@@ -894,22 +893,10 @@ export default function AdminDashboardClient({
                 <YAxis
                   tick={{ fontSize: 11, fill: '#A9A1B5', fontWeight: 600 }}
                   stroke="rgba(255,255,255,0.08)"
-                  domain={chartMetric === 'mrr' ? [0, 250000] : chartMetric === 'gmv' ? [0, 6500000] : [0, 180]}
-                  ticks={
-                    chartMetric === 'mrr'
-                      ? [0, 50000, 100000, 150000, 200000, 250000]
-                      : chartMetric === 'gmv'
-                      ? [0, 1000000, 2500000, 4000000, 5500000, 6500000]
-                      : [0, 40, 80, 120, 160]
-                  }
+                  domain={[0, 'auto']}
                   tickFormatter={(val) => {
-                    if (chartMetric === 'mrr') {
-                      return val === 0 ? 'R$ 0' : `R$ ${val / 1000}k`
-                    }
-                    if (chartMetric === 'gmv') {
-                      return val === 0 ? 'R$ 0' : `R$ ${(val / 1000000).toFixed(1)}M`
-                    }
-                    return `${val}`
+                    if (chartMetric === 'faturamento') return formatCurrency(Number(val))
+                    return Number(val).toLocaleString('pt-BR')
                   }}
                   allowDecimals={false}
                 />
@@ -925,67 +912,59 @@ export default function AdminDashboardClient({
                             </span>
                           </div>
                           <div className="pt-2.5 space-y-1.5">
-                            {chartMetric === 'mrr' && (
+                            {chartMetric === 'cadastros' && (
                               <>
                                 <div className="flex items-center justify-between text-xs">
-                                  <span className="text-[#A9A1B5]">Receita Recorrente:</span>
+                                  <span className="text-[#A9A1B5]">Novos cadastros:</span>
                                   <strong className="text-[#F8F5FA] font-bold">
-                                    R$ {item.mrr.toLocaleString('pt-BR')},00
+                                    {Number(item.cadastros).toLocaleString('pt-BR')}
                                   </strong>
                                 </div>
                                 <div className="flex items-center justify-between text-xs">
-                                  <span className="text-[#A9A1B5]">ARR Estimado:</span>
-                                  <strong className="text-[#B8A9D9]">
-                                    R$ {((item.mrr * 12) / 1000000).toFixed(2).replace('.', ',')}M
-                                  </strong>
+                                  <span className="text-[#A9A1B5]">Base total cadastrada:</span>
+                                  <strong className="text-[#B8A9D9]">{data.totalProfissionais.toLocaleString('pt-BR')}</strong>
                                 </div>
                                 <div className="flex items-center justify-between text-xs pt-1 border-t border-white/[0.05]">
-                                  <span className="text-[#A9A1B5]">Tendência:</span>
-                                  <span className="text-[#34D399] font-medium">
-                                    {item.isProjection ? 'Projeção estimada +8% MoM' : '+14,2% vs mês ant.'}
-                                  </span>
                                 </div>
                               </>
                             )}
-                            {chartMetric === 'contas' && (
+                            {chartMetric === 'agendamentos' && (
                               <>
                                 <div className="flex items-center justify-between text-xs">
-                                  <span className="text-[#A9A1B5]">Novas Contas Ativas:</span>
+                                  <span className="text-[#A9A1B5]">Agendamentos:</span>
                                   <strong className="text-[#F8F5FA] font-bold">
-                                    {item.contas} contas
+                                    {Number(item.agendamentos).toLocaleString('pt-BR')}
                                   </strong>
                                 </div>
                                 <div className="flex items-center justify-between text-xs">
-                                  <span className="text-[#A9A1B5]">Base Total Estimada:</span>
+                                  <span className="text-[#A9A1B5]">Concluídos no período:</span>
                                   <strong className="text-[#B8A9D9]">
-                                    {(1428 + (item.contas - 94)).toLocaleString('pt-BR')} profissionais
+                                    {Number(item.concluidos).toLocaleString('pt-BR')}
                                   </strong>
                                 </div>
                                 <div className="flex items-center justify-between text-xs pt-1 border-t border-white/[0.05]">
-                                  <span className="text-[#A9A1B5]">Conversão média:</span>
-                                  <span className="text-[#34D399] font-medium">68,4% no funil</span>
+                                  <span className="text-[#A9A1B5]">Cancelamentos:</span>
+                                  <span className="text-[#34D399] font-medium">{Number(item.cancelamentos).toLocaleString('pt-BR')}</span>
                                 </div>
                               </>
                             )}
-                            {chartMetric === 'gmv' && (
+                            {chartMetric === 'faturamento' && (
                               <>
                                 <div className="flex items-center justify-between text-xs">
-                                  <span className="text-[#A9A1B5]">Volume Transacionado:</span>
+                                  <span className="text-[#A9A1B5]">Faturamento concluído:</span>
                                   <strong className="text-[#F8F5FA] font-bold">
-                                    R$ {item.gmv.toLocaleString('pt-BR')},00
+                                    {formatCurrency(Number(item.faturamento))}
                                   </strong>
                                 </div>
                                 <div className="flex items-center justify-between text-xs">
-                                  <span className="text-[#A9A1B5]">Média por Profissional:</span>
+                                  <span className="text-[#A9A1B5]">Atendimentos concluídos:</span>
                                   <strong className="text-[#B8A9D9]">
-                                    R$ {Math.round(item.gmv / 1428).toLocaleString('pt-BR')},00
+                                    {Number(item.concluidos).toLocaleString('pt-BR')}
                                   </strong>
                                 </div>
                                 <div className="flex items-center justify-between text-xs pt-1 border-t border-white/[0.05]">
-                                  <span className="text-[#A9A1B5]">Sessões movimentadas:</span>
-                                  <span className="text-[#34D399] font-medium">
-                                    ~{Math.round(item.gmv / 90).toLocaleString('pt-BR')} agendamentos
-                                  </span>
+                                  <span className="text-[#A9A1B5]">Fonte:</span>
+                                  <span className="text-[#34D399] font-medium">Agendamentos concluídos</span>
                                 </div>
                               </>
                             )}
@@ -999,7 +978,7 @@ export default function AdminDashboardClient({
                 {/* Linha sólida histórica até Set/26 */}
                 <Area
                   type="monotone"
-                  dataKey={chartMetric === 'mrr' ? 'mrrHist' : chartMetric === 'gmv' ? 'gmvHist' : 'contasHist'}
+                  dataKey={chartMetric}
                   stroke="#B8A9D9"
                   strokeWidth={2.5}
                   fillOpacity={1}
@@ -1007,20 +986,6 @@ export default function AdminDashboardClient({
                   dot={{ r: 4, fill: '#F8F5FA', stroke: '#8675A9', strokeWidth: 2 }}
                   activeDot={{ r: 6, fill: '#F8F5FA', stroke: '#B8A9D9', strokeWidth: 2.5 }}
                 />
-                {/* Linha tracejada projetada (Out/26 a Mar/27) quando toggle ativado */}
-                {showProjection && (
-                  <Area
-                    type="monotone"
-                    dataKey={chartMetric === 'mrr' ? 'mrrProj' : chartMetric === 'gmv' ? 'gmvProj' : 'contasProj'}
-                    stroke="#A78BFA"
-                    strokeWidth={2}
-                    strokeDasharray="4 4"
-                    fillOpacity={1}
-                    fill="url(#areaProjGradient)"
-                    dot={{ r: 3.5, fill: '#A78BFA', stroke: '#15111F', strokeWidth: 1.5 }}
-                    activeDot={{ r: 5.5, fill: '#A78BFA', stroke: '#F8F5FA', strokeWidth: 2 }}
-                  />
-                )}
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -1046,9 +1011,9 @@ export default function AdminDashboardClient({
               <div className="w-full sm:w-auto grid grid-cols-3 gap-1 p-1 bg-[#15111F] rounded-xl border border-white/[0.06]">
                 {(
                   [
-                    { id: 'mrr', label: 'Receita' },
-                    { id: 'contas', label: 'Contas' },
-                    { id: 'gmv', label: 'Volume' },
+                    { id: 'cadastros', label: 'Cadastros' },
+                    { id: 'agendamentos', label: 'Agendamentos' },
+                    { id: 'faturamento', label: 'Faturamento' },
                   ] as const
                 ).map((m) => (
                   <button
@@ -1066,19 +1031,6 @@ export default function AdminDashboardClient({
                 ))}
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowProjection(!showProjection)}
-                className={`w-full sm:w-auto px-3.5 py-1.5 text-[11px] font-semibold rounded-xl border transition cursor-pointer flex items-center justify-center gap-1.5 active:scale-[0.97] ${
-                  showProjection
-                    ? 'bg-[#B8A9D9] text-[#15111F] border-[#B8A9D9] font-bold shadow-xs'
-                    : 'bg-[#15111F] text-[#A9A1B5] hover:text-[#F8F5FA] border-white/[0.08]'
-                }`}
-                title="Alternar projeção de crescimento para os próximos 6 meses"
-              >
-                <TrendingUp className="h-3 w-3" />
-                <span>{showProjection ? 'Projeção Ativa' : 'Exibir Projeção'}</span>
-              </button>
             </div>
           )}
         </div>
@@ -1087,7 +1039,7 @@ export default function AdminDashboardClient({
         <div className="bg-[#18141F] p-6 rounded-2xl border border-[#B8A9D9]/30 shadow-xs flex flex-col justify-between space-y-4 relative overflow-hidden">
           <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#B8A9D9]/5 rounded-full blur-2xl pointer-events-none" />
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-[#F8F5FA] tracking-tight">Distribuição da base ativa</h3>
+            <h3 className="text-base font-bold text-[#F8F5FA] tracking-tight">Distribuição por plano</h3>
             <span className="text-xs font-semibold text-[#A9A1B5]">{totalBase} contas</span>
           </div>
 
@@ -1203,21 +1155,21 @@ export default function AdminDashboardClient({
             <div className="absolute -top-10 -right-10 w-24 h-24 bg-[#B8A9D9]/10 rounded-full blur-xl pointer-events-none" />
             <div className="min-w-0">
               <span className="block min-w-0 truncate whitespace-nowrap text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider">
-                Renovações próximas
+                Contas atrasadas
               </span>
               <div className="mt-2 flex min-w-0 items-baseline gap-2 overflow-hidden whitespace-nowrap">
                 <span className="shrink-0 whitespace-nowrap text-2xl sm:text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
-                  42
+                  {alertCounts.atrasada.toLocaleString('pt-BR')}
                 </span>
-                <span className="min-w-0 truncate whitespace-nowrap text-xs text-[#F5B84B] font-semibold">em 48h</span>
+                <span className="min-w-0 truncate whitespace-nowrap text-xs text-[#F5B84B] font-semibold">no cadastro</span>
               </div>
               <p className="mt-1 min-w-0 truncate whitespace-nowrap text-xs text-[#A9A1B5]">
-                Processamento automático Asaas
+                Status de assinatura atrasada
               </p>
             </div>
             <div className="mt-2 flex min-w-0 items-center justify-between gap-2 border-t border-white/[0.08] pt-2.5 text-[11px] text-[#A9A1B5]">
-              <span className="min-w-0 flex-1 truncate whitespace-nowrap">Volume estimado</span>
-              <strong className="max-w-[50%] shrink-0 truncate whitespace-nowrap font-semibold text-[#E9D5FF]">R$ 2.935,00</strong>
+              <span className="min-w-0 flex-1 truncate whitespace-nowrap">Profissionais ativas</span>
+              <strong className="max-w-[50%] shrink-0 truncate whitespace-nowrap font-semibold text-[#E9D5FF]">{data.ativasCount.toLocaleString('pt-BR')}</strong>
             </div>
           </div>
 
@@ -1226,21 +1178,21 @@ export default function AdminDashboardClient({
             <div className="absolute -top-10 -right-10 w-24 h-24 bg-[#B8A9D9]/10 rounded-full blur-xl pointer-events-none" />
             <div className="min-w-0">
               <span className="block min-w-0 truncate whitespace-nowrap text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider">
-                Ticket médio da base
+                Ticket médio realizado
               </span>
               <div className="mt-2 flex min-w-0 items-baseline gap-2 overflow-hidden whitespace-nowrap">
                 <span className="shrink-0 whitespace-nowrap text-2xl sm:text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
-                  R$ 99,90
+                  {periodMetrics.ticketMedio}
                 </span>
-                <span className="min-w-0 truncate whitespace-nowrap text-xs text-[#34D399] font-semibold">+3,2% MoM</span>
+                <span className="min-w-0 truncate whitespace-nowrap text-xs text-[#34D399] font-semibold">{data.agendamentosConcluidosPeriodo} atendimentos</span>
               </div>
               <p className="mt-1 min-w-0 truncate whitespace-nowrap text-xs text-[#A9A1B5]">
-                Média ponderada Solo + Studio
+                Média dos atendimentos concluídos
               </p>
             </div>
             <div className="mt-2 flex min-w-0 items-center justify-between gap-2 border-t border-white/[0.08] pt-2.5 text-[11px] text-[#A9A1B5]">
-              <span className="min-w-0 flex-1 truncate whitespace-nowrap">Base do ecossistema</span>
-              <strong className="max-w-[50%] shrink-0 truncate whitespace-nowrap font-semibold text-[#E9D5FF]">Solo + Studio</strong>
+              <span className="min-w-0 flex-1 truncate whitespace-nowrap">Período selecionado</span>
+              <strong className="max-w-[50%] shrink-0 truncate whitespace-nowrap font-semibold text-[#E9D5FF]">{periodLabel}</strong>
             </div>
           </div>
 
@@ -1249,21 +1201,21 @@ export default function AdminDashboardClient({
             <div className="absolute -top-10 -right-10 w-24 h-24 bg-[#B8A9D9]/10 rounded-full blur-xl pointer-events-none" />
             <div className="min-w-0">
               <span className="block min-w-0 truncate whitespace-nowrap text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider">
-                Satisfação NPS
+                Contas em trial
               </span>
               <div className="mt-2 flex min-w-0 items-baseline gap-2 overflow-hidden whitespace-nowrap">
                 <span className="shrink-0 whitespace-nowrap text-2xl sm:text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
-                  78
+                  {(data.statusDistribution.find((status) => status.key === 'trial')?.value || 0).toLocaleString('pt-BR')}
                 </span>
-                <span className="min-w-0 truncate whitespace-nowrap text-xs text-[#B8A9D9] font-semibold">Zona de Excelência</span>
+                <span className="min-w-0 truncate whitespace-nowrap text-xs text-[#B8A9D9] font-semibold">status atual</span>
               </div>
               <p className="mt-1 min-w-0 truncate whitespace-nowrap text-xs text-[#A9A1B5]">
-                Avaliadoras ativas no mês
+                Contas cadastradas em período de teste
               </p>
             </div>
             <div className="mt-2 flex min-w-0 items-center justify-between gap-2 border-t border-white/[0.08] pt-2.5 text-[11px] text-[#A9A1B5]">
-              <span className="min-w-0 flex-1 truncate whitespace-nowrap">Meta do trimestre</span>
-              <strong className="max-w-[50%] shrink-0 truncate whitespace-nowrap font-semibold text-[#E9D5FF]">&gt; 75 pts</strong>
+              <span className="min-w-0 flex-1 truncate whitespace-nowrap">Contas ativas</span>
+              <strong className="max-w-[50%] shrink-0 truncate whitespace-nowrap font-semibold text-[#E9D5FF]">{data.ativasCount}</strong>
             </div>
           </div>
 
@@ -1272,21 +1224,21 @@ export default function AdminDashboardClient({
             <div className="absolute -top-10 -right-10 w-24 h-24 bg-[#B8A9D9]/10 rounded-full blur-xl pointer-events-none" />
             <div className="min-w-0">
               <span className="block min-w-0 truncate whitespace-nowrap text-[11px] font-semibold text-[#A9A1B5] uppercase tracking-wider">
-                Vitrines online
+                Vitrines cadastradas
               </span>
               <div className="mt-2 flex min-w-0 items-baseline gap-2 overflow-hidden whitespace-nowrap">
                 <span className="shrink-0 whitespace-nowrap text-2xl sm:text-3xl font-extrabold text-[#F8F5FA] tracking-tight">
-                  1.390
+                  {data.totalProfissionais.toLocaleString('pt-BR')}
                 </span>
-                <span className="min-w-0 truncate whitespace-nowrap text-xs text-[#38BDF8] font-semibold">97,4% no ar</span>
+                <span className="min-w-0 truncate whitespace-nowrap text-xs text-[#38BDF8] font-semibold">registros reais</span>
               </div>
               <p className="mt-1 min-w-0 truncate whitespace-nowrap text-xs text-[#A9A1B5]">
-                Páginas públicas recebendo visitas
+                Perfis profissionais no sistema
               </p>
             </div>
             <div className="mt-2 flex min-w-0 items-center justify-between gap-2 border-t border-white/[0.08] pt-2.5 text-[11px] text-[#A9A1B5]">
-              <span className="min-w-0 flex-1 truncate whitespace-nowrap">Disponibilidade</span>
-              <strong className="max-w-[50%] shrink-0 truncate whitespace-nowrap font-semibold text-[#E9D5FF]">99,9% uptime</strong>
+              <span className="min-w-0 flex-1 truncate whitespace-nowrap">Com status ativo</span>
+              <strong className="max-w-[50%] shrink-0 truncate whitespace-nowrap font-semibold text-[#E9D5FF]">{data.ativasCount.toLocaleString('pt-BR')}</strong>
             </div>
           </div>
         </div>
@@ -1304,7 +1256,7 @@ export default function AdminDashboardClient({
             </h2>
           </div>
           <span className="text-[11px] text-[#A9A1B5]">
-            {priorities.length} ações com alto impacto operacional
+            {priorities.length} pendências encontradas nos dados atuais
           </span>
         </div>
 
@@ -1325,19 +1277,12 @@ export default function AdminDashboardClient({
                 >
                   {item.btnLabel}
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => setPriorities(prev => prev.filter(p => p.id !== item.id))}
-                  className="p-1.5 rounded-lg hover:bg-white/[0.06] text-[#A9A1B5] hover:text-[#F87171] transition cursor-pointer"
-                  title="Remover prioridade"
-                >
-                  <X className="h-3 w-3" />
-                </button>
               </div>
             </div>
           ))}
         </div>
 
+        {priorities.length === 0 && <p className="pt-4 text-xs text-[#A9A1B5]">Nenhuma pendência ativa foi encontrada nos dados carregados.</p>}
         {priorities.length > 3 && (
           <button
             type="button"
@@ -1363,17 +1308,12 @@ export default function AdminDashboardClient({
               <h3 className="text-sm sm:text-base font-bold text-[#F8F5FA] tracking-tight">Alertas prioritários</h3>
             </div>
             
-            <span className="text-xs font-semibold text-[#A9A1B5]">4 ações prioritárias</span>
+            <span className="text-xs font-semibold text-[#A9A1B5]">{accountAlerts.length} contas sem acesso recente</span>
           </div>
 
           <div className="divide-y divide-white/[0.06] flex-1">
             <AnimatePresence initial={false}>
-            {[
-              { id: 'alert1', category: 'pagamento', icon: AlertCircle, nome: 'Studio Glow & Co', tipo: 'Falha de pagamento', tipoColor: 'text-[#F87171]', iconColor: 'text-[#F87171]', desc: 'Cartão final 4821 recusado · Tentativa 2 de 3', btnLabel: 'Reenviar link', btnColor: 'bg-[#F87171]/15 hover:bg-[#F87171]/25 text-[#F87171] border-[#F87171]/30', phone: '5511999990001', msg: 'Olá, equipe Studio Glow & Co! Identificamos uma falha no processamento da assinatura Lumê (cartão final 4821). Para manter seu link e agendamentos ativos, atualize sua forma de pagamento.' },
-              { id: 'alert2', category: 'trial', icon: Clock, nome: 'Beatriz Mendes', tipo: 'Período de teste', tipoColor: 'text-[#F5B84B]', iconColor: 'text-[#F5B84B]', desc: 'Trial termina em 24h · 38 agendamentos gerados', btnLabel: 'Estender trial', btnColor: 'bg-[#B8A9D9]/15 hover:bg-[#B8A9D9]/25 text-[#B8A9D9] border-[#B8A9D9]/30', phone: '5511988880002', msg: 'Olá, Beatriz! Seu período de teste de 30 dias no Lumê encerra em 24h. Você já registrou 38 agendamentos! Ative seu plano Solo com valor promocional e continue sem interrupções.' },
-              { id: 'alert3', category: 'atividade', icon: TrendingDown, nome: 'Camila Rossi', tipo: 'Queda de atividade', tipoColor: 'text-[#F5B84B]', iconColor: 'text-[#F5B84B]', desc: 'Queda de 60% nos agendamentos nas últimas 2 semanas', btnLabel: 'Ver perfil', btnColor: 'bg-white/[0.06] hover:bg-white/[0.1] text-[#F8F5FA] border-white/10', phone: '5511977770003', msg: 'Olá, Camila! Percebemos uma oscilação na sua agenda nas últimas semanas. Estamos à divulgação e vitrine no Lumê!' },
-              { id: 'alert4', category: 'cobranca', icon: CreditCard, nome: 'Juliana Prado', tipo: 'Informativo', tipoColor: 'text-[#A9A1B5]', iconColor: 'text-[#A9A1B5]', desc: 'Renovação anual programada para amanhã · R$ 694,80', btnLabel: 'Ver perfil', btnColor: 'bg-white/[0.06] hover:bg-white/[0.1] text-[#F8F5FA] border-white/10', phone: '5511966660004', msg: 'Olá, Juliana! Lembrando que a renovação da sua anuidade Lumê está agendada para amanhã (R$ 694,80). Caso precise de qualquer ajuste na nota fiscal, nos avise.' },
-            ]
+            {accountAlerts
               .filter(a => alertFilter === 'todos' || a.category === alertFilter)
               .map((alert) => {
                 const AlertIcon = alert.icon
@@ -1403,7 +1343,7 @@ export default function AdminDashboardClient({
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <button
+                        {alert.phone && <button
                           type="button"
                           onClick={() => setAlertMsgOpen(alertMsgOpen === alert.id ? null : alert.id)}
                           className="h-8 w-8 rounded-lg bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/20 flex items-center justify-center transition cursor-pointer active:scale-[0.97]"
@@ -1412,13 +1352,8 @@ export default function AdminDashboardClient({
                           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="#25D366" xmlns="http://www.w3.org/2000/svg">
                             <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                           </svg>
-                        </button>
-                        <button
-                          type="button"
-                          className={`h-8 px-3 py-1.5 rounded-lg ${alert.btnColor} border text-xs font-semibold transition cursor-pointer active:scale-[0.97] flex items-center justify-center`}
-                        >
-                          {alert.btnLabel}
-                        </button>
+                        </button>}
+                        <Link href={alert.href} className={`h-8 px-3 py-1.5 rounded-lg ${alert.btnColor} border text-xs font-semibold transition cursor-pointer active:scale-[0.97] flex items-center justify-center`}>{alert.btnLabel}</Link>
                       </div>
                     </div>
                     {alertMsgOpen === alert.id && (
@@ -1434,8 +1369,8 @@ export default function AdminDashboardClient({
                           </button>
                         </div>
                         <p className="text-xs text-[#A9A1B5] leading-relaxed">{alert.msg}</p>
-                        <a
-                          href={`https://wa.me/${alert.phone}?text=${encodeURIComponent(alert.msg)}`}
+                        {alert.phone && <a
+                          href={`https://wa.me/${alert.phone.length <= 11 ? `55${alert.phone}` : alert.phone}?text=${encodeURIComponent(alert.msg)}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center justify-center gap-2 w-full py-2 rounded-lg bg-[#25D366] hover:bg-[#22c25e] text-white text-xs font-bold transition cursor-pointer active:scale-[0.97]"
@@ -1444,7 +1379,7 @@ export default function AdminDashboardClient({
                             <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                           </svg>
                           Abrir no WhatsApp
-                        </a>
+                        </a>}
                       </div>
                     )}
                   </motion.div>
@@ -1455,18 +1390,15 @@ export default function AdminDashboardClient({
 
           {/* Filtros no rodapé com animação suave e transição de preenchimento */}
           <div className="pt-3 border-t border-white/[0.08]">
-            <div className="w-full grid grid-cols-5 gap-1 p-1 bg-[#15111F] rounded-xl border border-white/[0.06]">
+            <div className="w-full grid grid-cols-2 gap-1 p-1 bg-[#15111F] rounded-xl border border-white/[0.06]">
               {[
                 { id: 'todos', label: 'Todos' },
-                { id: 'pagamento', label: 'Falhas' },
-                { id: 'trial', label: 'Trial' },
                 { id: 'atividade', label: 'Atividade' },
-                { id: 'cobranca', label: 'Renovações' },
               ].map((f) => (
                 <button
                   key={f.id}
                   type="button"
-                  onClick={() => setAlertFilter(f.id as any)}
+                  onClick={() => setAlertFilter(f.id as 'todos' | 'atividade')}
                   className={`py-1.5 text-[11px] font-semibold rounded-lg transition-all duration-200 text-center cursor-pointer active:scale-[0.97] ${
                     alertFilter === f.id
                       ? 'bg-[#B8A9D9] text-[#15111F] font-bold shadow-xs scale-[1.01]'
@@ -1496,7 +1428,7 @@ export default function AdminDashboardClient({
           {/* Lista de Performers */}
           <div className="divide-y divide-white/[0.06] flex-1">
             <AnimatePresence initial={false}>
-            {performersData[performerFilter].map((perf) => (
+            {performersData.map((perf) => (
               <motion.div
                 key={`${performerFilter}-${perf.id}`}
                 layout
@@ -1543,17 +1475,15 @@ export default function AdminDashboardClient({
 
           {/* Filtros no rodapé com animação suave e transição de preenchimento */}
           <div className="pt-3 border-t border-white/[0.08]">
-            <div className="w-full grid grid-cols-4 gap-1 p-1 bg-[#15111F] rounded-xl border border-white/[0.06]">
+            <div className="w-full grid grid-cols-2 gap-1 p-1 bg-[#15111F] rounded-xl border border-white/[0.06]">
               {[
                 { id: 'faturamento', label: 'Faturamento' },
                 { id: 'agendamentos', label: 'Agendamentos' },
-                { id: 'clientes', label: 'Clientes' },
-                { id: 'avaliacoes', label: 'Avaliações' },
               ].map((f) => (
                 <button
                   key={f.id}
                   type="button"
-                  onClick={() => setPerformerFilter(f.id as any)}
+                  onClick={() => setPerformerFilter(f.id as 'faturamento' | 'agendamentos')}
                   className={`py-1.5 text-[11px] font-semibold rounded-lg transition-all duration-200 text-center cursor-pointer active:scale-[0.97] ${
                     performerFilter === f.id
                       ? 'bg-[#B8A9D9] text-[#15111F] font-bold shadow-xs scale-[1.01]'

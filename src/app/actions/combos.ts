@@ -239,34 +239,53 @@ export async function updateComboAction(
       return { success: false, message: 'O nome do combo é obrigatório.' }
     }
 
-    if ((!data.servico_ids || data.servico_ids.length === 0) && (!data.duracao_minutos || data.duracao_minutos <= 0)) {
+    const serviceIds = [...new Set(data.servico_ids || [])]
+    if (serviceIds.length === 0 && (!data.duracao_minutos || data.duracao_minutos <= 0)) {
       return { success: false, message: 'Informe a duração do pacote independente.' }
+    }
+    if (!Number.isFinite(Number(data.preco_combo)) || Number(data.preco_combo) < 0) {
+      return { success: false, message: 'Informe um valor válido para o pacote.' }
     }
 
     const adminSupabase = createAdminClient()
 
-    // 1. Atualizar combo garantindo posse
-    const { error: updateError } = await adminSupabase.from('combos')
-      .update({
-        nome: data.nome.trim(),
-        descricao: data.descricao?.trim() || null,
-        preco_combo: Number(data.preco_combo),
-        foto_url: data.foto_url || null,
-        duracao_minutos: data.servico_ids.length === 0 ? Number(data.duracao_minutos) : null,
-        ativo: data.ativo !== undefined ? data.ativo : true,
-      })
+    const { data: ownedCombo, error: comboLookupError } = await adminSupabase.from('combos')
+      .select('id')
       .eq('id', comboId)
       .eq('profissional_id', user.id)
+      .maybeSingle()
+    if (comboLookupError || !ownedCombo) return { success: false, message: 'Pacote não encontrado.' }
 
-    if (updateError) {
-      console.error('[updateComboAction] Erro ao atualizar combo:', updateError)
-      return { success: false, message: 'Erro ao atualizar dados do combo.' }
+    if (serviceIds.length > 0) {
+      const { data: ownedServices, error: servicesError } = await adminSupabase.from('servicos')
+        .select('id')
+        .eq('profissional_id', user.id)
+        .in('id', serviceIds)
+      if (servicesError || !ownedServices || ownedServices.length !== serviceIds.length) {
+        return { success: false, message: 'Um ou mais serviços selecionados não pertencem à sua conta.' }
+      }
     }
 
-    // 2. Sincronizar serviços associados (remover antigos e reinserir novos)
-    await adminSupabase.from('combo_servicos').delete().eq('combo_id', comboId)
+    const { data: oldLinks, error: oldLinksError } = await adminSupabase.from('combo_servicos')
+      .select('servico_id')
+      .eq('combo_id', comboId)
+    if (oldLinksError) return { success: false, message: 'Não foi possível carregar os serviços atuais do pacote.' }
 
-    const relRows = data.servico_ids.map((servicoId) => ({
+    const restoreOldLinks = async () => {
+      const { error: clearError } = await adminSupabase.from('combo_servicos').delete().eq('combo_id', comboId)
+      if (clearError) return clearError
+      if (!oldLinks?.length) return null
+      const { error } = await adminSupabase.from('combo_servicos').insert(oldLinks.map((link) => ({
+        combo_id: comboId,
+        servico_id: link.servico_id,
+      })))
+      return error
+    }
+
+    const { error: clearLinksError } = await adminSupabase.from('combo_servicos').delete().eq('combo_id', comboId)
+    if (clearLinksError) return { success: false, message: 'Não foi possível atualizar os serviços do pacote.' }
+
+    const relRows = serviceIds.map((servicoId) => ({
       combo_id: comboId,
       servico_id: servicoId,
     }))
@@ -277,6 +296,30 @@ export async function updateComboAction(
 
     if (relError) {
       console.error('[updateComboAction] Erro ao atualizar serviços associados:', relError)
+      const restoreError = await restoreOldLinks()
+      if (restoreError) console.error('[updateComboAction] Não foi possível restaurar serviços anteriores:', restoreError)
+      return { success: false, message: 'Os serviços do pacote não puderam ser atualizados.' }
+    }
+
+    const { data: updatedCombo, error: updateError } = await adminSupabase.from('combos')
+      .update({
+        nome: data.nome.trim(),
+        descricao: data.descricao?.trim() || null,
+        preco_combo: Number(data.preco_combo),
+        foto_url: data.foto_url || null,
+        duracao_minutos: serviceIds.length === 0 ? Number(data.duracao_minutos) : null,
+        ativo: data.ativo !== undefined ? data.ativo : true,
+      })
+      .eq('id', comboId)
+      .eq('profissional_id', user.id)
+      .select('id')
+      .maybeSingle()
+
+    if (updateError || !updatedCombo) {
+      const restoreError = await restoreOldLinks()
+      if (restoreError) console.error('[updateComboAction] Não foi possível restaurar serviços anteriores:', restoreError)
+      console.error('[updateComboAction] Erro ao atualizar combo:', updateError)
+      return { success: false, message: 'Erro ao atualizar dados do pacote.' }
     }
 
     revalidatePath('/dashboard/servicos')

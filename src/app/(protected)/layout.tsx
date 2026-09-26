@@ -64,7 +64,7 @@ export default async function ProtectedLayout({ children }: ProtectedLayoutProps
   } : null
 
   // Fire-and-forget não-bloqueante para registro de log
-  recordLoginLog(user.id).catch(() => {})
+  recordLoginLog().catch(() => {})
 
   // Se a conta tiver sido desativada por Soft Delete, bloquear acesso
   if (profissional?.deletado_em) {

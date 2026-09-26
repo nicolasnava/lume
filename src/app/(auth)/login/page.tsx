@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -9,6 +9,7 @@ import { loginSchema } from '@/lib/validations'
 import Toast from '@/components/ui/Toast'
 import { Lock, Mail, Loader2, Eye, EyeOff, X, KeyRound, CheckCircle2, ArrowRight } from 'lucide-react'
 import { getPostLoginRedirectAction } from '@/app/actions/admin2fa'
+import { signInAction } from '@/app/actions/auth'
 import { translateAuthError } from '@/lib/utils/errorTranslations'
 import { getLoginSubmitPresentation, type LoginSubmitStatus } from '@/lib/login-submit-presentation'
 
@@ -36,6 +37,9 @@ function LoginForm() {
 
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
+  const honeypotRef = useRef<HTMLInputElement>(null)
+  const companyUrlRef = useRef<HTMLInputElement>(null)
+  const faxNumberRef = useRef<HTMLInputElement>(null)
   const [showPassword, setShowPassword] = useState(false)
 
   // Estado de Recuperação de Senha ("Esqueceu a senha?")
@@ -67,17 +71,18 @@ function LoginForm() {
     setLoginStatus('checking')
 
     try {
-      const supabase = createClient()
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      const authResult = await signInAction({
         email,
-        password: senha,
+        senha,
+        website: honeypotRef.current?.value || '',
+        companyUrl: companyUrlRef.current?.value || '',
+        faxNumber: faxNumberRef.current?.value || '',
       })
 
-      if (authError) {
-        const msg = translateAuthError(authError)
+      if (!authResult.success || !authResult.user) {
         setToast({
           show: true,
-          message: msg,
+          message: authResult.message || 'Não foi possível autenticar. Confira os dados e tente novamente.',
           type: 'error',
         })
         setLoginStatus('idle')
@@ -92,8 +97,8 @@ function LoginForm() {
 
       try {
         const postLogin = await getPostLoginRedirectAction(
-          authData.user?.id,
-          authData.user?.email || email
+          authResult.user.id,
+          authResult.user.email || email
         )
         if (postLogin && postLogin.isAdmin) {
           targetUrl = postLogin.redirectUrl || '/admin'
@@ -188,6 +193,36 @@ function LoginForm() {
         </div>
 
         <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+          <input
+            ref={honeypotRef}
+            id="login-website"
+            name="website"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden="true"
+            className="absolute -left-[10000px] top-auto h-px w-px overflow-hidden opacity-0"
+          />
+          <input
+            ref={companyUrlRef}
+            id="login-company-site"
+            name="company_site"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden="true"
+            className="absolute -left-[10000px] top-auto h-px w-px overflow-hidden opacity-0"
+          />
+          <input
+            ref={faxNumberRef}
+            id="login-fax-number"
+            name="fax_number"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden="true"
+            className="absolute -left-[10000px] top-auto h-px w-px overflow-hidden opacity-0"
+          />
           <div className="space-y-4">
             <div>
               <label

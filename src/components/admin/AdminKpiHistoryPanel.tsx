@@ -32,7 +32,7 @@ export default function AdminKpiHistoryPanel({
         <div className="flex items-center gap-3">
           <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: color }} />
           <div>
-            <h4 className="text-sm font-bold text-[#F8F5FA]">{title} · Histórico Semestral</h4>
+          <h4 className="text-sm font-bold text-[#F8F5FA]">{title}</h4>
             <p className="text-[11px] text-[#A9A1B5]">{subtitle}</p>
           </div>
         </div>
@@ -46,7 +46,7 @@ export default function AdminKpiHistoryPanel({
         </button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-4">
         {history.map((item, idx) => {
           const isPositive = item.delta.startsWith('+')
           const deltaColor = invertDelta

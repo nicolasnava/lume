@@ -111,19 +111,16 @@ export default function SubscriptionSection({ initialData }: SubscriptionSection
     startTransitionPlan(async () => {
       try {
         const res = await changeProfissionalPlan(newPlan)
-        if (res.success) {
-          setData((prev) => ({
-            ...prev,
-            planoTipo: newPlan,
-            valorMensalidade: res.valor,
-          }))
-          setCouponFeedback({
-            type: 'success',
-            message: `Plano alterado para ${newPlan === 'anual' ? 'Plano Anual' : 'Plano Mensal'} com sucesso!`,
-          })
-          setTimeout(() => setCouponFeedback(null), 4000)
-        }
+        if (!res.success) throw new Error(res.message)
+
+        setData((prev) => ({ ...prev, planoTipo: newPlan }))
+        setCouponFeedback({
+          type: 'success',
+          message: `Plano alterado para ${newPlan === 'anual' ? 'Plano Anual' : 'Plano Mensal'} com sucesso!`,
+        })
+        setTimeout(() => setCouponFeedback(null), 4000)
       } catch (err) {
+        setSelectedPlan(data.planoTipo === 'anual' ? 'anual' : 'mensal')
         setCouponFeedback({
           type: 'error',
           message: err instanceof Error ? err.message : 'Erro ao alterar plano.',
@@ -171,6 +168,10 @@ export default function SubscriptionSection({ initialData }: SubscriptionSection
       })
     } catch (err) {
       console.error('Erro ao buscar pagamento da fatura:', err)
+      setCouponFeedback({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Não foi possível carregar os dados reais desta cobrança.',
+      })
     } finally {
       setIsPendingInvoice(false)
     }
